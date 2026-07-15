@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { displayNote, FALLBACK_ACCORDIONS } from './data';
 import { frequencyToPitch } from './hooks/usePitchDetector';
 import { getMelodyButtonSize } from './components/accordionLayout';
+import { PRACTICE_MODES } from './practiceModes';
+import { TUTORIAL_MODE_TRIALS } from './tutorialFlow';
 
 describe('accordion configurations', () => {
   it('ships the Hohner Club I 10 + 9 + 2 layout', () => {
@@ -44,5 +46,11 @@ describe('pitch and notation', () => {
     expect(displayNote('C4', 'english', 'gc-in-4', 'push')).toBe('C4');
     expect(displayNote('C4', 'button', 'gc-in-4', 'pull')).toBe('4');
     expect(displayNote('C4', 'tablature', 'gc-in-4', 'pull')).toBe('4T');
+  });
+});
+
+describe('first lesson tutorial', () => {
+  it('includes a validated trial for every practice mode', () => {
+    expect(TUTORIAL_MODE_TRIALS.map((trial) => trial.id)).toEqual(PRACTICE_MODES.map((mode) => mode.id));
   });
 });

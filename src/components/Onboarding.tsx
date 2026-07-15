@@ -125,7 +125,7 @@ export function Onboarding({ accordions, initialAccordionId, initialNotation, on
           <button type="button" className="secondary-button" disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}><ArrowLeft /> Retour</button>
           <span><strong>{steps[step]}</strong><small>{step === 0 ? '2 minutes pour tout préparer' : 'Tu pourras modifier ce choix plus tard'}</small></span>
           <button type="button" className="primary-button" disabled={!canContinue} onClick={() => isLast ? onComplete(accordionId, notation) : setStep(step + 1)}>
-            {isLast ? 'Jouer ma première leçon' : 'Continuer'} <ArrowRight />
+            {isLast ? 'Commencer mon tutoriel' : 'Continuer'} <ArrowRight />
           </button>
         </footer>
       </div>

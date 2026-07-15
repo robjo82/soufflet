@@ -326,6 +326,189 @@ svg { stroke-width: 1.8; }
 .onboarding-footer > .secondary-button { justify-self: start; }
 .onboarding-footer > .primary-button { justify-self: end; }
 
+/* First lesson tutorial */
+.first-lesson-tutorial { min-height: 100vh; color: var(--ink); background: radial-gradient(circle at 50% 20%, #fff 0, #f3eee5 64%, #ebe4d8 100%); }
+.tutorial-header { min-height: 78px; padding: 0 max(26px, calc((100vw - 1500px) / 2)); position: sticky; z-index: 90; top: 0; display: grid; grid-template-columns: 190px 1fr 190px; align-items: center; border-bottom: 1px solid var(--line); background: rgba(250,248,243,.92); backdrop-filter: blur(18px); }
+.tutorial-header > ol { max-width: 880px; margin: 0 auto; padding: 0; display: flex; align-items: center; justify-content: center; list-style: none; }
+.tutorial-header li { min-width: 92px; display: flex; align-items: center; color: #aaa59b; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.tutorial-header li::after { content: ''; width: clamp(14px, 3vw, 58px); height: 2px; margin-inline: 8px; background: #d9d3c8; }
+.tutorial-header li:last-child::after { display: none; }
+.tutorial-header li i { width: 25px; height: 25px; margin-right: 6px; display: grid; place-items: center; border: 1px solid #cec8bc; border-radius: 50%; font-style: normal; }
+.tutorial-header li svg { width: 13px; }
+.tutorial-header li.is-current { color: var(--green); }
+.tutorial-header li.is-current i { color: white; border-color: var(--green); background: var(--green); box-shadow: 0 0 0 5px rgba(49,92,75,.1); }
+.tutorial-header li.is-done { color: var(--green); }
+.tutorial-header li.is-done i { color: white; border-color: var(--green); background: var(--green); }
+.tutorial-header li.is-done::after { background: var(--green); }
+.tutorial-counter { justify-self: end; color: var(--muted); font-size: 10px; font-weight: 800; }
+.tutorial-intro { width: min(1440px, calc(100% - 64px)); min-height: calc(100vh - 78px); margin: 0 auto; display: grid; grid-template-columns: .85fr 1.15fr; align-items: center; gap: 70px; }
+.tutorial-intro > section { padding: 55px 0; }
+.tutorial-intro h1 { margin: 16px 0 22px; font-size: clamp(54px, 6vw, 86px); line-height: .98; letter-spacing: -.064em; }
+.tutorial-intro h1 em { color: var(--coral); font-style: normal; }
+.tutorial-intro > section > p { max-width: 650px; color: var(--muted); font-size: 18px; line-height: 1.65; }
+.tutorial-promises { display: flex; flex-wrap: wrap; gap: 9px; margin: 28px 0 34px; }
+.tutorial-promises span { padding: 10px 12px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.65); color: var(--muted); font-size: 11px; font-weight: 700; }
+.tutorial-promises svg { width: 16px; color: var(--green); }
+.tutorial-main-action { min-height: 58px; padding-inline: 25px; }
+.tutorial-intro-instrument { min-width: 0; padding: 50px 25px; position: relative; border: 1px solid rgba(100,88,72,.12); border-radius: 36% 64% 42% 58%; background: rgba(255,255,255,.45); }
+.tutorial-intro-instrument .direction-banner { display: none; }
+.tutorial-intro-instrument .accordion-wrap.is-compact .accordion { transform: scale(.9) rotate(-1deg); margin: -15px 0; }
+.tutorial-lesson { width: min(1440px, calc(100% - 56px)); margin: 0 auto; padding: 30px 0 112px; display: grid; grid-template-columns: 350px 1fr; align-items: start; gap: 18px; }
+.tutorial-instruction-card, .tutorial-instrument-card, .tutorial-feedback, .tutorial-score { border: 1px solid var(--line); background: rgba(255,255,255,.8); }
+.tutorial-instruction-card { min-height: 505px; padding: 34px; border-radius: 22px; display: flex; flex-direction: column; align-items: start; }
+.tutorial-instruction-card h1 { margin: 13px 0 15px; font-size: 37px; line-height: 1.02; letter-spacing: -.045em; }
+.tutorial-instruction-card > p { color: var(--muted); font-size: 14px; line-height: 1.65; }
+.tutorial-instruction-card > button, .tutorial-instruction-card > .tutorial-mic-state { margin-top: auto; }
+.tutorial-instrument-card { min-width: 0; min-height: 505px; padding: 16px; border-radius: 22px; display: flex; align-items: center; overflow: hidden; }
+.tutorial-instrument-card .accordion { transform: scale(.94); margin-block: -12px; }
+.tutorial-score { grid-column: 1 / -1; border-radius: 18px; overflow: hidden; }
+.tutorial-score .score-shell { border: 0; height: 145px; }
+.guided-note-progress { display: flex; gap: 9px; margin: 12px 0 26px; }
+.guided-note-progress span { width: 37px; height: 37px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: white; font-weight: 900; }
+.guided-note-progress span.is-current { color: white; border-color: var(--coral); background: var(--coral); box-shadow: 0 0 0 6px rgba(231,120,92,.13); }
+.guided-note-progress span.is-done { color: white; border-color: var(--green); background: var(--green); }
+.guided-note-progress svg { width: 17px; }
+.tutorial-mic-state { min-height: 42px; padding: 0 12px; display: inline-flex; align-items: center; gap: 7px; border-radius: 10px; color: var(--muted); background: #eee9e0; font-size: 11px; font-weight: 800; }
+.tutorial-mic-state.is-live { color: var(--green); background: var(--green-soft); }
+.tutorial-mic-state > i { width: 8px; height: 8px; border-radius: 50%; background: #4d9e70; box-shadow: 0 0 0 5px rgba(77,158,112,.13); }
+.tutorial-feedback { min-height: 76px; grid-column: 1 / -1; padding: 12px 16px; border-radius: 15px; display: flex; align-items: center; gap: 12px; }
+.tutorial-feedback > svg { width: 44px; height: 44px; padding: 11px; flex: 0 0 auto; border-radius: 12px; color: white; background: var(--green); }
+.tutorial-feedback > span { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 2px 10px; }
+.tutorial-feedback small { grid-column: 1 / 3; color: var(--green); font-size: 8px; font-weight: 900; letter-spacing: .1em; }
+.tutorial-feedback strong { font-size: 13px; }
+.tutorial-feedback p { margin: 0; color: var(--muted); font-size: 11px; }
+.tutorial-feedback.is-good { border-color: #adccb9; background: #edf5f0; }
+.tutorial-lesson-footer { grid-column: 1 / -1; display: flex; justify-content: end; }
+.tutorial-lesson-footer .primary-button { min-height: 54px; }
+.tutorial-limitation { padding: 10px 13px; border-radius: 10px; color: #7a5b2a; background: #f7e8c8; font-size: 10px; line-height: 1.5; }
+.tutorial-modes { width: min(1460px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 70px; display: grid; grid-template-columns: 315px 1fr; gap: 20px; align-items: start; }
+.tutorial-mode-rail { max-height: calc(100vh - 132px); padding: 27px; position: sticky; top: 100px; overflow-y: auto; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.76); }
+.tutorial-mode-rail h1 { margin: 8px 0; font-size: 29px; letter-spacing: -.04em; }
+.tutorial-mode-rail > p { color: var(--muted); font-size: 11px; line-height: 1.55; }
+.tutorial-mode-rail ol { margin: 20px 0 0; padding: 0; display: grid; gap: 5px; list-style: none; }
+.tutorial-mode-rail li { min-height: 46px; padding: 6px 8px; display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 7px; border-radius: 10px; color: #aaa59b; }
+.tutorial-mode-rail li > i { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid #d8d2c8; border-radius: 50%; font-size: 9px; font-style: normal; font-weight: 900; }
+.tutorial-mode-rail li > span { display: flex; flex-direction: column; }
+.tutorial-mode-rail li strong { font-size: 10px; }
+.tutorial-mode-rail li small { font-size: 8px; }
+.tutorial-mode-rail li.is-current { color: var(--ink); background: var(--coral-soft); }
+.tutorial-mode-rail li.is-current > i { color: white; border-color: var(--coral); background: var(--coral); }
+.tutorial-mode-rail li.is-done { color: var(--green); }
+.tutorial-mode-rail li.is-done > i { color: white; border-color: var(--green); background: var(--green); }
+.tutorial-mode-rail li svg { width: 14px; }
+.tutorial-mode-workspace { min-width: 0; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.82); }
+.tutorial-mode-workspace > header { display: grid; grid-template-columns: 1fr minmax(280px, .75fr); column-gap: 30px; }
+.tutorial-mode-workspace > header .eyebrow, .tutorial-mode-workspace > header h2, .tutorial-mode-workspace > header > p { grid-column: 1; }
+.tutorial-mode-workspace > header h2 { margin: 7px 0 5px; font-size: 34px; letter-spacing: -.04em; }
+.tutorial-mode-workspace > header > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.tutorial-task { grid-column: 2; grid-row: 1 / 4; padding: 16px; display: flex; align-items: center; gap: 11px; border-radius: 14px; color: #244f6d; background: #dfebf2; }
+.tutorial-task > svg { width: 29px; flex: 0 0 auto; }
+.tutorial-task > span { display: flex; flex-direction: column; }
+.tutorial-task small { font-size: 7px; letter-spacing: .1em; font-weight: 900; }
+.tutorial-task strong { font-size: 11px; line-height: 1.4; }
+.tutorial-mode-instrument { min-height: 420px; margin: 18px 0 12px; position: relative; display: grid; place-items: center; border-radius: 18px; overflow: hidden; background: radial-gradient(circle, #fff, #f1ece3); }
+.tutorial-mode-instrument .accordion { transform: scale(.84); margin-block: -31px; }
+.tutorial-mode-instrument .direction-banner { min-height: 44px; margin-bottom: 0; transform: scale(.9); }
+.tutorial-mode-instrument.is-performance .direction-banner { visibility: hidden; }
+.rhythm-tap-button { min-width: 230px; min-height: 85px; padding: 13px 20px; position: absolute; z-index: 8; border: 0; border-radius: 18px; color: white; background: var(--coral); box-shadow: 0 15px 30px rgba(200,95,70,.28); display: grid; grid-template-columns: 35px 1fr; align-items: center; cursor: pointer; }
+.rhythm-tap-button > svg { width: 27px; }
+.rhythm-tap-button > span { font-weight: 900; }
+.rhythm-tap-button > b { grid-column: 1 / 3; display: flex; justify-content: center; gap: 7px; }
+.rhythm-tap-button i { width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.55); border-radius: 50%; }
+.rhythm-tap-button i.is-done { border-color: white; background: white; }
+.bellows-trial { padding: 11px; position: absolute; z-index: 8; display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 16px; background: white; box-shadow: var(--shadow); }
+.bellows-trial button { min-height: 48px; padding: 0 18px; border: 1px solid var(--line); border-radius: 11px; background: white; cursor: pointer; font-size: 11px; font-weight: 900; }
+.bellows-trial button.is-expected { color: white; border-color: var(--coral); background: var(--coral); box-shadow: 0 0 0 5px rgba(231,120,92,.14); }
+.bellows-trial > svg { color: var(--muted); }
+.tutorial-start-mic { margin: 8px 0; color: var(--green); }
+.tutorial-mode-workspace > .tutorial-feedback { margin-top: 12px; }
+.tutorial-mode-workspace > footer { margin-top: 15px; display: flex; justify-content: end; }
+.tutorial-interface-tour { width: min(1420px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 80px; }
+.tour-callout { min-height: 88px; margin-bottom: 15px; padding: 14px 18px; display: flex; align-items: center; gap: 13px; border: 1px solid #afc8ba; border-radius: 17px; background: #edf5f0; box-shadow: 0 12px 35px rgba(49,92,75,.1); }
+.tour-callout > span { width: 50px; height: 50px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 13px; color: white; background: var(--green); }
+.tour-callout > span svg { width: 24px; }
+.tour-callout > div { flex: 1; display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 3px 10px; }
+.tour-callout small { grid-column: 1 / 3; color: var(--green); font-size: 8px; font-weight: 900; letter-spacing: .1em; }
+.tour-callout strong { font-size: 14px; }
+.tour-callout p { margin: 0; color: var(--muted); font-size: 11px; }
+.tour-callout .primary-button { flex: 0 0 auto; }
+.tutorial-ui-demo { border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: #f6f3ed; box-shadow: 0 20px 55px rgba(48,42,35,.1); }
+.tutorial-ui-demo .practice-toolbar { padding-inline: 18px; }
+.tutorial-ui-demo .mode-trigger { margin-right: auto; }
+.tutorial-ui-instrument { height: 360px; padding: 4px; display: flex; align-items: center; overflow: hidden; border-block: 1px solid var(--line); background: radial-gradient(circle, white, #f0ebe2); }
+.tutorial-ui-instrument .accordion-wrap.is-compact .accordion { transform: scale(.78); margin: -38px 0; }
+.tutorial-ui-instrument .accordion-wrap.is-compact .direction-banner { transform: scale(.8); margin-bottom: 0; }
+.tutorial-ui-demo .score-shell { border: 0; border-radius: 0; }
+.tutorial-ui-demo > footer { min-height: 78px; padding: 0 20px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-top: 1px solid var(--line); background: white; }
+.tutorial-ui-demo > footer .primary-play { justify-self: center; }
+.tutorial-ui-demo > footer .tempo-control { justify-self: end; }
+.is-concealed { visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; transform: translateY(8px); }
+.is-tutorial-focus { position: relative; z-index: 12; box-shadow: 0 0 0 4px white, 0 0 0 8px var(--coral), 0 12px 28px rgba(200,95,70,.2) !important; animation: tutorialFocus 1.4s ease-in-out infinite alternate; }
+.score-focus { border-radius: 12px; }
+@keyframes tutorialFocus { from { box-shadow: 0 0 0 4px white, 0 0 0 7px var(--coral), 0 10px 25px rgba(200,95,70,.15); } to { box-shadow: 0 0 0 4px white, 0 0 0 10px var(--coral), 0 14px 32px rgba(200,95,70,.28); } }
+
+@media (max-width: 1100px) {
+  .tutorial-header { grid-template-columns: 150px 1fr 120px; }
+  .tutorial-header li { min-width: 32px; }
+  .tutorial-header li span { display: none; }
+  .tutorial-intro { grid-template-columns: 1fr 1fr; gap: 25px; }
+  .tutorial-intro h1 { font-size: 59px; }
+  .tutorial-lesson { grid-template-columns: 290px 1fr; }
+  .tutorial-instruction-card { padding: 25px; }
+  .tutorial-instruction-card h1 { font-size: 30px; }
+  .tutorial-modes { grid-template-columns: 250px 1fr; }
+  .tutorial-mode-rail { padding: 20px; }
+  .tutorial-mode-workspace { padding: 20px; }
+}
+
+@media (max-width: 800px) {
+  .tutorial-header { min-height: 66px; padding: 0 14px; grid-template-columns: 1fr auto; }
+  .tutorial-header > ol { grid-column: 2; }
+  .tutorial-header li::after { width: 10px; margin-inline: 4px; }
+  .tutorial-header li i { width: 23px; height: 23px; margin: 0; }
+  .tutorial-counter { display: none; }
+  .tutorial-intro { width: calc(100% - 28px); min-height: calc(100vh - 66px); grid-template-columns: 1fr; gap: 0; }
+  .tutorial-intro > section { padding: 35px 5px 10px; }
+  .tutorial-intro h1 { font-size: 50px; }
+  .tutorial-intro > section > p { font-size: 15px; }
+  .tutorial-intro-instrument { padding: 20px 0; overflow: hidden; }
+  .tutorial-intro-instrument .accordion-wrap.is-compact .accordion { transform: scale(.62); margin: -70px 0; }
+  .tutorial-lesson { width: calc(100% - 20px); padding: 16px 0 90px; grid-template-columns: 1fr; }
+  .tutorial-instruction-card { min-height: auto; padding: 22px; }
+  .tutorial-instruction-card > button, .tutorial-instruction-card > .tutorial-mic-state { margin-top: 18px; }
+  .tutorial-instrument-card { min-height: 350px; padding: 0; }
+  .tutorial-instrument-card .direction-banner { min-height: 44px; margin-bottom: 0; transform: scale(.8); }
+  .tutorial-instrument-card .accordion { transform: scale(.62); margin-block: -75px; }
+  .tutorial-score, .tutorial-feedback, .tutorial-lesson-footer { grid-column: 1; }
+  .tutorial-feedback > span { display: block; }
+  .tutorial-feedback small { display: block; }
+  .tutorial-modes { width: calc(100% - 20px); padding: 15px 0 70px; grid-template-columns: 1fr; }
+  .tutorial-mode-rail { max-height: none; position: static; overflow: hidden; }
+  .tutorial-mode-rail h1, .tutorial-mode-rail > p { display: none; }
+  .tutorial-mode-rail ol { margin: 0; display: flex; overflow-x: auto; }
+  .tutorial-mode-rail li { min-width: 42px; grid-template-columns: 1fr; padding: 5px; }
+  .tutorial-mode-rail li > span { display: none; }
+  .tutorial-mode-rail li > i { margin: auto; }
+  .tutorial-mode-workspace > header { grid-template-columns: 1fr; }
+  .tutorial-task { grid-column: 1; grid-row: auto; margin-top: 12px; }
+  .tutorial-mode-instrument { min-height: 330px; }
+  .tutorial-mode-instrument .direction-banner { min-height: 42px; margin-bottom: 0; transform: scale(.78); }
+  .tutorial-mode-instrument .accordion { transform: scale(.54); transform-origin: left center; margin-block: -86px; }
+  .tutorial-interface-tour { width: calc(100% - 20px); padding-top: 15px; }
+  .tour-callout { align-items: start; }
+  .tour-callout > div { display: block; }
+  .tour-callout small, .tour-callout strong { display: block; }
+  .tour-callout p { margin-top: 3px; }
+  .tour-callout .primary-button { position: fixed; z-index: 100; right: 12px; bottom: 12px; left: 12px; }
+  .tutorial-ui-demo .practice-toolbar { flex-wrap: wrap; padding: 10px; }
+  .tutorial-ui-demo .mode-trigger { width: 100%; }
+  .tutorial-ui-instrument { height: 290px; }
+  .tutorial-ui-instrument .accordion-wrap.is-compact .accordion { transform: scale(.56); margin: -85px 0; }
+  .tutorial-ui-demo > footer { grid-template-columns: 1fr auto; padding-inline: 10px; }
+  .tutorial-ui-demo > footer .transport-tool { display: none; }
+  .tutorial-ui-demo > footer .tempo-control { min-width: 130px; }
+}
+
 /* Practice */
 .practice-page { min-height: 100vh; padding-bottom: 82px; background: #f6f3ed; }
 .practice-header { height: 63px; padding: 0 26px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-bottom: 1px solid var(--line); background: rgba(250,248,243,.92); }
