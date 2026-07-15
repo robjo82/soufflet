@@ -71,6 +71,16 @@ export interface Song {
   events: SongEvent[];
   confidence?: number;
   uncertainBeats?: number[];
+  builtIn?: boolean;
+  license?: string;
+  provenance?: string;
+}
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  displayName: string;
+  createdAt: string;
 }
 
 export interface SkillProgress {

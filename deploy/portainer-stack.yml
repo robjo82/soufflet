@@ -1,0 +1,25 @@
+services:
+  soufflet:
+    image: registry.robin-joseph.fr/soufflet:latest
+    container_name: soufflet
+    restart: unless-stopped
+    ports:
+      - "39484:8787"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      DATA_DIR: /app/data
+    volumes:
+      - soufflet_data:/app/data
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  soufflet_data:

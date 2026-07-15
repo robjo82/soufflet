@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, Hand, MoveHorizontal } from 'lucide-react';
 import type { AccordionConfig, Direction, Notation, SongEvent } from '../types';
 import { displayNote, FRENCH_NOTES } from '../data';
+import { useSynth } from '../hooks/useSynth';
 
 interface AccordionViewProps {
   config: AccordionConfig;
@@ -28,6 +29,7 @@ export function AccordionView({
   compact = false,
   onButtonPress,
 }: AccordionViewProps) {
+  const { playMidi } = useSynth();
   const rows = config.rightRows.map((_, index) => config.buttons.filter((button) => button.row === index + 1));
   const detectedButtonIds = new Set(
     config.buttons
@@ -60,6 +62,10 @@ export function AccordionView({
                   className={`bass-button ${active ? 'is-active' : ''}`}
                   key={button.id}
                   aria-label={`${button.role === 'bass' ? 'Basse' : 'Accord'} ${button.index}`}
+                  onPointerDown={() => {
+                    playMidi(direction === 'push' ? button.pushMidi : button.pullMidi, .5, .09);
+                    onButtonPress?.(button.id, direction);
+                  }}
                 >
                   {active ? activeEvent?.bassLabel ?? '●' : button.role === 'bass' ? 'B' : 'a'}
                 </button>
@@ -93,7 +99,11 @@ export function AccordionView({
                     <button
                       type="button"
                       key={button.id}
-                      onPointerDown={() => onButtonPress?.(button.id, isDetected ? detectedDirection : direction)}
+                      onPointerDown={() => {
+                        const pressedDirection = isDetected ? detectedDirection : direction;
+                        playMidi(pressedDirection === 'push' ? button.pushMidi : button.pullMidi, .5);
+                        onButtonPress?.(button.id, pressedDirection);
+                      }}
                       className={`melody-button ${isActive ? 'is-active' : ''} ${isDetected ? 'is-detected' : ''} ${button.role === 'accidental' ? 'is-helper' : ''}`}
                       aria-label={`Bouton ${button.index}, ${direction === 'push' ? button.push : button.pull}`}
                       title={`Pousser : ${button.push} · Tirer : ${button.pull}${button.isGleichton ? ' · Gleichton' : ''}`}

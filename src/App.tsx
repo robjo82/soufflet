@@ -9,8 +9,9 @@ import { SettingsPage } from './components/SettingsPage';
 import { PracticePlayer } from './components/PracticePlayer';
 import { Onboarding } from './components/Onboarding';
 import { ImportModal } from './components/ImportModal';
-import { DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
-import type { AccordionConfig, Notation, Page, Song } from './types';
+import { AuthPage } from './components/AuthPage';
+import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
+import type { AccordionConfig, Notation, Page, Song, UserAccount } from './types';
 
 interface UserPreferences {
   accordionId: string;
@@ -33,9 +34,11 @@ function getStored<T>(key: string, fallback: T): T {
 
 export function App() {
   const [page, setPage] = useState<Page>('home');
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState<UserAccount | null>(null);
   const [accordions, setAccordions] = useState<AccordionConfig[]>(FALLBACK_ACCORDIONS);
   const [preferences, setPreferences] = useState<UserPreferences>(() => getStored('soufflet.preferences', defaultPreferences));
-  const [songs, setSongs] = useState<Song[]>(() => getStored('soufflet.songs', [DEMO_SONG]));
+  const [songs, setSongs] = useState<Song[]>(() => getStored<Song[]>('soufflet.songs', []).filter((song) => !song.builtIn));
   const [practiceSong, setPracticeSong] = useState<Song | null>(null);
   const [studioSong, setStudioSong] = useState<Song | undefined>();
   const [showImport, setShowImport] = useState(false);
@@ -43,14 +46,30 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/accordions', { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error('API indisponible')))
-      .then((data: { accordions: AccordionConfig[] }) => data.accordions?.length && setAccordions(data.accordions))
-      .catch(() => undefined);
+    Promise.all([
+      fetch('/api/auth/me', { signal: controller.signal }).then(async (response) => response.ok ? (await response.json() as { user: UserAccount | null }).user : null),
+      fetch('/api/accordions', { signal: controller.signal }).then(async (response) => response.ok ? (await response.json() as { accordions: AccordionConfig[] }).accordions : []),
+    ]).then(([account, configs]) => { setUser(account); if (configs.length) setAccordions(configs); }).catch(() => undefined).finally(() => setAuthLoading(false));
     return () => controller.abort();
   }, []);
 
-  useEffect(() => { localStorage.setItem('soufflet.songs', JSON.stringify(songs)); }, [songs]);
+  useEffect(() => { localStorage.setItem('soufflet.songs', JSON.stringify(songs.filter((song) => !song.builtIn))); }, [songs]);
+
+  useEffect(() => {
+    if (!user) return;
+    const controller = new AbortController();
+    fetch('/api/library', { signal: controller.signal }).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { songs: Song[] };
+      setSongs((current) => [...payload.songs, ...current.filter((song) => !song.builtIn)]);
+    }).catch(() => undefined);
+    fetch('/api/accordions', { signal: controller.signal }).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { accordions: AccordionConfig[] };
+      if (payload.accordions.length) setAccordions(payload.accordions);
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, [user]);
 
   const savePreferences = useCallback((next: UserPreferences) => {
     setPreferences(next);
@@ -63,17 +82,26 @@ export function App() {
     setSongs((items) => items.some((item) => item.id === next.id) ? items.map((item) => item.id === next.id ? next : item) : [next, ...items]);
   }, []);
 
+  const startPractice = useCallback((song: Song) => {
+    if (selectedAccordion) {
+      window.scrollTo({ top: 0 });
+      setPracticeSong(adaptSongToAccordion(song, selectedAccordion));
+    }
+  }, [selectedAccordion]);
+
   const navigate = (next: Page) => {
     setPage(next);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (authLoading) return <div className="app-loading"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong><small>Préparation de ton espace…</small></div>;
+  if (!user) return <AuthPage onAuthenticated={setUser} />;
   if (!selectedAccordion) return null;
 
   if (!preferences.onboardingDone) {
-    return <Onboarding accordions={accordions} initialAccordionId={preferences.accordionId} initialNotation={preferences.notation} onSkip={() => savePreferences({ ...preferences, onboardingDone: true })} onComplete={(accordionId, notation) => {
+    return <Onboarding accordions={accordions} initialAccordionId={preferences.accordionId} initialNotation={preferences.notation} onSkip={(accordionId, notation) => savePreferences({ accordionId, notation, onboardingDone: true })} onComplete={(accordionId, notation) => {
       savePreferences({ accordionId, notation, onboardingDone: true });
-      setPracticeSong(DEMO_SONG);
+      startPractice(DEMO_SONG);
     }} />;
   }
 
@@ -82,12 +110,12 @@ export function App() {
   }
 
   return (
-    <AppShell page={page} onNavigate={navigate}>
-      {page === 'home' && <HomePage accordion={selectedAccordion} song={songs[0] ?? DEMO_SONG} onPractice={setPracticeSong} onNavigateLearn={() => navigate('learn')} />}
-      {page === 'learn' && <LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={setPracticeSong} />}
-      {page === 'library' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={setPracticeSong} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
-      {page === 'studio' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} onSave={saveSong} onPractice={setPracticeSong} />}
-      {page === 'tuner' && <TunerPage accordion={selectedAccordion} notation={preferences.notation} onBack={() => navigate('home')} />}
+    <AppShell page={page} onNavigate={navigate} user={user} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }); setUser(null); setPracticeSong(null); }}>
+      {page === 'home' && <HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} onPractice={startPractice} onNavigateLearn={() => navigate('learn')} displayName={user.displayName} />}
+      {page === 'learn' && <LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} />}
+      {page === 'library' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
+      {page === 'studio' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} onSave={saveSong} onPractice={startPractice} />}
+      {page === 'tuner' && <TunerPage accordion={selectedAccordion} notation={preferences.notation} onBack={() => navigate('home')} onAccordionChange={(updated) => { setAccordions((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); savePreferences({ ...preferences, accordionId: updated.id }); }} />}
       {page === 'settings' && <SettingsPage accordions={accordions} selectedId={preferences.accordionId} notation={preferences.notation} apiKey={apiKey} onSave={(accordionId, notation, nextKey) => {
         savePreferences({ ...preferences, accordionId, notation });
         setApiKey(nextKey);

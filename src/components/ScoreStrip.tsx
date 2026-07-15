@@ -10,6 +10,7 @@ interface ScoreStripProps {
 }
 
 export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStripProps) {
+  const rhythmSymbol = (duration: number) => duration <= .25 ? '♬' : duration <= .5 ? '♪' : duration === 1 ? '♩' : duration === 2 ? '𝅗𝅥' : '𝅝';
   return (
     <div className="score-shell">
       <div className="score-labels">
@@ -26,7 +27,7 @@ export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStrip
             <button
               type="button"
               className={`score-event ${index === activeIndex ? 'is-active' : ''} ${index < activeIndex ? 'is-past' : ''}`}
-              style={{ '--duration': Math.max(1, event.duration) } as React.CSSProperties}
+              style={{ '--duration': Math.max(.65, event.duration) } as React.CSSProperties}
               key={event.id}
               onClick={() => onSelect(event, index)}
               aria-label={`${displayNote(event.note, notation, event.buttonId, event.direction)}, mesure ${measure}`}
@@ -36,7 +37,7 @@ export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStrip
                 {event.direction === 'pull' ? '← T' : 'P →'}
               </span>
               <strong>{displayNote(event.note, notation, event.buttonId, event.direction)}</strong>
-              <small>{event.duration === 1 ? '♩' : event.duration === 2 ? '𝅗𝅥' : '𝅝'}</small>
+              <small>{rhythmSymbol(event.duration)}</small>
               {uncertain && <AlertTriangle className="confidence-warning" size={13} />}
               {index === activeIndex && <ChevronRight className="playhead-mark" size={16} />}
             </button>

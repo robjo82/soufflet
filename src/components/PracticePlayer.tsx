@@ -32,7 +32,7 @@ interface PracticePlayerProps {
 
 export function PracticePlayer({ song, accordion, onClose, notation, onNotationChange }: PracticePlayerProps) {
   const [settings, setSettings] = useState<PracticeSettings>({
-    mode: 'demo', tempo: 80, countIn: true, metronome: false, loop: false,
+    mode: 'guided', tempo: 80, countIn: true, metronome: false, loop: false,
     loopStart: 0, loopEnd: song.events.length - 1, notation,
   });
   const [playing, setPlaying] = useState(false);
@@ -41,6 +41,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   const [showScore, setShowScore] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [flagged, setFlagged] = useState(false);
+  const [results, setResults] = useState({ correct: 0, early: 0, late: 0, wrong: 0 });
   const [feedback, setFeedback] = useState<{ kind: 'good' | 'hint' | 'neutral'; title: string; detail: string }>({
     kind: 'neutral', title: 'Prêt quand tu l’es', detail: 'Regarde la direction du soufflet, puis appuie sur Lecture.',
   });
@@ -49,6 +50,8 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   const rafRef = useRef(0);
   const lastPlayedRef = useRef(-1);
   const lastCorrectIndexRef = useRef(-1);
+  const assessedRef = useRef(new Set<number>());
+  const wrongRef = useRef(new Set<number>());
   const { playMidi, click } = useSynth();
   const detector = usePitchDetector();
   const currentEvent = song.events[activeIndex];
@@ -56,10 +59,15 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   const beatMs = 60000 / actualBpm;
   const practiceWithMic = settings.mode !== 'demo';
 
+  useEffect(() => { window.scrollTo({ top: 0 }); }, []);
+
   const selectIndex = useCallback((index: number) => {
     setActiveIndex(index);
     lastPlayedRef.current = -1;
     lastCorrectIndexRef.current = -1;
+    assessedRef.current.clear();
+    wrongRef.current.clear();
+    setResults({ correct: 0, early: 0, late: 0, wrong: 0 });
     setPlaying(false);
   }, []);
 
@@ -101,7 +109,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
       const event = song.events[nextIndex];
       if (event && lastPlayedRef.current !== nextIndex) {
         lastPlayedRef.current = nextIndex;
-        if (soundEnabled && (settings.mode === 'demo' || settings.mode === 'guided')) {
+        if (soundEnabled && settings.mode === 'demo') {
           playMidi(event.midi, event.duration * beatMs / 1000 * 0.92);
         }
         if (soundEnabled && settings.metronome) click(event.beat % song.timeSignature[0] === 0);
@@ -131,7 +139,16 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     if (!practiceWithMic || !currentEvent || !detector.reading) return;
     const delta = detector.reading.midi - currentEvent.midi;
     if (Math.abs(delta) === 0 && detector.reading.confidence > 0.7) {
-      setFeedback({ kind: 'good', title: 'Bonne note', detail: 'La hauteur est juste. Garde le son jusqu’au prochain repère.' });
+      const targetTime = startedAtRef.current + (currentEvent.beat - startBeatRef.current) * beatMs;
+      const timingDelta = settings.mode === 'wait' ? 0 : performance.now() - targetTime;
+      if (!assessedRef.current.has(activeIndex)) {
+        assessedRef.current.add(activeIndex);
+        const timingKind = timingDelta < -120 ? 'early' : timingDelta > 180 ? 'late' : 'correct';
+        setResults((value) => ({ ...value, [timingKind]: value[timingKind] + 1 }));
+      }
+      if (timingDelta < -120) setFeedback({ kind: 'hint', title: 'Bonne note, mais un peu trop tôt', detail: 'Attends que le repère arrive au centre avant d’attaquer la note.' });
+      else if (timingDelta > 180) setFeedback({ kind: 'hint', title: 'Bonne note, mais un peu trop tard', detail: 'Prépare ton doigt pendant la note précédente pour partir sur le temps.' });
+      else setFeedback({ kind: 'good', title: 'Bonne note, au bon moment', detail: 'La hauteur et l’attaque sont justes. Garde le son jusqu’au prochain repère.' });
       if (settings.mode === 'wait' && playing) {
         if (lastCorrectIndexRef.current === activeIndex) return;
         lastCorrectIndexRef.current = activeIndex;
@@ -144,13 +161,17 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
         }
       }
     } else if (detector.reading.confidence > 0.72) {
+      if (!wrongRef.current.has(activeIndex)) {
+        wrongRef.current.add(activeIndex);
+        setResults((value) => ({ ...value, wrong: value.wrong + 1 }));
+      }
       setFeedback({
         kind: 'hint',
         title: delta < 0 ? 'Un peu trop grave' : 'Un peu trop aigu',
         detail: `Tu joues ${detector.reading.note}. Cherche le bouton éclairé sans changer la direction du soufflet.`,
       });
     }
-  }, [activeIndex, currentEvent, detector.reading, playing, practiceWithMic, settings.mode, song.events.length]);
+  }, [activeIndex, beatMs, currentEvent, detector.reading, playing, practiceWithMic, settings.mode, song.events.length]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -226,7 +247,6 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
               detectedMidi={detector.reading?.midi}
               onButtonPress={(_, direction) => {
                 if (direction !== currentEvent?.direction) setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${currentEvent?.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
-                else if (soundEnabled) playMidi(currentEvent?.midi ?? 60);
               }}
             />
           )}
@@ -245,6 +265,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
               {detector.status === 'listening' ? (detector.reading ? `${detector.reading.note} · ${Math.round(detector.reading.confidence * 100)} %` : 'Écoute…') : 'Micro en attente'}
             </div>
           )}
+          {practiceWithMic && <div className="live-results" title="Évaluation automatique"><span><b>{results.correct}</b> justes</span><span><b>{results.early + results.late}</b> décalées</span><span><b>{results.wrong}</b> à corriger</span></div>}
           <button type="button" className="explain-button" onClick={() => setFeedback({ kind: 'neutral', title: 'Ce que j’écoute', detail: 'Je compare la hauteur, le moment de l’attaque et la durée. La direction du soufflet est déduite du bouton attendu : un capteur de mouvement pourra la confirmer plus tard.' })}>Pourquoi ?</button>
         </section>
       </main>

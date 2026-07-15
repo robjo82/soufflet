@@ -9,7 +9,7 @@ interface OnboardingProps {
   initialAccordionId: string;
   initialNotation: Notation;
   onComplete: (accordionId: string, notation: Notation) => void;
-  onSkip: () => void;
+  onSkip: (accordionId: string, notation: Notation) => void;
 }
 
 export function Onboarding({ accordions, initialAccordionId, initialNotation, onComplete, onSkip }: OnboardingProps) {
@@ -30,7 +30,7 @@ export function Onboarding({ accordions, initialAccordionId, initialNotation, on
         <header className="onboarding-top">
           <span className="brand-lockup"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong></span>
           <span className="onboarding-step">Étape {step + 1} sur {steps.length}</span>
-          <button type="button" className="text-button" onClick={onSkip}>Passer pour l’instant</button>
+          <button type="button" className="text-button" onClick={() => onSkip(accordionId, notation)}>Passer pour l’instant</button>
         </header>
         <div className="onboarding-progress">{steps.map((label, index) => <i key={label} className={index <= step ? 'is-done' : ''} />)}</div>
 
