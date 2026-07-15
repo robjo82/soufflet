@@ -38,6 +38,51 @@ describe('production data migrations', () => {
       expect(new Set(song.accompaniment.map((event) => event.role))).toEqual(new Set(['bass', 'chord']));
     }
   });
+
+  it('starts every account at zero and aggregates only its real practice', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_stats', email: 'stats@example.fr', displayName: 'Stats', passwordHash: 'test' });
+    db.createUser({ id: 'usr_empty', email: 'empty@example.fr', displayName: 'Nouveau', passwordHash: 'test' });
+
+    const base = {
+      songId: 'first-breath', songTitle: 'Premier souffle', mode: 'guided', completionPercent: 100,
+      tempoPercent: 80, flagged: false, earlyCount: 0, lateCount: 0, wrongCount: 0,
+    };
+    db.savePracticeSession('usr_stats', { ...base, id: 'session-1', startedAt: '2026-07-13T20:00:00.000Z', endedAt: '2026-07-13T20:10:00.000Z', activeSeconds: 600, correctCount: 8, earlyCount: 1, lateCount: 1, wrongCount: 2 });
+    db.savePracticeSession('usr_stats', { ...base, id: 'session-2', mode: 'demo', startedAt: '2026-07-14T20:00:00.000Z', endedAt: '2026-07-14T20:05:00.000Z', activeSeconds: 300, correctCount: 0 });
+    db.savePracticeSession('usr_stats', { ...base, id: 'session-3', startedAt: '2026-07-15T18:00:00.000Z', endedAt: '2026-07-15T18:02:00.000Z', activeSeconds: 120, correctCount: 4 });
+
+    const empty = db.getPracticeStats('usr_empty', -120, new Date('2026-07-15T21:00:00.000Z'));
+    expect(empty).toMatchObject({
+      hasData: false,
+      overview: { totalSeconds: 0, weekSeconds: 0, totalSessions: 0, currentStreak: 0, pitchAccuracy: null },
+      recentSessions: [],
+    });
+
+    const stats = db.getPracticeStats('usr_stats', -120, new Date('2026-07-15T21:00:00.000Z'));
+    expect(stats).toMatchObject({
+      hasData: true,
+      overview: { totalSeconds: 1020, weekSeconds: 1020, totalSessions: 3, currentStreak: 3, longestStreak: 3, activeDays: 3, songsPracticed: 1, assessedNotes: 16, pitchAccuracy: 88, timingAccuracy: 86 },
+      skills: { notes: { value: 88, sampleSize: 16 }, rhythm: { value: 86, sampleSize: 14 }, tempo: { value: 80, sampleSize: 3 } },
+    });
+    expect(stats.week.map((day) => day.activeSeconds)).toEqual([600, 300, 120, 0, 0, 0, 0]);
+  });
+
+  it('upserts session snapshots without double counting or stale overwrites', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_upsert', email: 'upsert@example.fr', displayName: 'Upsert', passwordHash: 'test' });
+    const session = {
+      id: 'session-upsert', songId: 'first-breath', songTitle: 'Premier souffle', mode: 'wait',
+      startedAt: '2026-07-16T18:00:00.000Z', endedAt: '2026-07-16T18:02:00.000Z', activeSeconds: 120,
+      correctCount: 4, earlyCount: 1, lateCount: 0, wrongCount: 1, completionPercent: 60, tempoPercent: 80, flagged: true,
+    };
+    db.savePracticeSession('usr_upsert', session);
+    db.savePracticeSession('usr_upsert', { ...session, mode: 'demo', endedAt: '2026-07-16T18:01:00.000Z', activeSeconds: 60, correctCount: 2, flagged: false });
+    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 120, correctCount: 4, mode: 'wait', flagged: true }]);
+
+    db.savePracticeSession('usr_upsert', { ...session, mode: 'guided', endedAt: '2026-07-16T18:03:00.000Z', activeSeconds: 130, correctCount: 5, flagged: false });
+    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 130, correctCount: 5, mode: 'guided', flagged: false }]);
+  });
 });
 
 describe('Brise-pieds reference transcription', () => {

@@ -12,7 +12,7 @@ import { FirstLessonTutorial } from './components/FirstLessonTutorial';
 import { ImportModal } from './components/ImportModal';
 import { AuthPage } from './components/AuthPage';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
-import type { AccordionConfig, Notation, Page, Song, UserAccount } from './types';
+import type { AccordionConfig, Notation, Page, PracticeSessionInput, PracticeStats, Song, UserAccount } from './types';
 
 interface UserPreferences {
   accordionId: string;
@@ -46,6 +46,7 @@ export function App() {
   const [studioSong, setStudioSong] = useState<Song | undefined>();
   const [showImport, setShowImport] = useState(false);
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem('soufflet.geminiKey') ?? '');
+  const [practiceStats, setPracticeStats] = useState<PracticeStats | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -71,6 +72,11 @@ export function App() {
       const payload = await response.json() as { accordions: AccordionConfig[] };
       if (payload.accordions.length) setAccordions(payload.accordions);
     }).catch(() => undefined);
+    fetch(`/api/progress?timezoneOffset=${new Date().getTimezoneOffset()}`, { signal: controller.signal }).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { stats: PracticeStats };
+      setPracticeStats(payload.stats);
+    }).catch(() => undefined);
     return () => controller.abort();
   }, [user]);
 
@@ -92,6 +98,18 @@ export function App() {
       setPracticeSong(adaptSongToAccordion(song, selectedAccordion));
     }
   }, [selectedAccordion]);
+
+  const recordPracticeSession = useCallback(async (session: PracticeSessionInput) => {
+    const response = await fetch(`/api/practice-sessions?timezoneOffset=${new Date().getTimezoneOffset()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(session),
+      keepalive: true,
+    });
+    if (!response.ok) return;
+    const payload = await response.json() as { stats: PracticeStats };
+    setPracticeStats(payload.stats);
+  }, []);
 
   const navigate = (next: Page) => {
     setPage(next);
@@ -118,12 +136,12 @@ export function App() {
   }
 
   if (practiceSong) {
-    return <PracticePlayer song={practiceSong} accordion={selectedAccordion} notation={preferences.notation} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onClose={() => setPracticeSong(null)} />;
+    return <PracticePlayer song={practiceSong} accordion={selectedAccordion} notation={preferences.notation} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onSessionUpdate={recordPracticeSession} onClose={() => setPracticeSong(null)} />;
   }
 
   return (
-    <AppShell page={page} onNavigate={navigate} user={user} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }); setUser(null); setPracticeSong(null); }}>
-      {page === 'home' && <HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} onPractice={startPractice} onNavigateLearn={() => navigate('learn')} displayName={user.displayName} />}
+    <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }); setUser(null); setPracticeSong(null); setPracticeStats(null); }}>
+      {page === 'home' && <HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} stats={practiceStats} onPractice={startPractice} onNavigateLearn={() => navigate('learn')} displayName={user.displayName} />}
       {page === 'learn' && <LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} />}
       {page === 'library' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
       {page === 'studio' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} onSave={saveSong} onPractice={startPractice} />}

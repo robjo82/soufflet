@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ACCORDION_SEEDS } from './seed.js';
 import { SONG_SEEDS } from './songSeed.js';
+import { summarizePractice, type StoredPracticeSession } from './progress.js';
 
 interface PublicUserRow {
   id: string;
@@ -72,6 +73,29 @@ export class SouffletDatabase {
       `
         ALTER TABLE accordion_configs ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
         CREATE INDEX IF NOT EXISTS accordion_configs_owner_idx ON accordion_configs(owner_user_id);
+      `,
+      `
+        CREATE TABLE IF NOT EXISTS practice_sessions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          song_id TEXT NOT NULL,
+          song_title TEXT NOT NULL,
+          mode TEXT NOT NULL,
+          started_at TEXT NOT NULL,
+          ended_at TEXT NOT NULL,
+          active_seconds INTEGER NOT NULL DEFAULT 0 CHECK(active_seconds >= 0),
+          correct_count INTEGER NOT NULL DEFAULT 0 CHECK(correct_count >= 0),
+          early_count INTEGER NOT NULL DEFAULT 0 CHECK(early_count >= 0),
+          late_count INTEGER NOT NULL DEFAULT 0 CHECK(late_count >= 0),
+          wrong_count INTEGER NOT NULL DEFAULT 0 CHECK(wrong_count >= 0),
+          completion_percent REAL NOT NULL DEFAULT 0 CHECK(completion_percent >= 0 AND completion_percent <= 100),
+          tempo_percent INTEGER NOT NULL DEFAULT 100 CHECK(tempo_percent >= 40 AND tempo_percent <= 120),
+          flagged INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS practice_sessions_user_ended_idx ON practice_sessions(user_id, ended_at DESC);
+        CREATE INDEX IF NOT EXISTS practice_sessions_user_song_idx ON practice_sessions(user_id, song_id);
       `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
@@ -194,5 +218,69 @@ export class SouffletDatabase {
 
   deleteSession(tokenHash: string) {
     this.db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+  }
+
+  savePracticeSession(userId: string, session: StoredPracticeSession) {
+    this.db.prepare(`
+      INSERT INTO practice_sessions (
+        id, user_id, song_id, song_title, mode, started_at, ended_at, active_seconds,
+        correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        song_id = excluded.song_id,
+        song_title = excluded.song_title,
+        mode = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.mode ELSE practice_sessions.mode END,
+        started_at = excluded.started_at,
+        ended_at = MAX(practice_sessions.ended_at, excluded.ended_at),
+        active_seconds = MAX(practice_sessions.active_seconds, excluded.active_seconds),
+        correct_count = MAX(practice_sessions.correct_count, excluded.correct_count),
+        early_count = MAX(practice_sessions.early_count, excluded.early_count),
+        late_count = MAX(practice_sessions.late_count, excluded.late_count),
+        wrong_count = MAX(practice_sessions.wrong_count, excluded.wrong_count),
+        completion_percent = MAX(practice_sessions.completion_percent, excluded.completion_percent),
+        tempo_percent = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.tempo_percent ELSE practice_sessions.tempo_percent END,
+        flagged = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.flagged ELSE practice_sessions.flagged END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE practice_sessions.user_id = excluded.user_id
+    `).run(
+      session.id, userId, session.songId, session.songTitle, session.mode, session.startedAt, session.endedAt,
+      session.activeSeconds, session.correctCount, session.earlyCount, session.lateCount, session.wrongCount,
+      session.completionPercent, session.tempoPercent, Number(session.flagged),
+    );
+    return session;
+  }
+
+  listPracticeSessions(userId: string): StoredPracticeSession[] {
+    const rows = this.db.prepare(`
+      SELECT id, song_id, song_title, mode, started_at, ended_at, active_seconds,
+             correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged
+      FROM practice_sessions
+      WHERE user_id = ? AND active_seconds > 0
+      ORDER BY ended_at DESC
+    `).all(userId) as Array<{
+      id: string; song_id: string; song_title: string; mode: string; started_at: string; ended_at: string;
+      active_seconds: number; correct_count: number; early_count: number; late_count: number; wrong_count: number;
+      completion_percent: number; tempo_percent: number; flagged: number;
+    }>;
+    return rows.map((row) => ({
+      id: row.id,
+      songId: row.song_id,
+      songTitle: row.song_title,
+      mode: row.mode,
+      startedAt: row.started_at,
+      endedAt: row.ended_at,
+      activeSeconds: row.active_seconds,
+      correctCount: row.correct_count,
+      earlyCount: row.early_count,
+      lateCount: row.late_count,
+      wrongCount: row.wrong_count,
+      completionPercent: row.completion_percent,
+      tempoPercent: row.tempo_percent,
+      flagged: Boolean(row.flagged),
+    }));
+  }
+
+  getPracticeStats(userId: string, timezoneOffset = 0, now = new Date()) {
+    return summarizePractice(this.listPracticeSessions(userId), timezoneOffset, now);
   }
 }
