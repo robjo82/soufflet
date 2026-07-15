@@ -122,6 +122,52 @@ export interface PracticeSettings {
   notation: Notation;
 }
 
+export interface PracticeSessionInput {
+  id: string;
+  songId: string;
+  songTitle: string;
+  mode: PracticeMode;
+  startedAt: string;
+  endedAt: string;
+  activeSeconds: number;
+  correctCount: number;
+  earlyCount: number;
+  lateCount: number;
+  wrongCount: number;
+  completionPercent: number;
+  tempoPercent: number;
+  flagged: boolean;
+}
+
+export interface PracticeStats {
+  generatedAt: string;
+  hasData: boolean;
+  overview: {
+    totalSeconds: number;
+    weekSeconds: number;
+    totalSessions: number;
+    currentStreak: number;
+    longestStreak: number;
+    activeDays: number;
+    songsPracticed: number;
+    assessedNotes: number;
+    pitchAccuracy: number | null;
+    timingAccuracy: number | null;
+  };
+  week: Array<{ date: string; activeSeconds: number; sessions: number }>;
+  trends: Array<{ weekStart: string; activeSeconds: number; sessions: number; pitchAccuracy: number | null }>;
+  skills: {
+    notes: { value: number | null; sampleSize: number };
+    rhythm: { value: number | null; sampleSize: number };
+    tempo: { value: number | null; sampleSize: number };
+    regularity: { value: number; sampleSize: number };
+  };
+  recentSessions: Array<PracticeSessionInput>;
+  favoriteSongs: Array<{ songId: string; title: string; activeSeconds: number; sessions: number }>;
+  modeBreakdown: Array<{ mode: PracticeMode; activeSeconds: number; sessions: number }>;
+  insights: Array<{ kind: 'encouragement' | 'focus' | 'observation'; title: string; detail: string }>;
+}
+
 export interface PitchReading {
   note: string;
   midi: number;

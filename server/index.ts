@@ -100,6 +100,39 @@ app.post('/api/auth/logout', (request, response) => {
 
 app.get('/api/library', requireUser, (_request, response) => response.json({ songs: db.listCommonSongs() }));
 
+const practiceSessionSchema = z.object({
+  id: z.string().uuid(),
+  songId: z.string().min(1).max(120),
+  songTitle: z.string().trim().min(1).max(160),
+  mode: z.enum(['demo', 'guided', 'wait', 'notes', 'rhythm', 'bellows', 'right', 'left', 'combined', 'performance']),
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime(),
+  activeSeconds: z.number().int().min(0).max(43_200),
+  correctCount: z.number().int().min(0).max(100_000),
+  earlyCount: z.number().int().min(0).max(100_000),
+  lateCount: z.number().int().min(0).max(100_000),
+  wrongCount: z.number().int().min(0).max(100_000),
+  completionPercent: z.number().min(0).max(100),
+  tempoPercent: z.number().int().min(40).max(120),
+  flagged: z.boolean(),
+}).refine((session) => new Date(session.endedAt).getTime() >= new Date(session.startedAt).getTime(), { message: 'La fin de séance précède son début.' });
+
+app.get('/api/progress', requireUser, (request, response) => {
+  const timezoneOffset = z.coerce.number().int().min(-840).max(840).catch(0).parse(request.query.timezoneOffset);
+  response.json({ stats: db.getPracticeStats(response.locals.user.id as string, timezoneOffset) });
+});
+
+app.post('/api/practice-sessions', requireUser, (request, response) => {
+  try {
+    const session = practiceSessionSchema.parse(request.body);
+    db.savePracticeSession(response.locals.user.id as string, session);
+    const timezoneOffset = z.coerce.number().int().min(-840).max(840).catch(0).parse(request.query.timezoneOffset);
+    response.json({ session, stats: db.getPracticeStats(response.locals.user.id as string, timezoneOffset) });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof Error ? error.message : 'Séance invalide.' });
+  }
+});
+
 const accordionButtonSchema = z.object({
   id: z.string().min(1).max(80), row: z.number().int().min(0).max(5), index: z.number().int().min(1).max(30),
   push: z.string().min(1).max(8), pull: z.string().min(1).max(8), pushMidi: z.number().int().min(0).max(127), pullMidi: z.number().int().min(0).max(127),

@@ -12,6 +12,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - modes démonstration, lecture guidée, attente de la bonne note, notes, rythme, soufflet, chaque main et performance ;
 - accordeur monophonique réel avec fréquence, cents, confiance, localisation et correction guidée de chaque bouton ;
 - détection de hauteur pendant l’entraînement, évaluation automatique et conseils de note et de rythme ;
+- suivi personnel persistant : temps actif, séances, séries, notes et rythme évalués, tempo, tendances, répertoire, historique et insights sans données de démonstration ;
 - bibliothèque commune de 12 airs du domaine public ou traditionnels, dont le Brise-pieds en 12 mesures, plus une référence protégée sans transcription ;
 - bibliothèque, import audio/vidéo/PDF/image/tablature, liens YouTube et références Spotify ;
 - transcription Gemini 3.5 Flash côté serveur avec scores de confiance ;

@@ -254,6 +254,80 @@ svg { stroke-width: 1.8; }
 .quote-strip > span { display: flex; align-items: center; gap: 8px; max-width: 290px; padding-left: 23px; border-left: 1px solid rgba(255,255,255,.2); color: rgba(255,255,255,.75); font-size: 11px; }
 .quote-strip > span svg { width: 21px; flex: 0 0 auto; }
 
+.analytics-section { padding: 76px 0; border-top: 1px solid var(--line); }
+.analytics-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin-bottom: 18px; }
+.analytics-overview article { min-height: 126px; padding: 21px; display: grid; grid-template-columns: 43px 1fr; gap: 14px; align-items: start; border: 1px solid var(--line); border-radius: 17px; background: var(--paper); }
+.analytics-overview article > svg { width: 43px; height: 43px; padding: 11px; border-radius: 12px; color: var(--green); background: var(--green-soft); }
+.analytics-overview article > span { min-width: 0; display: flex; flex-direction: column; }
+.analytics-overview small { color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: .09em; }
+.analytics-overview strong { margin: 4px 0 2px; font: 800 28px 'Manrope'; }
+.analytics-overview strong small { margin-left: 2px; color: var(--ink); font-size: 12px; letter-spacing: 0; }
+.analytics-overview em { color: var(--muted); font-size: 10px; font-style: normal; line-height: 1.4; }
+.analytics-empty { min-height: 108px; margin-bottom: 18px; padding: 22px 25px; display: grid; grid-template-columns: 44px 1fr auto; gap: 18px; align-items: center; border: 1px solid #d2dfd7; border-radius: 18px; background: var(--green-soft); }
+.analytics-empty > svg { width: 44px; height: 44px; padding: 10px; border-radius: 12px; color: white; background: var(--green); }
+.analytics-empty strong { display: block; margin-bottom: 4px; font-family: 'Manrope'; }
+.analytics-empty p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.analytics-grid { display: grid; grid-template-columns: 1.35fr .65fr; gap: 18px; margin-top: 18px; }
+.analytics-card { border: 1px solid var(--line); border-radius: 20px; background: var(--paper); overflow: hidden; }
+.analytics-card > header { min-height: 80px; padding: 21px 24px; display: flex; align-items: start; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); }
+.analytics-card > header h3 { margin: 5px 0 0; font-size: 21px; letter-spacing: -.03em; }
+.analytics-card > header > strong { font: 800 25px 'Manrope'; }
+.weekly-activity-card { min-height: 340px; }
+.activity-bars { height: 210px; padding: 25px 24px 13px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; align-items: end; }
+.activity-bars > span { height: 100%; min-width: 0; display: grid; grid-template-rows: 1fr auto auto; gap: 4px; justify-items: center; }
+.activity-bars > span > i { width: min(38px, 70%); min-height: 100%; position: relative; display: flex; align-items: end; border-radius: 9px 9px 4px 4px; background: #e8e3d9; overflow: hidden; }
+.activity-bars > span > i b { width: 100%; display: block; border-radius: inherit; background: var(--green); }
+.activity-bars > span.is-today > i { box-shadow: 0 0 0 3px var(--coral-soft); }
+.activity-bars > span.is-today > i b { background: var(--coral); }
+.activity-bars small { color: var(--muted); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.activity-bars em { color: var(--muted); font-size: 8px; font-style: normal; }
+.weekly-activity-card > footer, .trend-card > footer { min-height: 48px; padding: 13px 24px; display: flex; justify-content: space-between; gap: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+.insight-card { background: #f8ece6; border-color: #ead1c5; }
+.insight-card > header { border-color: #e7cfc4; }
+.insight-list { padding: 9px 22px 20px; display: grid; }
+.insight-list > span { padding: 15px 0; display: grid; grid-template-columns: 36px 1fr; gap: 12px; border-bottom: 1px solid #e7cfc4; }
+.insight-list > span:last-child { border-bottom: 0; }
+.insight-list > span > i { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--coral-dark); background: white; }
+.insight-list > span > i svg { width: 17px; }
+.insight-list strong { font-size: 12px; }
+.insight-list p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.insight-list .is-encouragement > i { color: var(--green); }
+.skill-analysis { margin-top: 72px; }
+.section-title.compact { margin-bottom: 20px; }
+.skill-metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
+.skill-metric-grid article { min-height: 205px; padding: 21px; display: flex; align-items: start; flex-direction: column; border: 1px solid var(--line); border-radius: 17px; background: var(--paper); }
+.skill-metric-grid article > span { width: 39px; height: 39px; margin-bottom: 19px; display: grid; place-items: center; border-radius: 11px; color: var(--green); background: var(--green-soft); }
+.skill-metric-grid article > span svg { width: 19px; }
+.skill-metric-grid article > small { color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.skill-metric-grid article > strong { margin-top: 3px; font: 800 29px 'Manrope'; }
+.skill-metric-grid article > strong small { margin-left: 2px; font-size: 11px; }
+.skill-metric-grid article p { min-height: 30px; margin: 4px 0 17px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.skill-metric-grid article > i { width: 100%; height: 6px; margin-top: auto; border-radius: 6px; background: #e6e1d8; overflow: hidden; }
+.skill-metric-grid article > i b { height: 100%; display: block; border-radius: inherit; background: var(--green); }
+.analytics-lower-grid { grid-template-columns: 1fr 1fr; margin-top: 18px; }
+.trend-chart { height: 205px; padding: 24px 28px 14px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; align-items: end; }
+.trend-chart span { height: 100%; min-width: 0; display: grid; grid-template-rows: 1fr auto auto; gap: 4px; justify-items: center; }
+.trend-chart i { width: min(58px, 70%); min-height: 100%; display: flex; align-items: end; border-radius: 10px 10px 4px 4px; background: #e7e2d8; overflow: hidden; }
+.trend-chart i b { width: 100%; display: block; border-radius: inherit; background: var(--blue); }
+.trend-chart small { color: var(--muted); font-size: 9px; font-weight: 800; }
+.trend-chart em { color: var(--muted); font-size: 8px; font-style: normal; }
+.repertoire-card > div { padding: 5px 23px 18px; }
+.repertoire-card > div > span { min-height: 58px; display: grid; grid-template-columns: 30px 1fr auto; grid-template-rows: auto auto; align-items: center; border-bottom: 1px solid var(--line); }
+.repertoire-card > div > span > i { grid-row: 1 / 3; width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; color: var(--green); background: var(--green-soft); font-size: 9px; font-style: normal; font-weight: 900; }
+.repertoire-card > div > span strong { align-self: end; font-size: 11px; }
+.repertoire-card > div > span small { align-self: start; color: var(--muted); font-size: 9px; }
+.repertoire-card > div > span b { grid-column: 3; grid-row: 1 / 3; font: 800 13px 'Manrope'; }
+.card-empty-copy { padding: 25px 0; color: var(--muted); font-size: 11px; }
+.recent-card { margin-top: 18px; }
+.recent-card > header { align-items: end; }
+.recent-card > header > small { max-width: 330px; color: var(--muted); font-size: 9px; text-align: right; }
+.recent-table { overflow-x: auto; }
+.recent-table [role='row'] { min-width: 850px; min-height: 53px; padding: 0 24px; display: grid; grid-template-columns: 135px 1.4fr 1fr 100px 100px 90px; gap: 15px; align-items: center; border-top: 1px solid var(--line); font-size: 10px; }
+.recent-table [role='row']:first-child { border-top: 0; }
+.recent-table .recent-table-head { min-height: 37px; color: var(--muted); background: #f1ede5; font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; }
+.recent-table [role='row'] > span { color: var(--muted); }
+.recent-empty { min-height: 75px; padding: 25px; display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+
 /* Onboarding */
 .onboarding-overlay { position: fixed; inset: 0; z-index: 200; overflow: auto; background: #f3eee5; }
 .onboarding-shell { min-height: 100vh; display: grid; grid-template-rows: 72px 4px 1fr 86px; }
@@ -996,6 +1070,7 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   .settings-layout { grid-template-columns: 190px 1fr; }
   .accordion-setting-grid { grid-template-columns: 1fr; }
   .instrument-preview { min-height: 330px; }
+  .analytics-overview, .skill-metric-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 801px) and (max-width: 1199px) and (max-height: 820px) {
@@ -1088,6 +1163,12 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   .settings-nav { position: static; display: flex; overflow-x: auto; }
   .settings-nav button { min-width: 150px; }
   .settings-options { grid-template-columns: repeat(2, 1fr); }
+  .analytics-section { padding-top: 55px; }
+  .analytics-grid, .analytics-lower-grid { grid-template-columns: 1fr; }
+  .analytics-empty { grid-template-columns: 40px 1fr; }
+  .analytics-empty .primary-button { grid-column: 1 / 3; }
+  .recent-card > header { align-items: start; flex-direction: column; }
+  .recent-card > header > small { text-align: left; }
 }
 
 @media (max-width: 520px) {
@@ -1147,6 +1228,13 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   .accordion-editor > header, .editor-fields, .button-map-editor, .accordion-editor > footer { padding-inline: 15px; }
   .editor-fields { grid-template-columns: 1fr 1fr; }
   .accordion-editor > footer .warning-inline { display: none; }
+  .analytics-overview, .skill-metric-grid { grid-template-columns: 1fr; }
+  .analytics-overview article { min-height: 105px; }
+  .activity-bars { gap: 5px; padding-inline: 14px; }
+  .activity-bars > span > i { width: 22px; }
+  .weekly-activity-card > footer { align-items: start; flex-direction: column; }
+  .skill-analysis { margin-top: 50px; }
+  .trend-chart { gap: 8px; padding-inline: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

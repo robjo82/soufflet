@@ -10,6 +10,7 @@ Navigateur React
 └── API HTTPS
     ├── configurations d’accordéons (SQLite)
     ├── comptes et sessions opaques (SQLite)
+    ├── séances et agrégats de progression par utilisateur (SQLite)
     ├── bibliothèque commune licenciée (SQLite)
     ├── parseur de tablature déterministe
     └── transcription multimodale Gemini
@@ -31,9 +32,11 @@ Pour YouTube, le serveur récupère d’abord le titre et l’auteur via oEmbed.
 
 Avant une exposition publique intensive, ajouter au reverse proxy : quota par compte, limitation de débit distribuée, journal d’audit sans contenu musical et analyse antivirus des fichiers. Les mutations restent sur la même origine avec des cookies `SameSite=Lax`; le cookie passe en mode `Secure` derrière HTTPS.
 
-## Données utilisateur
+## Progression et données utilisateur
 
-Les comptes, sessions, configurations d’instruments et morceaux communs vivent dans SQLite. Les morceaux importés, corrections et préférences restent local-first dans `localStorage`. Cela garantit une reprise immédiate lors d’une coupure réseau, mais ne remplace pas encore la synchronisation multi-appareils. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
+Les comptes, sessions d’authentification, configurations d’instruments, séances de pratique et morceaux communs vivent dans SQLite. Une séance de pratique porte un identifiant client idempotent et est sauvegardée pendant la lecture, à la pause et à la fermeture. Seul le temps de lecture actif est cumulé ; les pauses ne gonflent pas les statistiques. Les démonstrations contribuent au temps mais pas aux métriques de précision. La série est calculée dans le fuseau horaire du navigateur et les comptes sans séance restent strictement à zéro.
+
+Les morceaux importés, corrections et préférences restent local-first dans `localStorage`. Cela garantit une reprise immédiate lors d’une coupure réseau, mais ne remplace pas encore la synchronisation multi-appareils. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
 
 ## Accessibilité
 

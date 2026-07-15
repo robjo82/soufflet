@@ -11,6 +11,7 @@
 - SQLite, API, validation d’entrée, limite d’upload et conteneur non-root ;
 - import de tablature simple et pipeline Gemini réel ;
 - correction et autosauvegarde locale ;
+- séances idempotentes et tableau de bord de progression isolé par compte ;
 - CI de PR, Semantic Release, registre privé, stack Portainer et mise à jour Watchtower.
 
 ## À valider avant de revendiquer une qualité de mesure

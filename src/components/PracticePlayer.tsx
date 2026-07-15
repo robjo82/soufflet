@@ -7,7 +7,7 @@ import { AccordionView } from './AccordionView';
 import { ScoreStrip } from './ScoreStrip';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import type { AccordionConfig, Notation, PracticeSettings, Song } from '../types';
+import type { AccordionConfig, Notation, PracticeSessionInput, PracticeSettings, Song } from '../types';
 import { PRACTICE_MODES } from '../practiceModes';
 import { getWaitAdvance } from '../practiceProgress';
 
@@ -17,6 +17,7 @@ interface PracticePlayerProps {
   onClose: () => void;
   notation: Notation;
   onNotationChange: (notation: Notation) => void;
+  onSessionUpdate: (session: PracticeSessionInput) => Promise<void>;
 }
 
 function accompanimentIndexAt(song: Song, beat: number) {
@@ -28,7 +29,7 @@ function accompanimentIndexAt(song: Song, beat: number) {
   return index;
 }
 
-export function PracticePlayer({ song, accordion, onClose, notation, onNotationChange }: PracticePlayerProps) {
+export function PracticePlayer({ song, accordion, onClose, notation, onNotationChange, onSessionUpdate }: PracticePlayerProps) {
   const [settings, setSettings] = useState<PracticeSettings>({
     mode: 'guided', tempo: 80, countIn: true, metronome: false, loop: false,
     loopStart: 0, loopEnd: song.events.length - 1, notation,
@@ -58,6 +59,15 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   const waitReleaseTimerRef = useRef(0);
   const assessedRef = useRef(new Set<number>());
   const wrongRef = useRef(new Set<number>());
+  const resultsRef = useRef(results);
+  const settingsRef = useRef(settings);
+  const maxIndexRef = useRef(0);
+  const flaggedRef = useRef(false);
+  const sessionIdRef = useRef(crypto.randomUUID());
+  const sessionStartedAtRef = useRef<string | null>(null);
+  const activeSegmentStartedAtRef = useRef<number | null>(null);
+  const accumulatedActiveMsRef = useRef(0);
+  const sessionCompletedRef = useRef(false);
   const { playMidi, playLeftHand, click } = useSynth();
   const detector = usePitchDetector();
   const currentEvent = song.events[activeIndex];
@@ -73,10 +83,79 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, []);
 
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { maxIndexRef.current = Math.max(maxIndexRef.current, activeIndex); }, [activeIndex]);
+  useEffect(() => { flaggedRef.current = flagged; }, [flagged]);
+
+  const resetSessionTracking = useCallback(() => {
+    sessionIdRef.current = crypto.randomUUID();
+    sessionStartedAtRef.current = null;
+    activeSegmentStartedAtRef.current = null;
+    accumulatedActiveMsRef.current = 0;
+    sessionCompletedRef.current = false;
+    maxIndexRef.current = 0;
+    resultsRef.current = { correct: 0, early: 0, late: 0, wrong: 0 };
+  }, []);
+
+  const finishActiveSegment = useCallback(() => {
+    if (activeSegmentStartedAtRef.current === null) return;
+    accumulatedActiveMsRef.current += performance.now() - activeSegmentStartedAtRef.current;
+    activeSegmentStartedAtRef.current = null;
+  }, []);
+
+  const activeMilliseconds = useCallback(() => accumulatedActiveMsRef.current + (
+    activeSegmentStartedAtRef.current === null ? 0 : performance.now() - activeSegmentStartedAtRef.current
+  ), []);
+
+  const persistSession = useCallback((completed = false) => {
+    const startedAt = sessionStartedAtRef.current;
+    if (!startedAt) return Promise.resolve();
+    const activeSeconds = Math.floor(activeMilliseconds() / 1000);
+    if (activeSeconds < 1) return Promise.resolve();
+    const latestResults = resultsRef.current;
+    return onSessionUpdate({
+      id: sessionIdRef.current,
+      songId: song.id,
+      songTitle: song.title,
+      mode: settingsRef.current.mode,
+      startedAt,
+      endedAt: new Date().toISOString(),
+      activeSeconds,
+      correctCount: latestResults.correct,
+      earlyCount: latestResults.early,
+      lateCount: latestResults.late,
+      wrongCount: latestResults.wrong,
+      completionPercent: completed ? 100 : Math.min(100, Math.round((maxIndexRef.current + 1) / Math.max(1, song.events.length) * 100)),
+      tempoPercent: settingsRef.current.tempo,
+      flagged: flaggedRef.current,
+    });
+  }, [activeMilliseconds, onSessionUpdate, song.events.length, song.id, song.title]);
+
+  const resetResults = useCallback(() => {
+    const empty = { correct: 0, early: 0, late: 0, wrong: 0 };
+    resultsRef.current = empty;
+    setResults(empty);
+  }, []);
+
+  const incrementResult = useCallback((kind: keyof typeof results) => {
+    const value = resultsRef.current;
+    const next = { ...value, [kind]: value[kind] + 1 };
+    resultsRef.current = next;
+    setResults(next);
+  }, []);
+
   useEffect(() => () => {
     window.clearTimeout(waitAdvanceTimerRef.current);
     window.clearTimeout(waitReleaseTimerRef.current);
-  }, []);
+    finishActiveSegment();
+    void persistSession(sessionCompletedRef.current);
+  }, [finishActiveSegment, persistSession]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const interval = window.setInterval(() => { void persistSession(false); }, 30_000);
+    return () => window.clearInterval(interval);
+  }, [persistSession, playing]);
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -90,6 +169,9 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   }, []);
 
   const selectIndex = useCallback((index: number) => {
+    finishActiveSegment();
+    void persistSession(false);
+    resetSessionTracking();
     setActiveIndex(index);
     setActiveAccompanimentIndex(accompanimentIndexAt(song, song.events[index]?.beat ?? 0));
     lastPlayedRef.current = -1;
@@ -100,18 +182,21 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     ignoreMicrophoneUntilRef.current = 0;
     assessedRef.current.clear();
     wrongRef.current.clear();
-    setResults({ correct: 0, early: 0, late: 0, wrong: 0 });
+    resetResults();
     setPlaying(false);
-  }, [song]);
+  }, [finishActiveSegment, persistSession, resetResults, resetSessionTracking, song]);
 
   const stop = useCallback(() => {
+    finishActiveSegment();
+    void persistSession(false);
     setPlaying(false);
     cancelAnimationFrame(rafRef.current);
     window.clearTimeout(waitAdvanceTimerRef.current);
-  }, []);
+  }, [finishActiveSegment, persistSession]);
 
   const restart = useCallback(() => {
     stop();
+    resetSessionTracking();
     const nextIndex = settings.loop ? settings.loopStart : 0;
     setActiveIndex(nextIndex);
     setActiveAccompanimentIndex(accompanimentIndexAt(song, song.events[nextIndex]?.beat ?? 0));
@@ -123,12 +208,15 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     ignoreMicrophoneUntilRef.current = 0;
     assessedRef.current.clear();
     wrongRef.current.clear();
-    setResults({ correct: 0, early: 0, late: 0, wrong: 0 });
+    resetResults();
     setFeedback({ kind: 'neutral', title: 'On reprend calmement', detail: 'Inspire, prépare le doigt et regarde la direction.' });
-  }, [settings.loop, settings.loopStart, song, stop]);
+  }, [resetResults, resetSessionTracking, settings.loop, settings.loopStart, song, stop]);
 
   const begin = useCallback(() => {
     if (playing) { stop(); return; }
+    if (sessionCompletedRef.current) resetSessionTracking();
+    if (!sessionStartedAtRef.current) sessionStartedAtRef.current = new Date().toISOString();
+    activeSegmentStartedAtRef.current = performance.now();
     startedAtRef.current = performance.now();
     startBeatRef.current = song.events[activeIndex]?.beat ?? 0;
     lastPlayedRef.current = -1;
@@ -139,7 +227,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     ignoreMicrophoneUntilRef.current = 0;
     setPlaying(true);
     if (practiceWithMic && detector.status === 'idle') void detector.start();
-  }, [activeIndex, detector, playing, practiceWithMic, song.events, stop]);
+  }, [activeIndex, detector, playing, practiceWithMic, resetSessionTracking, song.events, stop]);
 
   useEffect(() => {
     if (!playing) return;
@@ -183,6 +271,9 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
           lastAccompanimentIndexRef.current = -1;
           lastAccompanimentPlayedRef.current = -1;
         } else {
+          finishActiveSegment();
+          sessionCompletedRef.current = true;
+          void persistSession(true);
           setPlaying(false);
           setFeedback({ kind: 'good', title: 'Bravo, passage terminé !', detail: 'Tu as gardé le fil jusqu’au bout. Rejoue à 90 % quand tu te sens prêt.' });
           return;
@@ -192,7 +283,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     };
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [activeIndex, beatMs, click, playLeftHand, playMidi, playing, settings.loop, settings.loopEnd, settings.loopStart, settings.metronome, settings.mode, song, soundEnabled]);
+  }, [activeIndex, beatMs, click, finishActiveSegment, persistSession, playLeftHand, playMidi, playing, settings.loop, settings.loopEnd, settings.loopStart, settings.metronome, settings.mode, song, soundEnabled]);
 
   const assessPitch = useCallback((midi: number, note: string, confidence: number, direction?: 'push' | 'pull', fromMicrophone = false) => {
     if (!practiceWithMic || !currentEvent || confidence <= .7) return;
@@ -213,7 +304,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
       if (!assessedRef.current.has(activeIndex)) {
         assessedRef.current.add(activeIndex);
         const timingKind = timingDelta < -120 ? 'early' : timingDelta > 180 ? 'late' : 'correct';
-        setResults((value) => ({ ...value, [timingKind]: value[timingKind] + 1 }));
+        incrementResult(timingKind);
       }
       if (timingDelta < -120) setFeedback({ kind: 'hint', title: 'Bonne note, mais un peu trop tôt', detail: 'Attends que le repère arrive au centre avant d’attaquer la note.' });
       else if (timingDelta > 180) setFeedback({ kind: 'hint', title: 'Bonne note, mais un peu trop tard', detail: 'Prépare ton doigt pendant la note précédente pour partir sur le temps.' });
@@ -224,6 +315,9 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
         waitForReleaseRef.current = midi;
         const advance = getWaitAdvance(activeIndex, song.events.length, settings.loop, settings.loopStart, settings.loopEnd);
         if (advance.finished) {
+          finishActiveSegment();
+          sessionCompletedRef.current = true;
+          void persistSession(true);
           setPlaying(false);
           setFeedback({ kind: 'good', title: 'Exercice terminé !', detail: 'Tu as trouvé toutes les notes sans limite de temps.' });
         } else {
@@ -247,7 +341,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     } else if (confidence > .72) {
       if (!wrongRef.current.has(activeIndex)) {
         wrongRef.current.add(activeIndex);
-        setResults((value) => ({ ...value, wrong: value.wrong + 1 }));
+        incrementResult('wrong');
       }
       setFeedback({
         kind: 'hint',
@@ -255,7 +349,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
         detail: `Tu joues ${note}. Cherche le bouton éclairé sans changer la direction du soufflet.`,
       });
     }
-  }, [activeIndex, beatMs, currentEvent, playing, practiceWithMic, settings.loop, settings.loopEnd, settings.loopStart, settings.mode, song]);
+  }, [activeIndex, beatMs, currentEvent, finishActiveSegment, incrementResult, persistSession, playing, practiceWithMic, settings.loop, settings.loopEnd, settings.loopStart, settings.mode, song]);
 
   useEffect(() => {
     const reading = detector.reading;
@@ -280,16 +374,22 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     return () => window.removeEventListener('keydown', onKey);
   }, [begin, restart]);
 
+  const closePractice = useCallback(() => {
+    finishActiveSegment();
+    void persistSession(sessionCompletedRef.current);
+    onClose();
+  }, [finishActiveSegment, onClose, persistSession]);
+
   const progress = useMemo(() => ((activeIndex + 1) / song.events.length) * 100, [activeIndex, song.events.length]);
 
   return (
     <div className="practice-page">
       <header className="practice-header">
-        <button type="button" className="brand-mini" onClick={onClose} aria-label="Retour à l’accueil">
+        <button type="button" className="brand-mini" onClick={closePractice} aria-label="Retour à l’accueil">
           <span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong>
         </button>
         <div className="song-heading">
-          <button type="button" className="crumb" onClick={onClose}>Séance du jour</button>
+          <button type="button" className="crumb" onClick={closePractice}>Séance du jour</button>
           <span>/</span><strong>{song.title}</strong>
         </div>
         <div className="practice-meta">
@@ -320,7 +420,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
               <div className="mode-menu">
                 {PRACTICE_MODES.map((mode) => (
                   <button type="button" key={mode.id} className={settings.mode === mode.id ? 'is-selected' : ''} onClick={() => {
-                    setSettings((value) => ({ ...value, mode: mode.id })); setModeOpen(false); stop();
+                    setSettings((value) => ({ ...value, mode: mode.id })); setModeOpen(false); stop(); resetSessionTracking(); resetResults();
                     lastCorrectIndexRef.current = -1;
                     waitForReleaseRef.current = null;
                     ignoreMicrophoneUntilRef.current = 0;
@@ -400,7 +500,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
           <button type="button" className={`transport-tool ${settings.metronome ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, metronome: !value.metronome }))}><TimerReset /><span>Métronome</span></button>
           <button type="button" className={`icon-button ${soundEnabled ? '' : 'is-active'}`} onClick={() => setSoundEnabled(!soundEnabled)} title={soundEnabled ? 'Couper le son de l’application' : 'Activer le son'}><Volume2 /></button>
           <button type="button" className="icon-button" onClick={() => setModeOpen(true)} title="Réglages du mode"><Settings2 /></button>
-          <button type="button" className={`icon-button ${flagged ? 'is-active' : ''}`} title="Marquer ce passage difficile" onClick={() => { setFlagged(!flagged); setFeedback({ kind: 'neutral', title: flagged ? 'Marque retirée' : 'Passage marqué pour révision', detail: flagged ? 'Ce passage ne reviendra plus en priorité.' : 'Il sera proposé plus tôt dans une prochaine séance.' }); }}><Flag fill={flagged ? 'currentColor' : 'none'} /></button>
+          <button type="button" className={`icon-button ${flagged ? 'is-active' : ''}`} title="Marquer ce passage difficile" onClick={() => { const next = !flagged; flaggedRef.current = next; setFlagged(next); setFeedback({ kind: 'neutral', title: flagged ? 'Marque retirée' : 'Passage marqué pour révision', detail: flagged ? 'Ce passage ne reviendra plus en priorité.' : 'Il sera proposé plus tôt dans une prochaine séance.' }); }}><Flag fill={flagged ? 'currentColor' : 'none'} /></button>
         </div>
       </footer>
     </div>
