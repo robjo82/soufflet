@@ -10,7 +10,17 @@ interface ScoreStripProps {
 }
 
 export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStripProps) {
-  const rhythmSymbol = (duration: number) => duration <= .25 ? '♬' : duration <= .5 ? '♪' : duration === 1 ? '♩' : duration === 2 ? '𝅗𝅥' : '𝅝';
+  const rhythmSymbol = (duration: number) => {
+    const quarterNotes = duration * 4 / song.timeSignature[1];
+    if (quarterNotes <= .25) return '♬';
+    if (quarterNotes <= .5) return '♪';
+    if (quarterNotes <= .75) return '♪·';
+    if (quarterNotes <= 1) return '♩';
+    if (quarterNotes <= 1.5) return '♩·';
+    if (quarterNotes <= 2) return '𝅗𝅥';
+    if (quarterNotes <= 3) return '𝅗𝅥·';
+    return '𝅝';
+  };
   return (
     <div className="score-shell">
       <div className="score-labels">

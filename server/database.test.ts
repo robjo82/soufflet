@@ -41,9 +41,11 @@ describe('production data migrations', () => {
 });
 
 describe('Brise-pieds reference transcription', () => {
-  it('contains the twelve supplied measures and exact Club I anchors', () => {
+  it('contains the twelve supplied measures without beginner-disrupting grace notes', () => {
     const song = SONG_SEEDS.find((item) => item.id === 'le-brise-pieds-aveyronnais');
     expect(song?.events.at(0)).toMatchObject({ beat: 0, midi: 67, buttonId: 'c1-out-5', direction: 'push' });
+    expect(song?.events.at(1)).toMatchObject({ beat: 1, midi: 69, buttonId: 'c1-out-5', direction: 'pull' });
+    expect(song?.events.some((event) => event.duration === .25)).toBe(false);
     expect(song?.events.some((event) => event.beat === 5.5 && event.midi === 77 && event.buttonId === 'c1-out-8')).toBe(true);
     expect(new Set(song?.events.map((event) => Math.floor(event.beat / 4)))).toEqual(new Set(Array.from({ length: 12 }, (_, index) => index)));
     expect(song?.events.at(-1)).toMatchObject({ beat: 46, midi: 72, buttonId: 'c1-out-6', direction: 'push', duration: 2 });
@@ -59,5 +61,32 @@ describe('Brise-pieds reference transcription', () => {
       { beat: 5.5, midi: 77, duration: .5 },
     ]);
     expect(result.events.find((event) => event.beat === 14)).toMatchObject({ midi: 72, duration: 2 });
+  });
+});
+
+describe('built-in melody editions', () => {
+  it('ships the complete first verse of Au clair de la lune at its written rhythm', () => {
+    const song = SONG_SEEDS.find((item) => item.id === 'au-clair-de-la-lune')!;
+    expect(song).toMatchObject({ bpm: 88, timeSignature: [2, 4], duration: 22 });
+    expect(song.events).toHaveLength(44);
+    expect(song.events.at(22)).toMatchObject({ midi: 74, duration: .5 });
+    expect(song.events.at(-1)).toMatchObject({ midi: 72, duration: 2 });
+  });
+
+  it('keeps Frère Jacques lively by using eighth notes for the matins phrase', () => {
+    const song = SONG_SEEDS.find((item) => item.id === 'frere-jacques')!;
+    expect(song).toMatchObject({ bpm: 120, timeSignature: [2, 4], duration: 16 });
+    expect(song.events.slice(14, 18).map((event) => event.duration)).toEqual([.5, .5, .5, .5]);
+  });
+
+  it('uses the sourced Se Canta contour and a full-length Jument de Michao form', () => {
+    const seCanta = SONG_SEEDS.find((item) => item.id === 'se-canta')!;
+    const jument = SONG_SEEDS.find((item) => item.id === 'la-jument-de-michao-trad')!;
+    expect(seCanta).toMatchObject({ bpm: 112, timeSignature: [3, 4] });
+    expect(seCanta.events.slice(0, 5).map((event) => event.midi)).toEqual([67, 72, 72, 76, 74]);
+    expect(jument).toMatchObject({ bpm: 90, timeSignature: [2, 2], duration: 151, key: 'Ré mineur' });
+    expect(jument.events.length).toBeGreaterThan(500);
+    expect(jument.events.slice(0, 7).map((event) => event.midi)).toEqual([67, 65, 64, 62, 64, 62, 60]);
+    expect(new Set(jument.accompaniment.map((event) => event.chord))).toEqual(new Set(['C', 'F']));
   });
 });
