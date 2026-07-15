@@ -59,7 +59,7 @@ curl http://localhost:8787/api/health
 ## Import : règles importantes
 
 - **Spotify** : un lien est conservé comme référence seulement. La politique Spotify interdit l’analyse de son contenu, son ingestion dans une IA et la synchronisation d’un enregistrement Spotify avec un visuel. L’utilisateur doit fournir un fichier qu’il a le droit d’utiliser. Voir la [Spotify Developer Policy](https://developer.spotify.com/policy).
-- **YouTube** : l’app ne télécharge ni ne sépare la piste audio. Une URL publique peut être confiée directement à la fonction vidéo de Gemini, actuellement en preview. Le lecteur YouTube devra rester conforme aux [YouTube Developer Policies](https://developers.google.com/youtube/terms/developer-policies) lors de son ajout.
+- **YouTube** : l’app ne télécharge ni ne sépare la piste audio. Elle contrôle d’abord les métadonnées publiques et réutilise une édition vérifiée lorsqu’un titre de la bibliothèque correspond. Pour les autres vidéos, Gemini produit uniquement une ébauche marquée « à vérifier », dont la confiance est plafonnée à 60 %. Le lecteur YouTube devra rester conforme aux [YouTube Developer Policies](https://developers.google.com/youtube/terms/developer-policies) lors de son ajout.
 - **Gemini** : le modèle par défaut est `gemini-3.5-flash`, qui accepte audio, vidéo et PDF et produit des sorties structurées. Voir la [documentation Gemini 3.5 Flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash) et [Video understanding](https://ai.google.dev/gemini-api/docs/video-understanding).
 
 ## Documentation technique

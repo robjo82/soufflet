@@ -27,6 +27,7 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
   }, [onSave, saved, song]);
 
   if (!song) return <main className="page-content empty-studio"><WandSparkles /><h1>Le studio est prêt</h1><p>Importe un morceau pour corriger les notes, le rythme, les doigtés et le soufflet.</p></main>;
+  const measureCount = Math.floor((song.events.at(-1)?.beat ?? 0) / song.timeSignature[0]) + 1;
 
   const updateEvent = (patch: Partial<SongEvent>) => {
     setHistory((items) => [...items.slice(-19), song]);
@@ -42,10 +43,21 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
     <main className="studio-page">
       <header className="studio-header"><div><span className="eyebrow"><Sparkles /> Éditeur de tablature</span><h1>Studio</h1></div><label className="song-select"><Music2 /><span><small>MORCEAU OUVERT</small><select value={song.id} onChange={(event) => { const next = editableSongs.find((item) => item.id === event.target.value); if (next) { setSong(next); setActiveIndex(0); } }}>{editableSongs.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></span><ChevronDown /></label><div className="studio-actions"><button type="button" className="icon-button" onClick={undo} disabled={!history.length} title="Annuler"><Undo2 /></button><button type="button" className="icon-button" disabled title="Rétablir"><Redo2 /></button><span className="save-state">{saved ? <><Cloud /> Sauvegardé localement</> : <><Save /> Sauvegarde…</>}</span><button type="button" className="primary-button" onClick={() => onPractice(song)}><Play fill="currentColor" /> Tester</button></div></header>
 
+      {(song.transcriptionMethod === 'verified-library' || song.transcriptionMethod === 'gemini-preview') && (
+        <section className={`transcription-source-note ${song.transcriptionMethod === 'verified-library' ? 'is-verified' : 'is-preview'}`}>
+          {song.transcriptionMethod === 'verified-library' ? <Check /> : <AlertTriangle />}
+          <span>
+            <strong>{song.transcriptionMethod === 'verified-library' ? 'Mélodie reconnue dans la bibliothèque vérifiée' : 'Transcription YouTube expérimentale — vérification obligatoire'}</strong>
+            <small>{song.transcriptionWarnings?.join(' ')}</small>
+          </span>
+          {song.sourceUrl && <a href={song.sourceUrl} target="_blank" rel="noreferrer">Écouter la source</a>}
+        </section>
+      )}
+
       <div className="studio-toolbar"><button type="button" className="is-active"><Music2 /> Note</button><button type="button"><Scissors /> Découper</button><button type="button"><Clock3 /> Durée</button><span /><button type="button"><History /> Historique</button><span className="confidence-legend"><i /> Incertain · vérification nécessaire</span></div>
 
       <section className="studio-timeline">
-        <div className="timeline-ruler">{Array.from({ length: Math.ceil((song.events.at(-1)?.beat ?? 0) / 4) + 1 }).map((_, index) => <span key={index}>Mesure {index + 1}</span>)}</div>
+        <div className="timeline-ruler">{Array.from({ length: measureCount }).map((_, index) => <span key={index}>Mesure {index + 1}</span>)}</div>
         <div className="timeline-track">{song.events.map((event, index) => <button type="button" key={event.id} className={`${index === activeIndex ? 'is-active' : ''} ${(event.confidence ?? 1) < 0.7 ? 'is-uncertain' : ''}`} onClick={() => setActiveIndex(index)} style={{ left: `${event.beat * 72}px`, width: `${Math.max(54, event.duration * 68)}px` }}><strong>{event.note}</strong><small>{event.buttonId === 'unmapped' ? '?' : event.buttonId.match(/\d+$/)?.[0]}{event.direction === 'pull' ? 'T' : 'P'}</small>{(event.confidence ?? 1) < 0.7 && <AlertTriangle />}</button>)}</div>
       </section>
 

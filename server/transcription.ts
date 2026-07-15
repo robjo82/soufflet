@@ -9,7 +9,28 @@ interface RawTranscription {
   timeSignature: [number, number];
   confidence: number;
   warnings: string[];
+  method?: 'deterministic' | 'verified-library' | 'gemini-preview';
   events: Array<{ beat: number; duration: number; midi: number; note: string; chord?: string; confidence: number }>;
+}
+
+interface VerifiedSongCandidate {
+  id: string;
+  title: string;
+  artist: string;
+  bpm: number;
+  key: string;
+  timeSignature: [number, number];
+  status: string;
+  confidence?: number;
+  builtIn?: boolean;
+  license?: string;
+  provenance?: string;
+  events: RawTranscription['events'];
+}
+
+interface YoutubeMetadata {
+  title: string;
+  authorName: string;
 }
 
 const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -18,7 +39,7 @@ const noteFromMidi = (midi: number) => `${noteNames[midi % 12]}${Math.floor(midi
 const PROMPT = `You are assisting a diatonic accordion learner. Analyze only what is audibly or visibly supported by the supplied source.
 Return one JSON object and no markdown, with: title, artist, bpm, key, timeSignature as [numerator, denominator], confidence from 0 to 1, warnings as short French strings, and events.
 Each event must contain beat (zero-based decimal beats), duration (beats), midi, note (scientific pitch like C4), optional chord, confidence 0..1.
-Prioritize the main monophonic melody, detect tempo and bar boundaries. Never invent certainty: use confidence below 0.65 for ambiguous/polyphonic/noisy passages. Keep at most 256 meaningful events. Do not map to accordion buttons; the application does that deterministically from its configured layout.`;
+Prioritize the main monophonic melody, detect tempo and bar boundaries. Never invent certainty: use confidence below 0.65 for ambiguous/polyphonic/noisy passages, and return no events if exact pitches cannot be grounded in the supplied media. Keep at most 256 meaningful events. Do not map to accordion buttons; the application does that deterministically from its configured layout.`;
 
 function sanitize(value: unknown): RawTranscription {
   if (!value || typeof value !== 'object') throw new Error('La réponse IA ne contient pas de transcription exploitable.');
@@ -31,11 +52,12 @@ function sanitize(value: unknown): RawTranscription {
     confidence: Math.max(0, Math.min(1, Number(event.confidence) || 0.5)),
   })).sort((a, b) => a.beat - b.beat) : [];
   if (!events.length) throw new Error('Aucune note fiable n’a été détectée. Essaie un passage plus court et plus clair.');
+  const method = ['deterministic', 'verified-library', 'gemini-preview'].includes(String(data.method)) ? data.method : undefined;
   return {
     title: typeof data.title === 'string' ? data.title : 'Morceau importé', artist: typeof data.artist === 'string' ? data.artist : 'Artiste inconnu',
     bpm: Math.max(30, Math.min(260, Number(data.bpm) || 100)), key: typeof data.key === 'string' ? data.key : 'Inconnue',
     timeSignature: Array.isArray(data.timeSignature) && data.timeSignature.length === 2 ? [Number(data.timeSignature[0]) || 4, Number(data.timeSignature[1]) || 4] : [4, 4],
-    confidence: Math.max(0, Math.min(1, Number(data.confidence) || 0.5)), warnings: Array.isArray(data.warnings) ? data.warnings.filter((item): item is string => typeof item === 'string').slice(0, 10) : [], events,
+    confidence: Math.max(0, Math.min(1, Number(data.confidence) || 0.5)), warnings: Array.isArray(data.warnings) ? data.warnings.filter((item): item is string => typeof item === 'string').slice(0, 10) : [], method, events,
   };
 }
 
@@ -44,13 +66,13 @@ function parseJsonText(text: string) {
   return sanitize(JSON.parse(cleaned) as unknown);
 }
 
-async function callGemini(apiKey: string, parts: Array<Record<string, unknown>>) {
+async function callGemini(apiKey: string, parts: Array<Record<string, unknown>>, prompt = PROMPT) {
   const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: PROMPT }, ...parts] }], generationConfig: { responseMimeType: 'application/json' } }),
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [...parts, { text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } }),
       signal: AbortSignal.timeout(120_000),
     });
     const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; error?: { message?: string } };
@@ -64,6 +86,85 @@ async function callGemini(apiKey: string, parts: Array<Record<string, unknown>>)
     await new Promise((resolve) => setTimeout(resolve, 900 * (attempt + 1)));
   }
   throw new Error('Gemini est temporairement indisponible.');
+}
+
+const normalizeTitle = (title: string) => title
+  .normalize('NFD')
+  .replace(/\p{Diacritic}/gu, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+export function findVerifiedSongByTitle(title: string, songs: unknown[]): VerifiedSongCandidate | undefined {
+  const normalizedSource = normalizeTitle(title);
+  return songs
+    .filter((song): song is VerifiedSongCandidate => {
+      if (!song || typeof song !== 'object') return false;
+      const candidate = song as Partial<VerifiedSongCandidate>;
+      return candidate.builtIn === true && candidate.status === 'ready' && Array.isArray(candidate.events) && candidate.events.length > 0 && typeof candidate.title === 'string';
+    })
+    .sort((left, right) => normalizeTitle(right.title).length - normalizeTitle(left.title).length)
+    .find((song) => {
+      const normalizedCandidate = normalizeTitle(song.title);
+      return normalizedCandidate.length >= 8 && (normalizedSource === normalizedCandidate || normalizedSource.includes(normalizedCandidate));
+    });
+}
+
+export function transcriptionFromVerifiedSong(song: VerifiedSongCandidate, metadata: YoutubeMetadata): RawTranscription {
+  return {
+    title: song.title,
+    artist: song.artist,
+    bpm: song.bpm,
+    key: song.key,
+    timeSignature: song.timeSignature,
+    confidence: Math.min(1, song.confidence ?? 1),
+    warnings: [
+      `Vidéo reconnue par son titre : « ${metadata.title} » (${metadata.authorName}).`,
+      'La mélodie provient de l’édition vérifiée de la bibliothèque ; la synchronisation avec cet enregistrement reste à ajuster.',
+      ...(song.provenance ? [song.provenance] : []),
+    ],
+    method: 'verified-library',
+    events: song.events.map((event) => ({
+      beat: event.beat,
+      duration: event.duration,
+      midi: event.midi,
+      note: event.note,
+      ...(event.chord ? { chord: event.chord } : {}),
+      confidence: event.confidence,
+    })),
+  };
+}
+
+async function youtubeMetadata(url: string): Promise<YoutubeMetadata | undefined> {
+  try {
+    const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`, { signal: AbortSignal.timeout(10_000) });
+    if (!response.ok) return undefined;
+    const data = await response.json() as { title?: unknown; author_name?: unknown };
+    if (typeof data.title !== 'string' || typeof data.author_name !== 'string') return undefined;
+    return { title: data.title, authorName: data.author_name.replace(/\s*-\s*Topic$/i, '') };
+  } catch {
+    return undefined;
+  }
+}
+
+function cautiousYoutubeResult(result: RawTranscription, metadata?: YoutubeMetadata): RawTranscription {
+  const normalizedModelTitle = normalizeTitle(result.title);
+  const normalizedMetadataTitle = metadata ? normalizeTitle(metadata.title) : '';
+  const identityMatches = Boolean(metadata && (normalizedMetadataTitle.includes(normalizedModelTitle) || normalizedModelTitle.includes(normalizedMetadataTitle)));
+  const confidenceCap = metadata ? (identityMatches ? .6 : .4) : .5;
+  return {
+    ...result,
+    title: metadata?.title ?? result.title,
+    artist: metadata?.authorName ?? result.artist,
+    confidence: Math.min(result.confidence, confidenceCap),
+    warnings: [
+      ...(metadata && !identityMatches ? ['Gemini n’a pas identifié le même titre que les métadonnées YouTube.'] : []),
+      ...result.warnings,
+      'Transcription de hauteurs issue de Gemini Video en preview : vérifie chaque passage à l’oreille avant apprentissage.',
+    ].slice(0, 10),
+    method: 'gemini-preview',
+    events: result.events.map((event) => ({ ...event, confidence: Math.min(event.confidence, confidenceCap) })),
+  };
 }
 
 function inferMimeType(file: Express.Multer.File) {
@@ -131,7 +232,7 @@ export function parseTablature(text: string, accordion: NonNullable<ReturnType<S
     });
   }
   if (!events.length) throw new Error('Aucun symbole reconnu. Utilise par exemple « 4P 4T 5P » et une apostrophe pour le rang intérieur : « 4′T ».');
-  return { title, artist: 'Tablature texte', bpm, key: 'À confirmer', timeSignature: [4, 4], confidence: measuredLines.length >= 2 ? 1 : 0.9, warnings: measuredLines.length >= 2 ? ['Mesures, ornements, subdivisions et tenues interprétés depuis la tablature structurée.'] : ['Le rythme absent du texte a été interprété à une noire par groupe.'], events };
+  return { title, artist: 'Tablature texte', bpm, key: 'À confirmer', timeSignature: [4, 4], confidence: measuredLines.length >= 2 ? 1 : 0.9, warnings: measuredLines.length >= 2 ? ['Mesures, ornements, subdivisions et tenues interprétés depuis la tablature structurée.'] : ['Le rythme absent du texte a été interprété à une noire par groupe.'], method: 'deterministic', events };
 }
 
 export function createTranscriber(db: SouffletDatabase) {
@@ -147,9 +248,17 @@ export function createTranscriber(db: SouffletDatabase) {
     },
     async fromYoutube(url: string, requestKey?: string) {
       if (!/^https:\/\/(?:www\.)?(?:youtube\.com\/|youtu\.be\/)/i.test(url)) throw new Error('L’URL YouTube n’est pas valide.');
+      const metadata = await youtubeMetadata(url);
+      const verifiedSong = metadata ? findVerifiedSongByTitle(metadata.title, db.listCommonSongs() as unknown[]) : undefined;
+      if (metadata && verifiedSong) return transcriptionFromVerifiedSong(verifiedSong, metadata);
       const key = requestKey || process.env.GEMINI_API_KEY;
       if (!key) throw new Error('Aucune clé Gemini n’est configurée.');
-      return callGemini(key, [{ fileData: { fileUri: url } }]);
+      const metadataContext = metadata
+        ? `Authoritative YouTube metadata: title "${metadata.title}", author "${metadata.authorName}". Preserve these identity fields.`
+        : 'YouTube metadata could not be verified. Do not guess the title or artist.';
+      const prompt = `${PROMPT}\n${metadataContext}\nFor a YouTube source, transcribe only the first complete statement of the main theme. The result is a preview: never assign confidence above 0.60 to a pitch extracted from a mixed recording.`;
+      const result = await callGemini(key, [{ fileData: { fileUri: url, mimeType: 'video/*' } }], prompt);
+      return cautiousYoutubeResult(result, metadata);
     },
   };
 }

@@ -86,6 +86,8 @@ export interface Song {
   accompaniment?: AccompanimentEvent[];
   confidence?: number;
   uncertainBeats?: number[];
+  transcriptionMethod?: 'deterministic' | 'verified-library' | 'gemini-preview';
+  transcriptionWarnings?: string[];
   builtIn?: boolean;
   license?: string;
   provenance?: string;
@@ -137,6 +139,7 @@ export interface TranscriptionResult {
   timeSignature: [number, number];
   confidence: number;
   warnings: string[];
+  method?: 'deterministic' | 'verified-library' | 'gemini-preview';
   events: Array<{
     beat: number;
     duration: number;

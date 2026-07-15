@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { SouffletDatabase } from './database.js';
 import { hashPassword, sessionHash, verifyPassword } from './auth.js';
 import { SONG_SEEDS } from './songSeed.js';
-import { parseTablature } from './transcription.js';
+import { findVerifiedSongByTitle, parseTablature, transcriptionFromVerifiedSong } from './transcription.js';
 
 const directories: string[] = [];
 const makeDatabase = () => {
@@ -88,5 +88,30 @@ describe('built-in melody editions', () => {
     expect(jument.events.length).toBeGreaterThan(500);
     expect(jument.events.slice(0, 7).map((event) => event.midi)).toEqual([67, 65, 64, 62, 64, 62, 60]);
     expect(new Set(jument.accompaniment.map((event) => event.chord))).toEqual(new Set(['C', 'F']));
+  });
+});
+
+describe('YouTube transcription safeguards', () => {
+  it('matches the supplied Brise-pieds video to the verified library edition', () => {
+    const match = findVerifiedSongByTitle('Le brise-pieds (Danse régionale)', SONG_SEEDS);
+    expect(match?.id).toBe('le-brise-pieds-aveyronnais');
+    const result = transcriptionFromVerifiedSong(match!, {
+      title: 'Le brise-pieds (Danse régionale)',
+      authorName: 'Éric Bouvelle',
+    });
+    expect(result).toMatchObject({
+      title: 'Le Brise-pieds',
+      bpm: 104,
+      key: 'Do majeur',
+      confidence: 1,
+      method: 'verified-library',
+    });
+    expect(result.events).toHaveLength(62);
+    expect(result.events.slice(0, 4).map((event) => event.midi)).toEqual([67, 69, 67, 69]);
+    expect(result.warnings.join(' ')).toContain('synchronisation');
+  });
+
+  it('does not fuzzy-match an unrelated video title', () => {
+    expect(findVerifiedSongByTitle('Mon Bal Idéal', SONG_SEEDS)).toBeUndefined();
   });
 });
