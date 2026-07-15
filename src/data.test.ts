@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { adaptSongToAccordion, DEMO_SONG, displayNote, FALLBACK_ACCORDIONS } from './data';
-import { frequencyToPitch } from './hooks/usePitchDetector';
+import { frequencyToPitch, rememberReliablePitch } from './hooks/usePitchDetector';
 import { getMelodyButtonSize } from './components/accordionLayout';
 import { PRACTICE_MODES } from './practiceModes';
 import { TUTORIAL_MODE_TRIALS } from './tutorialFlow';
@@ -40,6 +40,15 @@ describe('pitch and notation', () => {
   it('reports cents around the nearest semitone', () => {
     expect(frequencyToPitch(445).cents).toBeGreaterThan(15);
     expect(frequencyToPitch(435).cents).toBeLessThan(-15);
+  });
+
+  it('keeps the last reliable tuner note until another reliable note arrives', () => {
+    const previous = frequencyToPitch(440, 0.9, 0.1);
+    const ambiguous = frequencyToPitch(261.63, 0.65, 0.01);
+    const next = frequencyToPitch(293.66, 0.91, 0.1);
+    expect(rememberReliablePitch(previous, null)).toBe(previous);
+    expect(rememberReliablePitch(previous, ambiguous)).toBe(previous);
+    expect(rememberReliablePitch(previous, next)).toBe(next);
   });
 
   it('renders the supported beginner notations', () => {
