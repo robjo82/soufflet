@@ -196,4 +196,4 @@ export interface TranscriptionResult {
   }>;
 }
 
-export type Page = 'home' | 'learn' | 'library' | 'studio' | 'tuner' | 'settings';
+export type Page = 'home' | 'learn' | 'library' | 'studio' | 'tuner' | 'settings' | 'account';

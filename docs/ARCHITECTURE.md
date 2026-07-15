@@ -36,6 +36,8 @@ Avant une exposition publique intensive, ajouter au reverse proxy : quota par co
 
 Les comptes, sessions d’authentification, configurations d’instruments, séances de pratique et morceaux communs vivent dans SQLite. Une séance de pratique porte un identifiant client idempotent et est sauvegardée pendant la lecture, à la pause et à la fermeture. Seul le temps de lecture actif est cumulé ; les pauses ne gonflent pas les statistiques. Les démonstrations contribuent au temps mais pas aux métriques de précision. La série est calculée dans le fuseau horaire du navigateur et les comptes sans séance restent strictement à zéro.
 
+Le profil et le mot de passe se modifient depuis l’espace personnel. Un changement de mot de passe invalide toutes les sessions existantes, puis crée une nouvelle session pour l’appareil courant. Les profils audio restent annoncés comme absents jusqu’à ce qu’une calibration réelle ait été enregistrée : aucune valeur de microphone ou de latence n’est simulée.
+
 Les morceaux importés, corrections et préférences restent local-first dans `localStorage`. Cela garantit une reprise immédiate lors d’une coupure réseau, mais ne remplace pas encore la synchronisation multi-appareils. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
 
 ## Accessibilité

@@ -11,6 +11,7 @@ import { Onboarding } from './components/Onboarding';
 import { FirstLessonTutorial } from './components/FirstLessonTutorial';
 import { ImportModal } from './components/ImportModal';
 import { AuthPage } from './components/AuthPage';
+import { AccountPage } from './components/AccountPage';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
 import type { AccordionConfig, Notation, Page, PracticeSessionInput, PracticeStats, Song, UserAccount } from './types';
 
@@ -116,6 +117,11 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const logout = useCallback(() => {
+    void fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null); setPracticeSong(null); setPracticeStats(null);
+  }, []);
+
   if (authLoading) return <div className="app-loading"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong><small>Préparation de ton espace…</small></div>;
   if (!user) return <AuthPage onAuthenticated={setUser} />;
   if (!selectedAccordion) return null;
@@ -140,7 +146,7 @@ export function App() {
   }
 
   return (
-    <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }); setUser(null); setPracticeSong(null); setPracticeStats(null); }}>
+    <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={logout}>
       {page === 'home' && <HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} stats={practiceStats} onPractice={startPractice} onNavigateLearn={() => navigate('learn')} displayName={user.displayName} />}
       {page === 'learn' && <LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} />}
       {page === 'library' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
@@ -158,6 +164,7 @@ export function App() {
         savePreferences({ ...preferences, accordionId: payload.accordion.id });
         return payload.accordion;
       }} />}
+      {page === 'account' && <AccountPage user={user} accordions={accordions} selectedAccordionId={preferences.accordionId} onUserUpdated={setUser} onOpenSettings={() => navigate('settings')} onLogout={logout} />}
       {showImport && <ImportModal accordion={selectedAccordion} apiKey={apiKey} onClose={() => setShowImport(false)} onImported={(song) => { saveSong(song); if (song.events.length) { setStudioSong(song); navigate('studio'); } }} />}
     </AppShell>
   );

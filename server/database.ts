@@ -202,6 +202,24 @@ export class SouffletDatabase {
     return row ? { id: row.id, email: row.email, displayName: row.display_name, createdAt: row.created_at } : undefined;
   }
 
+  updateUserProfile(id: string, profile: { email: string; displayName: string }) {
+    const result = this.db.prepare(`
+      UPDATE users
+      SET email = ?, display_name = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(profile.email.trim().toLowerCase(), profile.displayName.trim(), id);
+    return result.changes ? this.getUserById(id) : undefined;
+  }
+
+  updateUserPassword(id: string, passwordHash: string) {
+    const result = this.db.prepare(`
+      UPDATE users
+      SET password_hash = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(passwordHash, id);
+    return Boolean(result.changes);
+  }
+
   createSession(tokenHash: string, userId: string, expiresAt: string) {
     this.db.prepare('DELETE FROM sessions WHERE datetime(expires_at) <= CURRENT_TIMESTAMP').run();
     this.db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)').run(tokenHash, userId, expiresAt);
@@ -218,6 +236,10 @@ export class SouffletDatabase {
 
   deleteSession(tokenHash: string) {
     this.db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+  }
+
+  deleteSessionsForUser(userId: string) {
+    this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
   }
 
   savePracticeSession(userId: string, session: StoredPracticeSession) {

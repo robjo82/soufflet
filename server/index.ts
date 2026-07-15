@@ -98,6 +98,48 @@ app.post('/api/auth/logout', (request, response) => {
   response.status(204).end();
 });
 
+const profileSchema = z.object({
+  email: z.string().trim().email('Saisis une adresse e-mail valide.').max(254),
+  displayName: z.string().trim().min(2, 'Le nom doit contenir au moins 2 caractères.').max(60),
+});
+
+app.patch('/api/account/profile', requireUser, (request, response) => {
+  try {
+    const profile = profileSchema.parse(request.body);
+    const user = db.updateUserProfile(response.locals.user.id as string, profile);
+    if (!user) { response.status(404).json({ error: 'Compte introuvable.' }); return; }
+    response.json({ user });
+  } catch (error) {
+    const duplicate = error instanceof Error && /UNIQUE constraint failed/i.test(error.message);
+    response.status(duplicate ? 409 : 422).json({
+      error: duplicate ? 'Cette adresse e-mail est déjà utilisée.' : error instanceof z.ZodError ? error.issues[0]?.message : error instanceof Error ? error.message : 'Profil invalide.',
+    });
+  }
+});
+
+const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(10, 'Le nouveau mot de passe doit contenir au moins 10 caractères.').max(200),
+}).refine((value) => value.currentPassword !== value.newPassword, { message: 'Choisis un mot de passe différent de l’ancien.', path: ['newPassword'] });
+
+app.put('/api/account/password', authRateLimit, requireUser, async (request, response) => {
+  try {
+    const body = passwordChangeSchema.parse(request.body);
+    const credentials = db.getUserCredentials(response.locals.user.email as string);
+    if (!credentials || !await verifyPassword(body.currentPassword, credentials.password_hash)) {
+      response.status(401).json({ error: 'Le mot de passe actuel est incorrect.' });
+      return;
+    }
+    const userId = response.locals.user.id as string;
+    db.updateUserPassword(userId, await hashPassword(body.newPassword));
+    db.deleteSessionsForUser(userId);
+    setSession(response, db, userId);
+    response.json({ message: 'Mot de passe modifié. Les autres appareils ont été déconnectés.' });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof z.ZodError ? error.issues[0]?.message : error instanceof Error ? error.message : 'Mot de passe invalide.' });
+  }
+});
+
 app.get('/api/library', requireUser, (_request, response) => response.json({ songs: db.listCommonSongs() }));
 
 const practiceSessionSchema = z.object({
