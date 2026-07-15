@@ -7,20 +7,8 @@ import { AccordionView } from './AccordionView';
 import { ScoreStrip } from './ScoreStrip';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import type { AccordionConfig, Notation, PracticeMode, PracticeSettings, Song } from '../types';
-
-const MODES: Array<{ id: PracticeMode; label: string; short: string }> = [
-  { id: 'demo', label: 'Démonstration', short: 'Regarde et écoute' },
-  { id: 'guided', label: 'Lecture guidée', short: 'Joue avec l’aide' },
-  { id: 'wait', label: 'Attendre la bonne note', short: 'À ton rythme' },
-  { id: 'notes', label: 'Notes uniquement', short: 'Sans accompagnement' },
-  { id: 'rhythm', label: 'Rythme uniquement', short: 'Sur une seule note' },
-  { id: 'bellows', label: 'Soufflet uniquement', short: 'Travaille les directions' },
-  { id: 'right', label: 'Main droite', short: 'Mélodie seule' },
-  { id: 'left', label: 'Main gauche', short: 'Basses seules' },
-  { id: 'combined', label: 'Mains combinées', short: 'Coordination' },
-  { id: 'performance', label: 'Performance', short: 'Sans assistance' },
-];
+import type { AccordionConfig, Notation, PracticeSettings, Song } from '../types';
+import { PRACTICE_MODES } from '../practiceModes';
 
 interface PracticePlayerProps {
   song: Song;
@@ -228,12 +216,12 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
         <div className="practice-toolbar">
           <div className="mode-picker">
             <button type="button" className="mode-trigger" onClick={() => setModeOpen(!modeOpen)}>
-              <span><small>MODE D’ENTRAÎNEMENT</small><strong>{MODES.find((mode) => mode.id === settings.mode)?.label}</strong></span>
+              <span><small>MODE D’ENTRAÎNEMENT</small><strong>{PRACTICE_MODES.find((mode) => mode.id === settings.mode)?.label}</strong></span>
               <ChevronDown size={18} />
             </button>
             {modeOpen && (
               <div className="mode-menu">
-                {MODES.map((mode) => (
+                {PRACTICE_MODES.map((mode) => (
                   <button type="button" key={mode.id} className={settings.mode === mode.id ? 'is-selected' : ''} onClick={() => {
                     setSettings((value) => ({ ...value, mode: mode.id })); setModeOpen(false); stop();
                     if (mode.id === 'left' || mode.id === 'combined') setFeedback({ kind: 'neutral', title: 'Guidage visuel disponible', detail: 'La reconnaissance fiable des basses et accords simultanés est encore en validation. Le micro évalue seulement les notes isolées.' });

@@ -8,6 +8,7 @@ import { TunerPage } from './components/TunerPage';
 import { SettingsPage } from './components/SettingsPage';
 import { PracticePlayer } from './components/PracticePlayer';
 import { Onboarding } from './components/Onboarding';
+import { FirstLessonTutorial } from './components/FirstLessonTutorial';
 import { ImportModal } from './components/ImportModal';
 import { AuthPage } from './components/AuthPage';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
@@ -17,12 +18,14 @@ interface UserPreferences {
   accordionId: string;
   notation: Notation;
   onboardingDone: boolean;
+  tutorialDone: boolean;
 }
 
 const defaultPreferences: UserPreferences = {
   accordionId: 'standard-gc-21-8',
   notation: 'french',
   onboardingDone: false,
+  tutorialDone: false,
 };
 
 function getStored<T>(key: string, fallback: T): T {
@@ -37,7 +40,7 @@ export function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<UserAccount | null>(null);
   const [accordions, setAccordions] = useState<AccordionConfig[]>(FALLBACK_ACCORDIONS);
-  const [preferences, setPreferences] = useState<UserPreferences>(() => getStored('soufflet.preferences', defaultPreferences));
+  const [preferences, setPreferences] = useState<UserPreferences>(() => ({ ...defaultPreferences, ...getStored('soufflet.preferences', defaultPreferences) }));
   const [songs, setSongs] = useState<Song[]>(() => getStored<Song[]>('soufflet.songs', []).filter((song) => !song.builtIn));
   const [practiceSong, setPracticeSong] = useState<Song | null>(null);
   const [studioSong, setStudioSong] = useState<Song | undefined>();
@@ -77,6 +80,7 @@ export function App() {
   }, []);
 
   const selectedAccordion = useMemo(() => accordions.find((item) => item.id === preferences.accordionId) ?? accordions[0], [accordions, preferences.accordionId]);
+  const firstLessonSong = useMemo(() => selectedAccordion ? adaptSongToAccordion(DEMO_SONG, selectedAccordion) : DEMO_SONG, [selectedAccordion]);
 
   const saveSong = useCallback((next: Song) => {
     setSongs((items) => items.some((item) => item.id === next.id) ? items.map((item) => item.id === next.id ? next : item) : [next, ...items]);
@@ -99,9 +103,17 @@ export function App() {
   if (!selectedAccordion) return null;
 
   if (!preferences.onboardingDone) {
-    return <Onboarding accordions={accordions} initialAccordionId={preferences.accordionId} initialNotation={preferences.notation} onSkip={(accordionId, notation) => savePreferences({ accordionId, notation, onboardingDone: true })} onComplete={(accordionId, notation) => {
-      savePreferences({ accordionId, notation, onboardingDone: true });
-      startPractice(DEMO_SONG);
+    return <Onboarding accordions={accordions} initialAccordionId={preferences.accordionId} initialNotation={preferences.notation} onSkip={(accordionId, notation) => savePreferences({ accordionId, notation, onboardingDone: true, tutorialDone: false })} onComplete={(accordionId, notation) => {
+      savePreferences({ accordionId, notation, onboardingDone: true, tutorialDone: false });
+    }} />;
+  }
+
+  if (!preferences.tutorialDone) {
+    return <FirstLessonTutorial accordion={selectedAccordion} notation={preferences.notation} song={firstLessonSong} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onComplete={() => {
+      savePreferences({ ...preferences, tutorialDone: true });
+      setPracticeSong(null);
+      setPage('home');
+      window.scrollTo({ top: 0 });
     }} />;
   }
 
