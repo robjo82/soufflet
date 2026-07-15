@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { displayNote, FALLBACK_ACCORDIONS } from './data';
+import { adaptSongToAccordion, DEMO_SONG, displayNote, FALLBACK_ACCORDIONS } from './data';
 import { frequencyToPitch } from './hooks/usePitchDetector';
 import { getMelodyButtonSize } from './components/accordionLayout';
 import { PRACTICE_MODES } from './practiceModes';
 import { TUTORIAL_MODE_TRIALS } from './tutorialFlow';
+import { getWaitAdvance } from './practiceProgress';
 
 describe('accordion configurations', () => {
   it('ships the Hohner Club I 10 + 9 + 2 layout', () => {
@@ -52,5 +53,32 @@ describe('pitch and notation', () => {
 describe('first lesson tutorial', () => {
   it('includes a validated trial for every practice mode', () => {
     expect(TUTORIAL_MODE_TRIALS.map((trial) => trial.id)).toEqual(PRACTICE_MODES.map((mode) => mode.id));
+  });
+});
+
+describe('practice progression', () => {
+  it('advances one note at a time and finishes on the boundary', () => {
+    expect(getWaitAdvance(0, 3, false, 0, 2)).toEqual({ nextIndex: 1, finished: false, looped: false });
+    expect(getWaitAdvance(1, 3, false, 0, 2)).toEqual({ nextIndex: 2, finished: false, looped: false });
+    expect(getWaitAdvance(2, 3, false, 0, 2)).toEqual({ nextIndex: 2, finished: true, looped: false });
+  });
+
+  it('returns to the loop start after the selected final note', () => {
+    expect(getWaitAdvance(4, 8, true, 2, 4)).toEqual({ nextIndex: 2, finished: false, looped: true });
+  });
+});
+
+describe('left-hand accompaniment', () => {
+  it('adapts basses and chords to the selected accordion and bellows direction', () => {
+    const accordion = FALLBACK_ACCORDIONS.find((item) => item.id === 'standard-gc-21-8')!;
+    const song = adaptSongToAccordion(DEMO_SONG, accordion);
+    expect(song.accompaniment?.length).toBeGreaterThan(3);
+    expect(new Set(song.accompaniment?.map((event) => event.role))).toEqual(new Set(['bass', 'chord']));
+    for (const accompaniment of song.accompaniment ?? []) {
+      const button = accordion.basses.find((item) => item.id === accompaniment.buttonId);
+      expect(button).toBeDefined();
+      expect(accompaniment.midi).toBe(accompaniment.direction === 'push' ? button?.pushMidi : button?.pullMidi);
+      expect(accompaniment.note.replace(/-?\d+$/, '')).toBe(accompaniment.chord);
+    }
   });
 });

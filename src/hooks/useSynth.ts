@@ -50,10 +50,19 @@ export function useSynth() {
     oscillator.stop(context.currentTime + 0.055);
   }, [getContext]);
 
+  const playLeftHand = useCallback((midi: number, role: 'bass' | 'chord', chord = 'C', duration = .38) => {
+    if (role === 'bass') {
+      playMidi(midi, duration, .1);
+      return;
+    }
+    const minor = chord.endsWith('m');
+    [0, minor ? 3 : 4, 7].forEach((interval) => playMidi(midi + interval, duration, .045));
+  }, [playMidi]);
+
   useEffect(() => () => {
     activeRef.current.forEach((node) => node.stop());
     void contextRef.current?.close();
   }, []);
 
-  return { playMidi, click };
+  return { playMidi, playLeftHand, click };
 }

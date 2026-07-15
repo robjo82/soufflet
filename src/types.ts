@@ -56,6 +56,20 @@ export interface SongEvent {
   confidence?: number;
 }
 
+export interface AccompanimentEvent {
+  id: string;
+  beat: number;
+  duration: number;
+  rootMidi: number;
+  midi: number;
+  note: string;
+  chord: string;
+  role: 'bass' | 'chord';
+  buttonId: string;
+  direction: Direction;
+  confidence?: number;
+}
+
 export interface Song {
   id: string;
   title: string;
@@ -69,6 +83,7 @@ export interface Song {
   difficulty: number;
   status: 'ready' | 'analyzing' | 'needs-review' | 'reference-only';
   events: SongEvent[];
+  accompaniment?: AccompanimentEvent[];
   confidence?: number;
   uncertainBeats?: number[];
   builtIn?: boolean;

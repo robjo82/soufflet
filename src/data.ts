@@ -1,8 +1,35 @@
-import type { AccordionButton, AccordionConfig, SkillProgress, Song } from './types';
+import type { AccompanimentEvent, AccordionButton, AccordionConfig, SkillProgress, Song, SongEvent } from './types';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 export const noteFromMidi = (midi: number) => `${NOTES[midi % 12]}${Math.floor(midi / 12) - 1}`;
+
+function simpleAccompaniment(events: SongEvent[]): AccompanimentEvent[] {
+  const lastEvent = events.at(-1);
+  const totalBeats = lastEvent ? Math.ceil(lastEvent.beat + lastEvent.duration) : 0;
+  return Array.from({ length: totalBeats }, (_, beat) => {
+    let melody = events[0];
+    for (const event of events) {
+      if (event.beat > beat) break;
+      melody = event;
+    }
+    const pitchClass = ((melody?.midi ?? 60) % 12 + 12) % 12;
+    const rootMidi = pitchClass === 5 || pitchClass === 9 ? 41 : pitchClass === 2 || pitchClass === 11 ? 43 : 48;
+    return {
+      id: `left-${beat + 1}`,
+      beat,
+      duration: .72,
+      rootMidi,
+      midi: rootMidi,
+      note: noteFromMidi(rootMidi),
+      chord: NOTES[rootMidi % 12],
+      role: beat % 2 === 0 ? 'bass' : 'chord',
+      buttonId: '',
+      direction: melody?.direction ?? 'push',
+      confidence: 1,
+    };
+  });
+}
 
 const makeButton = (
   id: string,
@@ -100,6 +127,24 @@ export const FALLBACK_ACCORDIONS: AccordionConfig[] = [
   },
 ];
 
+const DEMO_EVENTS: SongEvent[] = [
+  { id: 'e1', beat: 0, duration: 1, midi: 60, note: 'C4', buttonId: 'gc-in-4', direction: 'push', finger: 2, confidence: 1 },
+  { id: 'e2', beat: 1, duration: 1, midi: 62, note: 'D4', buttonId: 'gc-in-4', direction: 'pull', finger: 2, confidence: 1 },
+  { id: 'e3', beat: 2, duration: 1, midi: 64, note: 'E4', buttonId: 'gc-in-5', direction: 'push', finger: 3, confidence: 1 },
+  { id: 'e4', beat: 3, duration: 1, midi: 65, note: 'F4', buttonId: 'gc-in-5', direction: 'pull', finger: 3, confidence: 1 },
+  { id: 'e5', beat: 4, duration: 2, midi: 67, note: 'G4', buttonId: 'gc-in-6', direction: 'push', finger: 4, confidence: 1 },
+  { id: 'e6', beat: 6, duration: 1, midi: 69, note: 'A4', buttonId: 'gc-in-6', direction: 'pull', finger: 4, confidence: 1 },
+  { id: 'e7', beat: 7, duration: 1, midi: 71, note: 'B4', buttonId: 'gc-in-7', direction: 'pull', finger: 5, confidence: 1 },
+  { id: 'e8', beat: 8, duration: 2, midi: 72, note: 'C5', buttonId: 'gc-in-7', direction: 'push', finger: 5, confidence: 1 },
+  { id: 'e9', beat: 10, duration: 1, midi: 71, note: 'B4', buttonId: 'gc-in-7', direction: 'pull', finger: 5, confidence: 1 },
+  { id: 'e10', beat: 11, duration: 1, midi: 69, note: 'A4', buttonId: 'gc-in-6', direction: 'pull', finger: 4, confidence: 1 },
+  { id: 'e11', beat: 12, duration: 1, midi: 67, note: 'G4', buttonId: 'gc-in-6', direction: 'push', finger: 4, confidence: 1 },
+  { id: 'e12', beat: 13, duration: 1, midi: 65, note: 'F4', buttonId: 'gc-in-5', direction: 'pull', finger: 3, confidence: 1 },
+  { id: 'e13', beat: 14, duration: 1, midi: 64, note: 'E4', buttonId: 'gc-in-5', direction: 'push', finger: 3, confidence: 1 },
+  { id: 'e14', beat: 15, duration: 1, midi: 62, note: 'D4', buttonId: 'gc-in-4', direction: 'pull', finger: 2, confidence: 1 },
+  { id: 'e15', beat: 16, duration: 4, midi: 60, note: 'C4', buttonId: 'gc-in-4', direction: 'push', finger: 2, confidence: 1 },
+];
+
 export const DEMO_SONG: Song = {
   id: 'first-breath',
   title: 'Premier souffle',
@@ -112,23 +157,8 @@ export const DEMO_SONG: Song = {
   difficulty: 1,
   status: 'ready',
   confidence: 1,
-  events: [
-    { id: 'e1', beat: 0, duration: 1, midi: 60, note: 'C4', buttonId: 'gc-in-4', direction: 'push', finger: 2, confidence: 1 },
-    { id: 'e2', beat: 1, duration: 1, midi: 62, note: 'D4', buttonId: 'gc-in-4', direction: 'pull', finger: 2, confidence: 1 },
-    { id: 'e3', beat: 2, duration: 1, midi: 64, note: 'E4', buttonId: 'gc-in-5', direction: 'push', finger: 3, confidence: 1 },
-    { id: 'e4', beat: 3, duration: 1, midi: 65, note: 'F4', buttonId: 'gc-in-5', direction: 'pull', finger: 3, confidence: 1 },
-    { id: 'e5', beat: 4, duration: 2, midi: 67, note: 'G4', buttonId: 'gc-in-6', direction: 'push', finger: 4, confidence: 1 },
-    { id: 'e6', beat: 6, duration: 1, midi: 69, note: 'A4', buttonId: 'gc-in-6', direction: 'pull', finger: 4, confidence: 1 },
-    { id: 'e7', beat: 7, duration: 1, midi: 71, note: 'B4', buttonId: 'gc-in-7', direction: 'pull', finger: 5, confidence: 1 },
-    { id: 'e8', beat: 8, duration: 2, midi: 72, note: 'C5', buttonId: 'gc-in-7', direction: 'push', finger: 5, confidence: 1 },
-    { id: 'e9', beat: 10, duration: 1, midi: 71, note: 'B4', buttonId: 'gc-in-7', direction: 'pull', finger: 5, confidence: 1 },
-    { id: 'e10', beat: 11, duration: 1, midi: 69, note: 'A4', buttonId: 'gc-in-6', direction: 'pull', finger: 4, confidence: 1 },
-    { id: 'e11', beat: 12, duration: 1, midi: 67, note: 'G4', buttonId: 'gc-in-6', direction: 'push', finger: 4, confidence: 1 },
-    { id: 'e12', beat: 13, duration: 1, midi: 65, note: 'F4', buttonId: 'gc-in-5', direction: 'pull', finger: 3, confidence: 1 },
-    { id: 'e13', beat: 14, duration: 1, midi: 64, note: 'E4', buttonId: 'gc-in-5', direction: 'push', finger: 3, confidence: 1 },
-    { id: 'e14', beat: 15, duration: 1, midi: 62, note: 'D4', buttonId: 'gc-in-4', direction: 'pull', finger: 2, confidence: 1 },
-    { id: 'e15', beat: 16, duration: 4, midi: 60, note: 'C4', buttonId: 'gc-in-4', direction: 'push', finger: 2, confidence: 1 },
-  ],
+  events: DEMO_EVENTS,
+  accompaniment: simpleAccompaniment(DEMO_EVENTS),
 };
 
 export const SKILLS: SkillProgress[] = [
@@ -177,5 +207,34 @@ export function adaptSongToAccordion(song: Song, accordion: AccordionConfig): So
     previousDirection = choice.direction;
     return { ...event, buttonId: choice.button.id, direction: choice.direction, finger: choice.button.finger ?? event.finger };
   });
-  return { ...song, events };
+  const accompaniment = song.accompaniment?.map((item) => {
+    let melody = events[0];
+    for (const event of events) {
+      if (event.beat > item.beat) break;
+      melody = event;
+    }
+    const direction = melody?.direction ?? item.direction;
+    const desiredPitchClass = ((item.rootMidi % 12) + 12) % 12;
+    const candidates = accordion.basses
+      .filter((button) => button.role === item.role)
+      .map((button) => {
+        const midi = direction === 'push' ? button.pushMidi : button.pullMidi;
+        const pitchClass = ((midi % 12) + 12) % 12;
+        const interval = Math.min((pitchClass - desiredPitchClass + 12) % 12, (desiredPitchClass - pitchClass + 12) % 12);
+        const harmonicScore = interval === 0 ? 0 : interval === 5 ? 1 : interval === 2 ? 2 : 10 + interval;
+        return { button, midi, harmonicScore };
+      })
+      .sort((left, right) => left.harmonicScore - right.harmonicScore || left.button.index - right.button.index);
+    const choice = candidates[0];
+    if (!choice) return { ...item, buttonId: '', direction, confidence: Math.min(item.confidence ?? 1, .4) };
+    return {
+      ...item,
+      buttonId: choice.button.id,
+      direction,
+      midi: choice.midi,
+      note: noteFromMidi(choice.midi),
+      chord: NOTES[((choice.midi % 12) + 12) % 12],
+    };
+  });
+  return { ...song, events, accompaniment };
 }
