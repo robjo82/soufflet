@@ -56,6 +56,10 @@ export function frequencyToPitch(frequency: number, confidence = 1, volume = 1, 
   };
 }
 
+export function rememberReliablePitch(previous: PitchReading | null, current: PitchReading | null, minimumConfidence = 0.72) {
+  return current && current.confidence > minimumConfidence ? current : previous;
+}
+
 export function usePitchDetector() {
   const [reading, setReading] = useState<PitchReading | null>(null);
   const [status, setStatus] = useState<'idle' | 'requesting' | 'listening' | 'denied' | 'error'>('idle');
