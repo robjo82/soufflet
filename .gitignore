@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+data/*.db
+data/*.db-*
+uploads
+*.log
+.DS_Store
+coverage
+.idea
+.playwright-cli
+output

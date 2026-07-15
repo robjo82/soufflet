@@ -1,0 +1,15 @@
+services:
+  soufflet:
+    build: .
+    image: soufflet:latest
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
+    volumes:
+      - soufflet-data:/app/data
+
+volumes:
+  soufflet-data:

@@ -1,0 +1,41 @@
+# Architecture et sécurité
+
+## Vue d’ensemble
+
+```text
+Navigateur React
+├── moteur de lecture / synthèse Web Audio
+├── détection monophonique locale par autocorrélation
+├── préférences et autosauvegarde locale
+└── API HTTPS
+    ├── configurations d’accordéons (SQLite)
+    ├── parseur de tablature déterministe
+    └── transcription multimodale Gemini
+```
+
+Le front est construit par Vite. Express sert l’API et le build statique en production. SQLite utilise le module natif `node:sqlite`, le journal WAL et un volume Docker persistant. Les configurations intégrées sont réappliquées de façon idempotente au démarrage ; une future configuration utilisateur portera `is_builtin = 0` et ne sera pas écrasée.
+
+## Audio local
+
+`usePitchDetector` demande un flux `getUserMedia` sans annulation d’écho ni gain automatique, calcule le RMS, puis une autocorrélation normalisée entre 55 et 1 200 Hz. Une note n’est publiée qu’au-dessus d’un seuil de clarté. Le flux n’est ni enregistré, ni uploadé, et ses pistes sont arrêtées à la fermeture de l’écran.
+
+Ce détecteur est adapté aux notes isolées. Il ne prétend pas distinguer de manière fiable une mélodie au sein d’un accord polyphonique ; cette capacité devra employer un modèle audio local spécialisé et être validée sur un corpus d’accordéons réels.
+
+## Gemini
+
+La clé serveur vient de `GEMINI_API_KEY`. Une clé de session facultative arrive dans l’en-tête `x-gemini-key` et n’est jamais journalisée ni stockée. Les uploads utilisent une mémoire temporaire limitée à 25 Mo et ne sont pas écrits sur disque. Le délai d’appel est limité à 120 secondes et la réponse est assainie : bornes de tempo, MIDI, confiance, taille et tri chronologique.
+
+Avant une exposition publique, ajouter au reverse proxy : limitation de débit par IP/compte, quota par taille et durée, authentification, protection CSRF si des cookies sont introduits, journal d’audit sans contenu musical et analyse antivirus des fichiers.
+
+## Données utilisateur
+
+Ce prototype local-first stocke morceaux corrigés et préférences dans `localStorage`. Cela garantit l’absence de perte lors d’une coupure réseau, mais ne remplace pas la synchronisation multi-appareils. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
+
+## Accessibilité
+
+- contrastes principaux conformes à une lecture à distance ;
+- focus visible et commandes clavier ;
+- alternatives textuelles sur le clavier ;
+- pousser/tirer exprimé par mouvement, flèche, mot, forme de badge et couleur ;
+- réduction des animations via `prefers-reduced-motion` ;
+- zones tactiles principales de 44 à 56 px.

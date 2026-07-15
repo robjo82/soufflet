@@ -1,0 +1,268 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AudioLines, ChevronDown, CircleGauge, Expand, Flag, Gauge,
+  Pause, Play, Redo2, Repeat2, Settings2, SlidersHorizontal, TimerReset, Volume2,
+} from 'lucide-react';
+import { AccordionView } from './AccordionView';
+import { ScoreStrip } from './ScoreStrip';
+import { usePitchDetector } from '../hooks/usePitchDetector';
+import { useSynth } from '../hooks/useSynth';
+import type { AccordionConfig, Notation, PracticeMode, PracticeSettings, Song } from '../types';
+
+const MODES: Array<{ id: PracticeMode; label: string; short: string }> = [
+  { id: 'demo', label: 'Démonstration', short: 'Regarde et écoute' },
+  { id: 'guided', label: 'Lecture guidée', short: 'Joue avec l’aide' },
+  { id: 'wait', label: 'Attendre la bonne note', short: 'À ton rythme' },
+  { id: 'notes', label: 'Notes uniquement', short: 'Sans accompagnement' },
+  { id: 'rhythm', label: 'Rythme uniquement', short: 'Sur une seule note' },
+  { id: 'bellows', label: 'Soufflet uniquement', short: 'Travaille les directions' },
+  { id: 'right', label: 'Main droite', short: 'Mélodie seule' },
+  { id: 'left', label: 'Main gauche', short: 'Basses seules' },
+  { id: 'combined', label: 'Mains combinées', short: 'Coordination' },
+  { id: 'performance', label: 'Performance', short: 'Sans assistance' },
+];
+
+interface PracticePlayerProps {
+  song: Song;
+  accordion: AccordionConfig;
+  onClose: () => void;
+  notation: Notation;
+  onNotationChange: (notation: Notation) => void;
+}
+
+export function PracticePlayer({ song, accordion, onClose, notation, onNotationChange }: PracticePlayerProps) {
+  const [settings, setSettings] = useState<PracticeSettings>({
+    mode: 'demo', tempo: 80, countIn: true, metronome: false, loop: false,
+    loopStart: 0, loopEnd: song.events.length - 1, notation,
+  });
+  const [playing, setPlaying] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [modeOpen, setModeOpen] = useState(false);
+  const [showScore, setShowScore] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [flagged, setFlagged] = useState(false);
+  const [feedback, setFeedback] = useState<{ kind: 'good' | 'hint' | 'neutral'; title: string; detail: string }>({
+    kind: 'neutral', title: 'Prêt quand tu l’es', detail: 'Regarde la direction du soufflet, puis appuie sur Lecture.',
+  });
+  const startedAtRef = useRef(0);
+  const startBeatRef = useRef(0);
+  const rafRef = useRef(0);
+  const lastPlayedRef = useRef(-1);
+  const lastCorrectIndexRef = useRef(-1);
+  const { playMidi, click } = useSynth();
+  const detector = usePitchDetector();
+  const currentEvent = song.events[activeIndex];
+  const actualBpm = song.bpm * settings.tempo / 100;
+  const beatMs = 60000 / actualBpm;
+  const practiceWithMic = settings.mode !== 'demo';
+
+  const selectIndex = useCallback((index: number) => {
+    setActiveIndex(index);
+    lastPlayedRef.current = -1;
+    lastCorrectIndexRef.current = -1;
+    setPlaying(false);
+  }, []);
+
+  const stop = useCallback(() => {
+    setPlaying(false);
+    cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const restart = useCallback(() => {
+    stop();
+    setActiveIndex(settings.loop ? settings.loopStart : 0);
+    lastPlayedRef.current = -1;
+    lastCorrectIndexRef.current = -1;
+    setFeedback({ kind: 'neutral', title: 'On reprend calmement', detail: 'Inspire, prépare le doigt et regarde la direction.' });
+  }, [settings.loop, settings.loopStart, stop]);
+
+  const begin = useCallback(() => {
+    if (playing) { stop(); return; }
+    startedAtRef.current = performance.now();
+    startBeatRef.current = song.events[activeIndex]?.beat ?? 0;
+    lastPlayedRef.current = -1;
+    lastCorrectIndexRef.current = -1;
+    setPlaying(true);
+    if (practiceWithMic && detector.status === 'idle') void detector.start();
+  }, [activeIndex, detector, playing, practiceWithMic, song.events, stop]);
+
+  useEffect(() => {
+    if (!playing) return;
+    if (settings.mode === 'wait') return;
+    const animate = (now: number) => {
+      const elapsedBeats = (now - startedAtRef.current) / beatMs;
+      const beat = startBeatRef.current + elapsedBeats;
+      let nextIndex = activeIndex;
+      for (let i = activeIndex; i < song.events.length; i += 1) {
+        if (song.events[i].beat <= beat + 0.02) nextIndex = i;
+        else break;
+      }
+      if (nextIndex !== activeIndex) setActiveIndex(nextIndex);
+      const event = song.events[nextIndex];
+      if (event && lastPlayedRef.current !== nextIndex) {
+        lastPlayedRef.current = nextIndex;
+        if (soundEnabled && (settings.mode === 'demo' || settings.mode === 'guided')) {
+          playMidi(event.midi, event.duration * beatMs / 1000 * 0.92);
+        }
+        if (soundEnabled && settings.metronome) click(event.beat % song.timeSignature[0] === 0);
+      }
+      const boundary = settings.loop ? settings.loopEnd : song.events.length - 1;
+      const endEvent = song.events[boundary];
+      if (nextIndex >= boundary && beat >= endEvent.beat + endEvent.duration) {
+        if (settings.loop) {
+          const loopEvent = song.events[settings.loopStart];
+          setActiveIndex(settings.loopStart);
+          startedAtRef.current = now;
+          startBeatRef.current = loopEvent.beat;
+          lastPlayedRef.current = -1;
+        } else {
+          setPlaying(false);
+          setFeedback({ kind: 'good', title: 'Bravo, passage terminé !', detail: 'Tu as gardé le fil jusqu’au bout. Rejoue à 90 % quand tu te sens prêt.' });
+          return;
+        }
+      }
+      rafRef.current = requestAnimationFrame(animate);
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [activeIndex, beatMs, click, playMidi, playing, settings.loop, settings.loopEnd, settings.loopStart, settings.metronome, settings.mode, song.events, song.timeSignature, soundEnabled]);
+
+  useEffect(() => {
+    if (!practiceWithMic || !currentEvent || !detector.reading) return;
+    const delta = detector.reading.midi - currentEvent.midi;
+    if (Math.abs(delta) === 0 && detector.reading.confidence > 0.7) {
+      setFeedback({ kind: 'good', title: 'Bonne note', detail: 'La hauteur est juste. Garde le son jusqu’au prochain repère.' });
+      if (settings.mode === 'wait' && playing) {
+        if (lastCorrectIndexRef.current === activeIndex) return;
+        lastCorrectIndexRef.current = activeIndex;
+        if (activeIndex === song.events.length - 1) {
+          setPlaying(false);
+          setFeedback({ kind: 'good', title: 'Exercice terminé !', detail: 'Tu as trouvé toutes les notes sans limite de temps.' });
+        } else {
+          const next = activeIndex + 1;
+          window.setTimeout(() => setActiveIndex(next), 260);
+        }
+      }
+    } else if (detector.reading.confidence > 0.72) {
+      setFeedback({
+        kind: 'hint',
+        title: delta < 0 ? 'Un peu trop grave' : 'Un peu trop aigu',
+        detail: `Tu joues ${detector.reading.note}. Cherche le bouton éclairé sans changer la direction du soufflet.`,
+      });
+    }
+  }, [activeIndex, currentEvent, detector.reading, playing, practiceWithMic, settings.mode, song.events.length]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.code === 'Space') { event.preventDefault(); begin(); }
+      if (event.key.toLowerCase() === 'r') restart();
+      if (event.key.toLowerCase() === 'l') setSettings((value) => ({ ...value, loop: !value.loop }));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [begin, restart]);
+
+  const progress = useMemo(() => ((activeIndex + 1) / song.events.length) * 100, [activeIndex, song.events.length]);
+
+  return (
+    <div className="practice-page">
+      <header className="practice-header">
+        <button type="button" className="brand-mini" onClick={onClose} aria-label="Retour à l’accueil">
+          <span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong>
+        </button>
+        <div className="song-heading">
+          <button type="button" className="crumb" onClick={onClose}>Séance du jour</button>
+          <span>/</span><strong>{song.title}</strong>
+        </div>
+        <div className="practice-meta">
+          <span><CircleGauge size={15} /> {Math.round(actualBpm)} BPM</span>
+          <span>{song.key}</span>
+          <button type="button" className="icon-button" onClick={() => document.documentElement.requestFullscreen?.()} aria-label="Plein écran"><Expand size={19} /></button>
+        </div>
+      </header>
+
+      <div className="session-progress"><i style={{ width: `${progress}%` }} /></div>
+
+      <main className="practice-main">
+        <div className="practice-toolbar">
+          <div className="mode-picker">
+            <button type="button" className="mode-trigger" onClick={() => setModeOpen(!modeOpen)}>
+              <span><small>MODE D’ENTRAÎNEMENT</small><strong>{MODES.find((mode) => mode.id === settings.mode)?.label}</strong></span>
+              <ChevronDown size={18} />
+            </button>
+            {modeOpen && (
+              <div className="mode-menu">
+                {MODES.map((mode) => (
+                  <button type="button" key={mode.id} className={settings.mode === mode.id ? 'is-selected' : ''} onClick={() => {
+                    setSettings((value) => ({ ...value, mode: mode.id })); setModeOpen(false); stop();
+                    if (mode.id === 'left' || mode.id === 'combined') setFeedback({ kind: 'neutral', title: 'Guidage visuel disponible', detail: 'La reconnaissance fiable des basses et accords simultanés est encore en validation. Le micro évalue seulement les notes isolées.' });
+                  }}>
+                    <span>{mode.label}</span><small>{mode.short}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="notation-switch" aria-label="Convention de notation">
+            {(['french', 'english', 'tablature'] as Notation[]).map((item) => (
+              <button type="button" key={item} className={notation === item ? 'is-active' : ''} onClick={() => onNotationChange(item)}>
+                {item === 'french' ? 'Do Ré' : item === 'english' ? 'A B C' : '1P / 1T'}
+              </button>
+            ))}
+          </div>
+          <button type="button" className={`tool-toggle ${settings.loop ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, loop: !value.loop }))}>
+            <Repeat2 size={17} /> Boucler
+          </button>
+          <button type="button" className={`tool-toggle ${!showScore ? 'is-active' : ''}`} onClick={() => setShowScore(!showScore)}><SlidersHorizontal size={17} /> {showScore ? 'Masquer la partition' : 'Afficher la partition'}</button>
+        </div>
+
+        <section className="instrument-stage">
+          {settings.mode !== 'performance' && (
+            <AccordionView
+              config={accordion}
+              activeEvent={currentEvent}
+              direction={currentEvent?.direction}
+              notation={notation}
+              detectedMidi={detector.reading?.midi}
+              onButtonPress={(_, direction) => {
+                if (direction !== currentEvent?.direction) setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${currentEvent?.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
+                else if (soundEnabled) playMidi(currentEvent?.midi ?? 60);
+              }}
+            />
+          )}
+        </section>
+
+        {settings.mode !== 'performance' && showScore && (
+          <ScoreStrip song={song} activeIndex={activeIndex} notation={notation} onSelect={(_, index) => selectIndex(index)} />
+        )}
+
+        <section className={`coach-feedback feedback-${feedback.kind}`} aria-live="polite">
+          <div className="coach-avatar"><AudioLines size={22} /></div>
+          <div><small>CONSEIL EN DIRECT</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></div>
+          {practiceWithMic && (
+            <div className="mic-status">
+              <span className={detector.status === 'listening' ? 'mic-live' : ''} />
+              {detector.status === 'listening' ? (detector.reading ? `${detector.reading.note} · ${Math.round(detector.reading.confidence * 100)} %` : 'Écoute…') : 'Micro en attente'}
+            </div>
+          )}
+          <button type="button" className="explain-button" onClick={() => setFeedback({ kind: 'neutral', title: 'Ce que j’écoute', detail: 'Je compare la hauteur, le moment de l’attaque et la durée. La direction du soufflet est déduite du bouton attendu : un capteur de mouvement pourra la confirmer plus tard.' })}>Pourquoi ?</button>
+        </section>
+      </main>
+
+      <footer className="transport-bar">
+        <div className="transport-side">
+          <button type="button" className="transport-tool" onClick={restart}><Redo2 /> <span>Recommencer<kbd>R</kbd></span></button>
+          <button type="button" className={`transport-tool ${settings.loop ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, loop: !value.loop }))}><Repeat2 /> <span>Boucle<kbd>L</kbd></span></button>
+        </div>
+        <button type="button" className="primary-play" onClick={begin}>{playing ? <Pause /> : <Play fill="currentColor" />}<span>{playing ? 'Pause' : 'Commencer'}</span><kbd>Espace</kbd></button>
+        <div className="transport-side align-right">
+          <label className="tempo-control"><Gauge size={19} /><span>Tempo <strong>{settings.tempo} %</strong></span><input type="range" min="40" max="120" step="5" value={settings.tempo} onChange={(event) => setSettings((value) => ({ ...value, tempo: Number(event.target.value) }))} /></label>
+          <button type="button" className={`transport-tool ${settings.metronome ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, metronome: !value.metronome }))}><TimerReset /><span>Métronome</span></button>
+          <button type="button" className={`icon-button ${soundEnabled ? '' : 'is-active'}`} onClick={() => setSoundEnabled(!soundEnabled)} title={soundEnabled ? 'Couper le son de l’application' : 'Activer le son'}><Volume2 /></button>
+          <button type="button" className="icon-button" onClick={() => setModeOpen(true)} title="Réglages du mode"><Settings2 /></button>
+          <button type="button" className={`icon-button ${flagged ? 'is-active' : ''}`} title="Marquer ce passage difficile" onClick={() => { setFlagged(!flagged); setFeedback({ kind: 'neutral', title: flagged ? 'Marque retirée' : 'Passage marqué pour révision', detail: flagged ? 'Ce passage ne reviendra plus en priorité.' : 'Il sera proposé plus tôt dans une prochaine séance.' }); }}><Flag fill={flagged ? 'currentColor' : 'none'} /></button>
+        </div>
+      </footer>
+    </div>
+  );
+}
