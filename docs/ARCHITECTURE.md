@@ -27,6 +27,8 @@ Ce détecteur est adapté aux notes isolées. Il ne prétend pas distinguer de m
 
 La clé serveur vient de `GEMINI_API_KEY`. Une clé de session facultative arrive dans l’en-tête `x-gemini-key` et n’est jamais journalisée ni stockée. Les uploads utilisent une mémoire temporaire limitée à 25 Mo et ne sont pas écrits sur disque. Le délai d’appel est limité à 120 secondes et la réponse est assainie : bornes de tempo, MIDI, confiance, taille et tri chronologique.
 
+Pour YouTube, le serveur récupère d’abord le titre et l’auteur via oEmbed. Un titre correspondant à une édition intégrée prête à jouer réutilise cette transcription contrôlée, avec un avertissement explicite sur la synchronisation de l’enregistrement. Sans correspondance, la vidéo précède le prompt dans la requête Gemini, son type MIME est explicite et toutes les confiances sont plafonnées à 60 %. Cette branche reste une ébauche à corriger, pas une transcription certifiée.
+
 Avant une exposition publique intensive, ajouter au reverse proxy : quota par compte, limitation de débit distribuée, journal d’audit sans contenu musical et analyse antivirus des fichiers. Les mutations restent sur la même origine avec des cookies `SameSite=Lax`; le cookie passe en mode `Secure` derrière HTTPS.
 
 ## Données utilisateur

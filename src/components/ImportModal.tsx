@@ -39,7 +39,7 @@ function mapTranscription(result: TranscriptionResult, accordion: AccordionConfi
   const beats = Math.max(1, ...events.map((event) => event.beat + event.duration));
   return {
     id: `song-${Date.now()}`,
-    title: result.title || 'Morceau importé',
+    title: result.method === 'verified-library' && sourceType === 'youtube' ? `${result.title} — vidéo reconnue` : result.title || 'Morceau importé',
     artist: result.artist || 'Artiste inconnu',
     sourceType,
     sourceUrl,
@@ -51,6 +51,8 @@ function mapTranscription(result: TranscriptionResult, accordion: AccordionConfi
     status: result.confidence < 0.75 || events.some((event) => (event.confidence ?? 0) < 0.65) ? 'needs-review' : 'ready',
     confidence: result.confidence,
     uncertainBeats: events.filter((event) => (event.confidence ?? 0) < 0.65).map((event) => event.beat),
+    transcriptionMethod: result.method,
+    transcriptionWarnings: result.warnings,
     events,
   };
 }
@@ -114,8 +116,8 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
         {state === 'processing' ? (
           <div className="processing-view">
             <div className="analysis-orb"><LoaderCircle /><Music2 /></div>
-            <h3>Gemini écoute et prépare ta leçon…</h3>
-            <p>Une transcription musicale reste une estimation. Les passages incertains seront signalés dans le studio.</p>
+            <h3>Soufflet vérifie puis prépare ta leçon…</h3>
+            <p>Une édition connue sera réutilisée. Sinon, les passages estimés par l’IA seront signalés dans le studio.</p>
             <div className="analysis-steps">{STEPS.map((step, index) => <span key={step} className={index < activeStep ? 'is-done' : index === activeStep ? 'is-active' : ''}>{index < activeStep ? <Check /> : <i>{index + 1}</i>}<strong>{step}</strong>{index === activeStep && <small>En cours…</small>}</span>)}</div>
           </div>
         ) : (
@@ -128,7 +130,7 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
 
             <div className="import-body">
               {kind === 'file' && <div className={`drop-zone ${file ? 'has-file' : ''}`} onClick={() => inputRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setFile(event.dataTransfer.files[0] ?? null); }}><input ref={inputRef} type="file" accept="audio/*,video/*,.pdf,.png,.jpg,.jpeg,.musicxml,.mxl,.mid,.midi" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><span>{file ? <FileMusic /> : <Upload />}</span><strong>{file ? file.name : 'Dépose ton fichier ici'}</strong><p>{file ? `${(file.size / 1024 / 1024).toFixed(1)} Mo · prêt pour l’analyse` : 'Audio, vidéo, PDF, photo, MusicXML ou MIDI · 25 Mo maximum'}</p><button type="button" className="secondary-button">{file ? 'Choisir un autre fichier' : 'Parcourir mes fichiers'}</button></div>}
-              {kind === 'youtube' && <div className="link-import"><Youtube /><h3>Vidéo YouTube publique</h3><p>Gemini 3.5 Flash peut analyser directement une URL publique. La fonction est en preview : vérifie soigneusement le résultat.</p><label><span>Adresse de la vidéo</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=…" /></div></label>{url && !youtubeId(url) && <small className="field-error">Cette adresse ne ressemble pas à une vidéo YouTube.</small>}</div>}
+              {kind === 'youtube' && <div className="link-import"><Youtube /><h3>Vidéo YouTube publique</h3><p>Soufflet cherche d’abord une édition vérifiée dans la bibliothèque. Sinon, Gemini propose une ébauche obligatoirement marquée à vérifier.</p><label><span>Adresse de la vidéo</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=…" /></div></label>{url && !youtubeId(url) && <small className="field-error">Cette adresse ne ressemble pas à une vidéo YouTube.</small>}</div>}
               {kind === 'spotify' && <div className="link-import spotify-import"><Music2 /><h3>Lien Spotify</h3><p>Spotify interdit l’analyse et la synchronisation de ses enregistrements par des apps tierces. Le lien sera ajouté comme référence ; importe ensuite un fichier audio que tu as le droit d’utiliser.</p><label><span>Adresse Spotify</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://open.spotify.com/track/…" /></div></label><div className="legal-note"><AlertCircle /> Aucun audio Spotify n’est téléchargé, copié ou envoyé à une IA.</div></div>}
               {kind === 'tablature' && <div className="text-import"><FileText /><h3>Coller une tablature</h3><p>Formats simples acceptés : <code>4P 4T 5P</code>, noms de notes, ou texte libre. L’éditeur permettra de tout corriger.</p><textarea value={tabText} onChange={(event) => setTabText(event.target.value)} placeholder={'Titre: Ma mélodie\nTempo: 90\n\n4P 4T 5P 5T | 6P — 5T 4P'} rows={8} /></div>}
               {state === 'error' && <div className="error-banner"><AlertCircle /><span><strong>Import interrompu</strong>{error}</span></div>}
