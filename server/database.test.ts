@@ -28,6 +28,22 @@ describe('production data migrations', () => {
     expect(db.getSessionUser(sessionHash('opaque-session-token'))?.displayName).toBe('Robin');
   });
 
+  it('updates account details and invalidates sessions after a password change', async () => {
+    const db = makeDatabase();
+    const passwordHash = await hashPassword('ancien-mot-de-passe');
+    db.createUser({ id: 'usr_account', email: 'avant@example.fr', displayName: 'Avant', passwordHash });
+    db.createSession('session-account', 'usr_account', new Date(Date.now() + 60_000).toISOString());
+
+    expect(db.updateUserProfile('usr_account', { email: 'apres@example.fr', displayName: 'Après' })).toMatchObject({
+      email: 'apres@example.fr', displayName: 'Après',
+    });
+    const nextHash = await hashPassword('nouveau-mot-de-passe');
+    expect(db.updateUserPassword('usr_account', nextHash)).toBe(true);
+    expect(await verifyPassword('nouveau-mot-de-passe', db.getUserCredentials('apres@example.fr')!.password_hash)).toBe(true);
+    db.deleteSessionsForUser('usr_account');
+    expect(db.getSessionUser('session-account')).toBeUndefined();
+  });
+
   it('seeds the shared, licensed learning library', () => {
     const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }> }>;
     expect(songs.length).toBeGreaterThanOrEqual(10);
