@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { displayNote, FALLBACK_ACCORDIONS } from './data';
 import { frequencyToPitch } from './hooks/usePitchDetector';
+import { getMelodyButtonSize } from './components/accordionLayout';
 
 describe('accordion configurations', () => {
   it('ships the Hohner Club I 10 + 9 + 2 layout', () => {
@@ -19,6 +20,12 @@ describe('accordion configurations', () => {
         expect(button.pullMidi).toBeLessThanOrEqual(127);
       }
     }
+  });
+
+  it('fits long melody rows inside the visual keyboard', () => {
+    const buttonSize = getMelodyButtonSize(11);
+    expect(buttonSize).toBe(27);
+    expect(buttonSize * 11 + 2 * 10).toBeLessThanOrEqual(318);
   });
 });
 

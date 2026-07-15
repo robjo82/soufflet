@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AudioLines, ChevronDown, CircleGauge, Expand, Flag, Gauge,
-  Pause, Play, Redo2, Repeat2, Settings2, SlidersHorizontal, TimerReset, Volume2,
+  Minimize, Pause, Play, Redo2, Repeat2, Settings2, SlidersHorizontal, TimerReset, Volume2,
 } from 'lucide-react';
 import { AccordionView } from './AccordionView';
 import { ScoreStrip } from './ScoreStrip';
@@ -41,6 +41,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   const [showScore, setShowScore] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [flagged, setFlagged] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
   const [results, setResults] = useState({ correct: 0, early: 0, late: 0, wrong: 0 });
   const [feedback, setFeedback] = useState<{ kind: 'good' | 'hint' | 'neutral'; title: string; detail: string }>({
     kind: 'neutral', title: 'Prêt quand tu l’es', detail: 'Regarde la direction du soufflet, puis appuie sur Lecture.',
@@ -60,6 +61,17 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   const practiceWithMic = settings.mode !== 'demo';
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, []);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) await document.exitFullscreen?.();
+    else await document.documentElement.requestFullscreen?.();
+  }, []);
 
   const selectIndex = useCallback((index: number) => {
     setActiveIndex(index);
@@ -198,7 +210,15 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
         <div className="practice-meta">
           <span><CircleGauge size={15} /> {Math.round(actualBpm)} BPM</span>
           <span>{song.key}</span>
-          <button type="button" className="icon-button" onClick={() => document.documentElement.requestFullscreen?.()} aria-label="Plein écran"><Expand size={19} /></button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => void toggleFullscreen()}
+            aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+            title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+          >
+            {isFullscreen ? <Minimize size={19} /> : <Expand size={19} />}
+          </button>
         </div>
       </header>
 

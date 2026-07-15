@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Hand, MoveHorizontal } from 'lucide-react';
 import type { AccordionConfig, Direction, Notation, SongEvent } from '../types';
 import { displayNote, FRENCH_NOTES } from '../data';
 import { useSynth } from '../hooks/useSynth';
+import { getMelodyButtonSize } from './accordionLayout';
 
 interface AccordionViewProps {
   config: AccordionConfig;
@@ -31,6 +32,8 @@ export function AccordionView({
 }: AccordionViewProps) {
   const { playMidi } = useSynth();
   const rows = config.rightRows.map((_, index) => config.buttons.filter((button) => button.row === index + 1));
+  const longestRow = Math.max(1, ...rows.map((row) => row.length));
+  const melodyButtonSize = getMelodyButtonSize(longestRow);
   const detectedButtonIds = new Set(
     config.buttons
       .filter((button) => button.pushMidi === detectedMidi || button.pullMidi === detectedMidi)
@@ -49,7 +52,14 @@ export function AccordionView({
         <MoveHorizontal aria-hidden="true" />
       </div>
 
-      <div className={`accordion direction-${direction}`} style={{ '--instrument': config.color } as React.CSSProperties}>
+      <div
+        className={`accordion direction-${direction}`}
+        style={{
+          '--instrument': config.color,
+          '--melody-button-size': `${melodyButtonSize}px`,
+        } as React.CSSProperties}
+        data-longest-row={longestRow}
+      >
         <section className="accordion-case bass-case" aria-label="Main gauche, basses et accords">
           <div className="case-shine" />
           <span className="hand-caption"><Hand size={14} /> Main gauche</span>

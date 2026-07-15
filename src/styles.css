@@ -131,44 +131,44 @@ svg { stroke-width: 1.8; }
 
 /* Accordion */
 .accordion-wrap { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.direction-banner { min-width: 265px; min-height: 50px; padding: 7px 12px 7px 8px; margin-bottom: 18px; border-radius: 13px; display: flex; align-items: center; gap: 10px; color: #24332d; transition: background .25s; }
+.direction-banner { min-width: 280px; min-height: 54px; padding: 8px 13px 8px 9px; margin-bottom: 12px; border-radius: 14px; display: flex; align-items: center; gap: 11px; color: #24332d; transition: background .25s; }
 .direction-banner.direction-pull { background: #dfe9f0; color: #244f6d; }
 .direction-banner.direction-push { background: var(--coral-soft); color: #7c3829; }
-.direction-icon { width: 36px; height: 36px; display: grid; place-items: center; background: rgba(255,255,255,.6); border-radius: 10px; }
-.direction-icon svg { width: 20px; }
+.direction-icon { width: 38px; height: 38px; display: grid; place-items: center; background: rgba(255,255,255,.6); border-radius: 10px; }
+.direction-icon svg { width: 22px; }
 .direction-banner > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; }
-.direction-banner small { font-size: 9px; letter-spacing: .12em; font-weight: 900; }
-.direction-banner strong { font-size: 13px; }
+.direction-banner small { font-size: 10px; letter-spacing: .12em; font-weight: 900; }
+.direction-banner strong { font-size: 14px; }
 .direction-banner > svg { width: 24px; opacity: .55; }
-.accordion { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 290px; filter: drop-shadow(0 18px 17px rgba(29,25,21,.16)); perspective: 900px; }
-.accordion-case { width: 196px; height: 268px; flex: 0 0 auto; position: relative; overflow: hidden; padding: 20px; color: white; background: linear-gradient(145deg, color-mix(in srgb, var(--instrument), white 16%), var(--instrument) 52%, color-mix(in srgb, var(--instrument), black 27%)); border: 3px solid color-mix(in srgb, var(--instrument), black 28%); box-shadow: inset 0 0 0 2px rgba(255,255,255,.15), inset 0 -28px 35px rgba(0,0,0,.15); }
+.accordion { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 390px; filter: drop-shadow(0 18px 17px rgba(29,25,21,.16)); perspective: 900px; }
+.accordion-case { width: 215px; height: 370px; flex: 0 0 auto; position: relative; overflow: hidden; padding: 22px; color: white; background: linear-gradient(145deg, color-mix(in srgb, var(--instrument), white 16%), var(--instrument) 52%, color-mix(in srgb, var(--instrument), black 27%)); border: 3px solid color-mix(in srgb, var(--instrument), black 28%); box-shadow: inset 0 0 0 2px rgba(255,255,255,.15), inset 0 -28px 35px rgba(0,0,0,.15); }
 .bass-case { border-radius: 23px 7px 7px 23px; transform: rotateY(3deg); }
-.melody-case { width: 238px; border-radius: 7px 23px 23px 7px; transform: rotateY(-3deg); }
+.melody-case { width: 260px; border-radius: 7px 23px 23px 7px; transform: rotateY(-3deg); }
 .case-shine { position: absolute; inset: 7px; border: 1px solid rgba(255,255,255,.17); border-radius: 15px; pointer-events: none; }
 .case-shine::after { content: ''; position: absolute; inset: 20px; background: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.08) 0 1px, transparent 1px 7px); opacity: .6; }
-.hand-caption { position: relative; display: flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
-.bass-grid { position: relative; display: grid; grid-template-columns: repeat(2, 28px); gap: 10px 14px; justify-content: center; margin-top: 28px; transform: rotate(-6deg); }
+.hand-caption { position: relative; display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+.bass-grid { position: relative; display: grid; grid-template-columns: repeat(2, 32px); gap: 13px 17px; justify-content: center; margin-top: 42px; transform: rotate(-6deg); }
 .bass-button, .melody-button { border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: radial-gradient(circle at 36% 30%, #fff 0 12%, #e7e4db 45%, #aaa79f 100%); box-shadow: 0 2px 3px rgba(0,0,0,.55), inset 0 0 0 1px rgba(60,54,48,.42); transition: transform .13s, box-shadow .13s, background .13s; }
-.bass-button { width: 28px; height: 28px; color: #514d47; font-size: 9px; font-weight: 900; }
+.bass-button { width: 32px; height: 32px; color: #514d47; font-size: 10px; font-weight: 900; }
 .bass-button.is-active, .melody-button.is-active { color: white; background: radial-gradient(circle at 37% 30%, #f9b29e 0 8%, var(--coral) 44%, var(--coral-dark) 100%); box-shadow: 0 0 0 5px rgba(231,120,92,.27), 0 3px 4px rgba(0,0,0,.5); transform: translateY(2px) scale(1.11); z-index: 2; }
-.bellows { height: 238px; width: 285px; min-width: 98px; display: flex; position: relative; overflow: hidden; background: #efe7d7; transition: width .36s cubic-bezier(.2,.72,.2,1); box-shadow: inset 0 0 16px rgba(43,36,28,.34); }
-.bellows.is-closed { width: 105px; }
-.bellows.is-open { width: min(285px, 25vw); }
+.bellows { height: 336px; width: 320px; min-width: 110px; display: flex; position: relative; overflow: hidden; background: #efe7d7; transition: width .36s cubic-bezier(.2,.72,.2,1); box-shadow: inset 0 0 16px rgba(43,36,28,.34); }
+.bellows.is-closed { width: 120px; }
+.bellows.is-open { width: min(320px, 25vw); }
 .bellows-edge { width: 9px; flex: 0 0 auto; background: linear-gradient(90deg, #27221e, #7b6f61, #26221d); z-index: 2; }
 .bellows > i { flex: 1; min-width: 7px; transform: skewY(0); background: linear-gradient(90deg, #d8cfc0 0 13%, #423c35 14% 24%, #eee6d8 25% 73%, #777066 74% 87%, #c6bdae 88%); border-top: 5px solid #3c3731; border-bottom: 5px solid #3c3731; }
 .bellows-center { position: absolute; inset: 0; display: grid; place-items: center; z-index: 4; pointer-events: none; }
 .bellows-center span { padding: 4px 8px; border-radius: 5px; color: white; background: rgba(33,30,27,.67); font-size: 8px; font-weight: 900; letter-spacing: .15em; opacity: 0; transition: opacity .2s; }
 .bellows.is-closed .bellows-center span { opacity: 1; }
-.melody-rows { position: relative; display: flex; justify-content: center; gap: 9px; height: 214px; margin-top: 9px; }
-.melody-row { display: flex; flex-direction: column; align-items: center; justify-content: space-around; }
-.melody-row:nth-child(2) { transform: translateY(5px); }
+.melody-rows { position: absolute; inset: 39px 22px 13px; display: flex; justify-content: center; gap: 12px; height: 318px; margin: 0; }
+.melody-row { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.melody-row:nth-child(2) { transform: translateY(3px); }
 .melody-row:nth-child(3) { justify-content: start; padding-top: 15px; }
-.melody-button { width: 28px; height: 28px; flex: 0 0 28px; position: relative; color: #4a4641; font-size: 8px; font-weight: 900; }
+.melody-button { width: var(--melody-button-size, 27px); height: var(--melody-button-size, 27px); flex: 0 0 var(--melody-button-size, 27px); position: relative; color: #4a4641; font-size: 8px; font-weight: 900; }
 .melody-button.is-helper { background: radial-gradient(circle at 36% 30%, #ffe6a9, #d3a342 60%, #775920); color: #342a19; }
 .melody-button.is-detected:not(.is-active) { box-shadow: 0 0 0 5px rgba(232,184,75,.38), 0 2px 3px rgba(0,0,0,.5); background: #f8d980; transform: scale(1.08); }
 .finger-badge { position: absolute; right: -10px; top: -9px; width: 17px; height: 17px; display: grid; place-items: center; color: white; background: var(--green); border: 2px solid white; border-radius: 50%; font-size: 8px; }
-.accordion-wrap.is-compact .direction-banner { min-height: 38px; margin-bottom: 8px; transform: scale(.85); transform-origin: center bottom; }
-.accordion-wrap.is-compact .accordion { min-height: 185px; transform: scale(.73); margin: -45px 0; }
+.accordion-wrap.is-compact .direction-banner { min-height: 38px; margin-bottom: 8px; transform: scale(.82); transform-origin: center bottom; }
+.accordion-wrap.is-compact .accordion { transform: scale(.6); margin: -73px 0 -80px; }
 
 /* Home */
 .home-page { padding-top: 34px; }
@@ -355,7 +355,7 @@ svg { stroke-width: 1.8; }
 .notation-switch button.is-active { color: var(--ink); background: white; box-shadow: 0 2px 5px rgba(0,0,0,.08); }
 .tool-toggle { min-height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.6); display: flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; font-size: 10px; font-weight: 700; }
 .tool-toggle.is-active { color: var(--green); background: var(--green-soft); border-color: #acc2b6; }
-.instrument-stage { min-height: 345px; padding: 16px 25px 22px; border: 1px solid var(--line); border-radius: 18px 18px 0 0; display: flex; align-items: center; background: radial-gradient(circle at 50% 50%, #fff 0, #f3eee5 75%); overflow: hidden; }
+.instrument-stage { min-height: 485px; padding: 16px 25px 22px; border: 1px solid var(--line); border-radius: 18px 18px 0 0; display: flex; align-items: center; background: radial-gradient(circle at 50% 50%, #fff 0, #f3eee5 75%); overflow: hidden; }
 .score-shell { height: 150px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 18px 18px; background: white; display: grid; grid-template-columns: 72px 1fr; overflow: hidden; }
 .score-labels { padding: 16px 8px; border-right: 1px solid var(--line); display: grid; grid-template-rows: 25px 36px 1fr; color: #9a968e; font-size: 7px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .score-strip { min-width: 0; overflow-x: auto; display: flex; align-items: stretch; padding: 8px 13px; scroll-snap-type: x proximity; }
@@ -400,6 +400,58 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .tempo-control svg { grid-row: 1 / 3; width: 18px; }
 .tempo-control span { display: flex; justify-content: space-between; }
 .tempo-control input { width: 100%; accent-color: var(--green); }
+
+@media (min-width: 1200px) {
+  html:fullscreen .practice-page { padding-bottom: 94px; }
+  html:fullscreen .practice-header { height: 72px; padding-inline: 34px; }
+  html:fullscreen .brand-mini .brand-mark { width: 30px; height: 30px; }
+  html:fullscreen .brand-mini strong { font-size: 21px; }
+  html:fullscreen .song-heading { gap: 10px; font-size: 13px; }
+  html:fullscreen .practice-meta > span { min-height: 34px; padding-inline: 11px; font-size: 11px; }
+  html:fullscreen .practice-meta .icon-button { width: 40px; height: 40px; }
+  html:fullscreen .practice-main { width: min(1680px, calc(100% - 56px)); }
+  html:fullscreen .practice-toolbar { min-height: 78px; gap: 12px; }
+  html:fullscreen .mode-trigger { min-width: 250px; padding: 10px 14px; }
+  html:fullscreen .mode-trigger small { font-size: 9px; }
+  html:fullscreen .mode-trigger strong { font-size: 13px; }
+  html:fullscreen .notation-switch button { height: 36px; padding-inline: 14px; font-size: 11px; }
+  html:fullscreen .tool-toggle { min-height: 44px; padding-inline: 14px; font-size: 12px; }
+  html:fullscreen .instrument-stage { padding: 18px 32px 24px; }
+  html:fullscreen .score-shell { height: 170px; grid-template-columns: 90px 1fr; }
+  html:fullscreen .score-labels { padding: 18px 10px; grid-template-rows: 29px 40px 1fr; font-size: 8px; }
+  html:fullscreen .score-event { width: calc(68px * var(--duration)); min-width: calc(68px * var(--duration)); padding-top: 43px; }
+  html:fullscreen .score-event strong { font-size: 20px; }
+  html:fullscreen .measure-number { font-size: 9px; }
+  html:fullscreen .mini-direction { top: 23px; font-size: 8px; }
+  html:fullscreen .coach-feedback { min-height: 84px; padding: 13px 16px; }
+  html:fullscreen .coach-avatar { width: 48px; height: 48px; }
+  html:fullscreen .coach-feedback > div:nth-child(2) small { font-size: 8px; }
+  html:fullscreen .coach-feedback > div:nth-child(2) strong { font-size: 14px; }
+  html:fullscreen .coach-feedback > div:nth-child(2) p { font-size: 12px; }
+  html:fullscreen .mic-status, html:fullscreen .explain-button { font-size: 10px; }
+  html:fullscreen .transport-bar { height: 90px; padding-inline: 30px; }
+  html:fullscreen .transport-tool { min-height: 50px; padding-inline: 13px; }
+  html:fullscreen .transport-tool span { font-size: 10px; }
+  html:fullscreen .primary-play { min-width: 206px; min-height: 60px; font-size: 16px; }
+  html:fullscreen .tempo-control { min-width: 205px; font-size: 10px; }
+}
+
+@media (min-width: 1200px) and (max-height: 900px) {
+  html:fullscreen .practice-page { padding-bottom: 82px; }
+  html:fullscreen .practice-header { height: 60px; }
+  html:fullscreen .practice-toolbar { min-height: 60px; }
+  html:fullscreen .instrument-stage { min-height: 440px; padding-block: 13px 18px; }
+  html:fullscreen .instrument-stage .direction-banner { min-height: 48px; padding-block: 5px; margin-bottom: 6px; }
+  html:fullscreen .instrument-stage .accordion { transform: scale(.9); margin-block: -20px; }
+  html:fullscreen .score-shell { height: 140px; }
+  html:fullscreen .score-labels { padding-block: 13px; grid-template-rows: 25px 34px 1fr; }
+  html:fullscreen .score-event { padding-top: 38px; }
+  html:fullscreen .mini-direction { top: 19px; }
+  html:fullscreen .coach-feedback { min-height: 66px; margin: 8px 0 10px; padding-block: 8px; }
+  html:fullscreen .coach-avatar { width: 42px; height: 42px; }
+  html:fullscreen .transport-bar { height: 78px; }
+  html:fullscreen .primary-play { min-height: 56px; }
+}
 
 /* Learn */
 .level-badge { min-width: 330px; padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: var(--paper); display: flex; align-items: center; gap: 13px; }
@@ -756,6 +808,24 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   .instrument-preview { min-height: 330px; }
 }
 
+@media (min-width: 801px) and (max-width: 1199px) and (max-height: 820px) {
+  .practice-page { padding-bottom: 74px; }
+  .practice-header { height: 58px; }
+  .practice-toolbar { min-height: 60px; }
+  .instrument-stage { min-height: 390px; padding-block: 12px 16px; }
+  .instrument-stage .direction-banner { min-height: 44px; padding-block: 5px; margin-bottom: 0; transform: scale(.9); }
+  .instrument-stage .accordion { transform: scale(.78); margin-block: -43px; }
+  .score-shell { height: 130px; }
+  .score-labels { padding-block: 12px; grid-template-rows: 22px 31px 1fr; }
+  .score-event { padding-top: 34px; }
+  .mini-direction { top: 17px; }
+  .coach-feedback { min-height: 54px; margin: 7px 0 8px; padding-block: 6px; }
+  .coach-avatar { width: 36px; height: 36px; }
+  .coach-feedback > div:nth-child(2) p { font-size: 9px; }
+  .transport-bar { height: 70px; }
+  .primary-play { min-height: 50px; }
+}
+
 @media (max-width: 800px) {
   .auth-page { grid-template-columns: 1fr; }
   .auth-story { min-height: 430px; }
@@ -803,8 +873,9 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   .mode-picker { flex: 1; }
   .mode-trigger { width: 100%; }
   .notation-switch { order: 3; }
-  .instrument-stage { min-height: 310px; padding-inline: 2px; }
-  .instrument-stage .accordion { transform: scale(.78); }
+  .instrument-stage { min-height: 390px; padding-inline: 2px; }
+  .instrument-stage .direction-banner { min-height: 44px; padding-block: 5px; margin-bottom: 0; transform: scale(.86); }
+  .instrument-stage .accordion { transform: scale(.78); margin-block: -43px; }
   .coach-feedback .mic-status { display: none; }
   .live-results { display: none; }
   .transport-bar { padding: 0 10px; }
@@ -850,8 +921,8 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   .practice-meta > span { display: none; }
   .tool-toggle { font-size: 0; }
   .notation-switch button { padding: 0 7px; }
-  .instrument-stage .accordion { transform: scale(.58); }
-  .instrument-stage { min-height: 260px; }
+  .instrument-stage .accordion { transform: scale(.52); margin-block: -94px; }
+  .instrument-stage { min-height: 290px; }
   .score-shell { grid-template-columns: 45px 1fr; }
   .coach-feedback > div:nth-child(2) { display: block; }
   .coach-feedback > div:nth-child(2) small { display: block; }
