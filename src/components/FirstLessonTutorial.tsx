@@ -44,6 +44,7 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
   const initialDraft = useMemo(readDraft, []);
   const [stage, setStage] = useState(() => Math.min(4, Math.max(0, initialDraft?.stage ?? 0)));
   const [activeIndex, setActiveIndex] = useState(0);
+  const [activeAccompanimentIndex, setActiveAccompanimentIndex] = useState(0);
   const [demoPlaying, setDemoPlaying] = useState(false);
   const [demoDone, setDemoDone] = useState(() => (initialDraft?.stage ?? 0) > 1);
   const [guidedProgress, setGuidedProgress] = useState(initialDraft?.guidedProgress ?? 0);
@@ -63,8 +64,13 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
   const timersRef = useRef<number[]>([]);
   const heldMidiRef = useRef<number | null>(null);
   const detector = usePitchDetector();
-  const { playMidi, click } = useSynth();
-  const tutorialSong = useMemo(() => ({ ...song, id: `${song.id}-tutorial`, events: song.events.slice(0, 3) }), [song]);
+  const { playMidi, playLeftHand, click } = useSynth();
+  const tutorialSong = useMemo(() => ({
+    ...song,
+    id: `${song.id}-tutorial`,
+    events: song.events.slice(0, 3),
+    accompaniment: song.accompaniment?.filter((event) => event.beat < 3),
+  }), [song]);
   const events = tutorialSong.events;
   const currentTrial = TUTORIAL_MODE_TRIALS[modeIndex];
   const expectedBassId = accordion.basses[0]?.id;
@@ -102,6 +108,12 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
       const timer = window.setTimeout(() => {
         setActiveIndex(index);
         playMidi(event.midi, .58, .12);
+        const accompanimentIndex = tutorialSong.accompaniment?.findIndex((item) => item.beat === event.beat) ?? -1;
+        const accompaniment = accompanimentIndex >= 0 ? tutorialSong.accompaniment?.[accompanimentIndex] : undefined;
+        if (accompaniment) {
+          setActiveAccompanimentIndex(accompanimentIndex);
+          playLeftHand(accompaniment.midi, accompaniment.role, accompaniment.chord, .5);
+        }
       }, index * 720);
       timersRef.current.push(timer);
     });
@@ -242,7 +254,11 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
 
   const activeEvent = useMemo<SongEvent | undefined>(() => {
     if (!events.length) return undefined;
-    if (stage === 1) return events[activeIndex];
+    if (stage === 1) {
+      const event = events[activeIndex];
+      const accompaniment = tutorialSong.accompaniment?.[activeAccompanimentIndex];
+      return event && accompaniment ? { ...event, bassButtonId: accompaniment.buttonId, bassLabel: accompaniment.chord } : event;
+    }
     if (stage === 2) return events[Math.min(guidedProgress, events.length - 1)];
     if (stage !== 3 || !currentTrial) return events[0];
     if (currentTrial.task === 'memory' || currentTrial.task === 'rhythm' || currentTrial.task === 'bellows') return undefined;
@@ -250,7 +266,7 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
       return { ...events[0], buttonId: '', bassButtonId: expectedBassId, bassLabel: 'B' };
     }
     return events[0];
-  }, [activeIndex, currentTrial, events, expectedBassId, guidedProgress, modeProgress, stage]);
+  }, [activeAccompanimentIndex, activeIndex, currentTrial, events, expectedBassId, guidedProgress, modeProgress, stage, tutorialSong.accompaniment]);
 
   const visualDirection: Direction = currentTrial?.task === 'bellows'
     ? (modeProgress === 0 ? 'push' : 'pull')
@@ -299,7 +315,7 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
           <section className="tutorial-instruction-card">
             <span className="eyebrow">{stage === 1 ? '1. Regarde et écoute' : '2. À ton tour'}</span>
             <h1>{stage === 1 ? 'Une toute petite mélodie.' : 'Retrouve les trois notes.'}</h1>
-            <p>{stage === 1 ? 'Observe le bouton qui s’allume et le sens du soufflet. Tu n’as encore rien à faire.' : 'Joue sur ton accordéon : le micro avance tout seul quand la note est juste. Tu peux aussi toucher la représentation pour essayer.'}</p>
+            <p>{stage === 1 ? 'Observe la mélodie à droite, puis la basse et l’accord qui alternent à gauche. Le soufflet relie les deux mains.' : 'Joue sur ton accordéon : le micro avance tout seul quand la note est juste. Tu peux aussi toucher la représentation pour essayer.'}</p>
             {stage === 2 && <div className="guided-note-progress">{events.map((event, index) => <span key={event.id} className={index < guidedProgress ? 'is-done' : index === guidedProgress ? 'is-current' : ''}>{index < guidedProgress ? <Check /> : index + 1}</span>)}</div>}
             {stage === 1 && <button type="button" className="primary-button" disabled={demoPlaying} onClick={playDemo}><Play fill="currentColor" /> {demoPlaying ? 'La mélodie joue…' : demoDone ? 'Réécouter' : 'Écouter la mélodie'}</button>}
             {stage === 2 && detector.status === 'idle' && <button type="button" className="secondary-button" onClick={() => void detector.start()}><Mic2 /> Activer l’écoute</button>}

@@ -10,6 +10,20 @@ interface SeedEvent {
   confidence: number;
 }
 
+interface SeedAccompanimentEvent {
+  id: string;
+  beat: number;
+  duration: number;
+  rootMidi: number;
+  midi: number;
+  note: string;
+  chord: string;
+  role: 'bass' | 'chord';
+  buttonId: string;
+  direction: 'push' | 'pull';
+  confidence: number;
+}
+
 export interface SeedSong {
   id: string;
   title: string;
@@ -23,6 +37,7 @@ export interface SeedSong {
   difficulty: number;
   status: 'ready' | 'reference-only';
   events: SeedEvent[];
+  accompaniment: SeedAccompanimentEvent[];
   confidence: number;
   builtIn: true;
   license: string;
@@ -31,6 +46,34 @@ export interface SeedSong {
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const noteFromMidi = (midi: number) => `${NOTE_NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`;
+
+function accompanimentFrom(events: SeedEvent[]): SeedAccompanimentEvent[] {
+  const finalEvent = events.at(-1);
+  const totalBeats = finalEvent ? Math.ceil(finalEvent.beat + finalEvent.duration) : 0;
+  return Array.from({ length: totalBeats }, (_, beat) => {
+    let melody = events[0];
+    for (const event of events) {
+      if (event.beat > beat) break;
+      melody = event;
+    }
+    const pitchClass = ((melody?.midi ?? 60) % 12 + 12) % 12;
+    const rootMidi = pitchClass === 5 || pitchClass === 9 ? 41 : pitchClass === 2 || pitchClass === 11 ? 43 : 48;
+    const role = beat % 2 === 0 ? 'bass' as const : 'chord' as const;
+    return {
+      id: `left-${beat + 1}`,
+      beat,
+      duration: .72,
+      rootMidi,
+      midi: rootMidi,
+      note: noteFromMidi(rootMidi),
+      chord: NOTE_NAMES[rootMidi % 12],
+      role,
+      buttonId: '',
+      direction: melody?.direction ?? 'push',
+      confidence: 1,
+    };
+  });
+}
 
 function eventsFromMidi(steps: Array<number | [number, number]>, beatsPerNote = 1): SeedEvent[] {
   let beat = 0;
@@ -62,18 +105,20 @@ function traditional(
 ): SeedSong {
   const events = eventsFromMidi(notes);
   const totalBeats = events.at(-1) ? events.at(-1)!.beat + events.at(-1)!.duration : 0;
+  const timeSignature = options.timeSignature ?? [4, 4];
   return {
     id,
     title,
     artist: options.artist ?? 'Air traditionnel',
     sourceType: 'lesson',
     bpm,
-    timeSignature: options.timeSignature ?? [4, 4],
+    timeSignature,
     key,
     duration: Math.ceil(totalBeats * 60 / bpm),
     difficulty: options.difficulty ?? 1,
     status: 'ready',
     events,
+    accompaniment: accompanimentFrom(events),
     confidence: 1,
     builtIn: true,
     license: options.license ?? 'Domaine public',
@@ -126,6 +171,7 @@ function brisePieds(): SeedSong {
     id: 'le-brise-pieds-aveyronnais', title: 'Le Brise-pieds', artist: 'Air traditionnel (Scottish)', sourceType: 'youtube',
     sourceUrl: 'https://www.youtube.com/watch?v=QtRURW4IZog', bpm: 104, timeSignature: [4, 4], key: 'Do majeur', duration: 28,
     difficulty: 3, status: 'ready', events, confidence: 1, builtIn: true, license: 'Domaine public',
+    accompaniment: accompanimentFrom(events),
     provenance: 'Transcription Victor Laroussinie, contrôlée et saisie mesure par mesure à partir de la partition fournie.',
   };
 }
@@ -146,6 +192,7 @@ export const SONG_SEEDS: SeedSong[] = [
   {
     id: 'vesoul-reference', title: 'Vesoul', artist: 'Jacques Brel', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/results?search_query=Jacques+Brel+Vesoul',
     bpm: 0, timeSignature: [4, 4], key: 'À analyser', duration: 0, difficulty: 4, status: 'reference-only', events: [], confidence: 0,
+    accompaniment: [],
     builtIn: true, license: 'Œuvre protégée — contenu non fourni', provenance: 'Référence uniquement. Importe une source que tu as le droit d’utiliser pour créer ton aide personnelle.',
   },
 ];

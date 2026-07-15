@@ -29,10 +29,14 @@ describe('production data migrations', () => {
   });
 
   it('seeds the shared, licensed learning library', () => {
-    const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string }>;
+    const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }> }>;
     expect(songs.length).toBeGreaterThanOrEqual(10);
     expect(songs.find((song) => song.id === 'au-clair-de-la-lune')?.license).toBe('Domaine public');
     expect(songs.find((song) => song.id === 'vesoul-reference')?.license).toContain('protégée');
+    for (const song of songs.filter((item) => item.status === 'ready')) {
+      expect(song.accompaniment.length).toBeGreaterThan(0);
+      expect(new Set(song.accompaniment.map((event) => event.role))).toEqual(new Set(['bass', 'chord']));
+    }
   });
 });
 
