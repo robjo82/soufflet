@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { SouffletDatabase } from './database.js';
 import { createTranscriber } from './transcription.js';
+import { clearSession, createUserId, hashPassword, readSessionToken, sessionHash, setSession, verifyPassword } from './auth.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv({ path: resolve(root, '.env.local'), quiet: true });
@@ -25,8 +26,79 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false 
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/api/health', (_request, response) => response.json({ status: 'ok', version: '0.1.0', aiConfigured: Boolean(process.env.GEMINI_API_KEY) }));
-app.get('/api/accordions', (_request, response) => response.json({ accordions: db.listAccordions() }));
+const authAttempts = new Map<string, { count: number; resetAt: number }>();
+function authRateLimit(request: express.Request, response: express.Response, next: express.NextFunction) {
+  const key = request.ip || 'unknown';
+  const now = Date.now();
+  const current = authAttempts.get(key);
+  if (!current || current.resetAt <= now) authAttempts.set(key, { count: 1, resetAt: now + 15 * 60_000 });
+  else if (current.count >= 20) { response.status(429).json({ error: 'Trop de tentatives. Réessaie dans quelques minutes.' }); return; }
+  else current.count += 1;
+  next();
+}
+
+function currentUser(request: express.Request) {
+  const token = readSessionToken(request);
+  return token ? db.getSessionUser(sessionHash(token)) : undefined;
+}
+
+function requireUser(request: express.Request, response: express.Response, next: express.NextFunction) {
+  const user = currentUser(request);
+  if (!user) { response.status(401).json({ error: 'Connecte-toi pour continuer.' }); return; }
+  response.locals.user = user;
+  next();
+}
+
+app.get('/api/health', (_request, response) => response.json({ status: 'ok', version: process.env.APP_VERSION ?? 'development', aiConfigured: Boolean(process.env.GEMINI_API_KEY) }));
+app.get('/api/accordions', (request, response) => response.json({ accordions: db.listAccordions(currentUser(request)?.id) }));
+
+const credentialsSchema = z.object({
+  email: z.string().trim().email().max(254),
+  password: z.string().min(10, 'Le mot de passe doit contenir au moins 10 caractères.').max(200),
+});
+
+app.post('/api/auth/register', authRateLimit, async (request, response) => {
+  try {
+    const body = credentialsSchema.extend({ displayName: z.string().trim().min(2).max(60) }).parse(request.body);
+    const user = db.createUser({ id: createUserId(), email: body.email, displayName: body.displayName, passwordHash: await hashPassword(body.password) });
+    if (!user) throw new Error('Le compte n’a pas pu être créé.');
+    setSession(response, db, user.id);
+    response.status(201).json({ user });
+  } catch (error) {
+    const duplicate = error instanceof Error && /UNIQUE constraint failed/i.test(error.message);
+    response.status(duplicate ? 409 : 422).json({ error: duplicate ? 'Un compte existe déjà avec cette adresse.' : error instanceof Error ? error.message : 'Compte invalide.' });
+  }
+});
+
+app.post('/api/auth/login', authRateLimit, async (request, response) => {
+  try {
+    const body = credentialsSchema.parse(request.body);
+    const credentials = db.getUserCredentials(body.email);
+    if (!credentials || !await verifyPassword(body.password, credentials.password_hash)) {
+      response.status(401).json({ error: 'Adresse ou mot de passe incorrect.' });
+      return;
+    }
+    const user = db.getUserById(credentials.id)!;
+    setSession(response, db, user.id);
+    response.json({ user });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof Error ? error.message : 'Connexion impossible.' });
+  }
+});
+
+app.get('/api/auth/me', (request, response) => {
+  const user = currentUser(request);
+  response.json({ user: user ?? null });
+});
+
+app.post('/api/auth/logout', (request, response) => {
+  const token = readSessionToken(request);
+  if (token) db.deleteSession(sessionHash(token));
+  clearSession(response);
+  response.status(204).end();
+});
+
+app.get('/api/library', requireUser, (_request, response) => response.json({ songs: db.listCommonSongs() }));
 
 const accordionButtonSchema = z.object({
   id: z.string().min(1).max(80), row: z.number().int().min(0).max(5), index: z.number().int().min(1).max(30),
@@ -39,18 +111,31 @@ const accordionSchema = z.object({
   buttons: z.array(accordionButtonSchema).min(1).max(120), basses: z.array(accordionButtonSchema).max(40), verified: z.boolean(), sourceNote: z.string().max(300).optional(),
 });
 
-app.post('/api/accordions', (request, response) => {
+app.post('/api/accordions', requireUser, (request, response) => {
   try {
     const payload = accordionSchema.parse(request.body);
     const id = `custom-${crypto.randomUUID()}`;
-    const config = db.saveAccordion({ ...payload, id, verified: false, sourceNote: payload.sourceNote || 'Configuration personnalisée à vérifier avec l’accordeur.' });
+    const config = db.saveAccordion({ ...payload, id, verified: false, sourceNote: payload.sourceNote || 'Configuration personnalisée à vérifier avec l’accordeur.' }, response.locals.user.id as string);
     response.status(201).json({ accordion: config });
   } catch (error) {
     response.status(422).json({ error: error instanceof Error ? error.message : 'Configuration invalide.' });
   }
 });
 
-app.post('/api/transcriptions', upload.single('file'), async (request, response) => {
+app.put('/api/accordions/:id', requireUser, (request, response) => {
+  try {
+    const payload = accordionSchema.parse(request.body);
+    const id = String(request.params.id);
+    const config = { ...payload, id, verified: false, sourceNote: payload.sourceNote || 'Configuration personnalisée contrôlée avec l’accordeur.' };
+    const updated = db.updateAccordion(id, config, response.locals.user.id as string);
+    if (!updated) { response.status(404).json({ error: 'Configuration personnelle introuvable. Copie d’abord le modèle intégré.' }); return; }
+    response.json({ accordion: updated });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof Error ? error.message : 'Configuration invalide.' });
+  }
+});
+
+app.post('/api/transcriptions', requireUser, upload.single('file'), async (request, response) => {
   try {
     const result = await transcriber.fromUpload(request.file, typeof request.body.tablature === 'string' ? request.body.tablature : undefined, String(request.body.accordionId ?? ''), request.get('x-gemini-key'));
     response.json({ result });
@@ -59,7 +144,7 @@ app.post('/api/transcriptions', upload.single('file'), async (request, response)
   }
 });
 
-app.post('/api/transcriptions/youtube', async (request, response) => {
+app.post('/api/transcriptions/youtube', requireUser, async (request, response) => {
   try {
     const body = z.object({ url: z.string().url(), accordionId: z.string().min(1) }).parse(request.body);
     const result = await transcriber.fromYoutube(body.url, request.get('x-gemini-key'));

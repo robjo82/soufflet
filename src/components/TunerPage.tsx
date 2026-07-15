@@ -1,26 +1,56 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronLeft, Info, Mic2, RotateCcw, SlidersHorizontal, Volume2 } from 'lucide-react';
-import type { AccordionConfig, Notation } from '../types';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronLeft, Info, Mic2, RotateCcw, Save, SlidersHorizontal, Volume2 } from 'lucide-react';
+import type { AccordionConfig, Direction, Notation } from '../types';
 import { AccordionView } from './AccordionView';
 import { frequencyToPitch, usePitchDetector } from '../hooks/usePitchDetector';
+import { noteFromMidi } from '../data';
 
 interface TunerPageProps {
   accordion: AccordionConfig;
   notation: Notation;
   onBack: () => void;
+  onAccordionChange: (accordion: AccordionConfig) => void;
 }
 
-export function TunerPage({ accordion, notation, onBack }: TunerPageProps) {
+export function TunerPage({ accordion, notation, onBack, onAccordionChange }: TunerPageProps) {
   const detector = usePitchDetector();
   const { start, stop } = detector;
   const [a4, setA4] = useState(440);
   const [tolerance, setTolerance] = useState(8);
+  const [direction, setDirection] = useState<Direction>('push');
+  const [selectedButtonId, setSelectedButtonId] = useState(accordion.buttons[0]?.id ?? '');
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const reading = detector.reading ? frequencyToPitch(detector.reading.frequency, detector.reading.confidence, detector.reading.volume, a4) : null;
   const cents = reading?.cents ?? 0;
   const inTune = Boolean(reading && Math.abs(cents) <= tolerance && reading.confidence > 0.65);
   const matchingButtons = useMemo(() => accordion.buttons.filter((button) => button.pushMidi === reading?.midi || button.pullMidi === reading?.midi), [accordion.buttons, reading?.midi]);
+  const selectedButton = accordion.buttons.find((button) => button.id === selectedButtonId) ?? accordion.buttons[0];
+  const expectedMidi = selectedButton ? (direction === 'push' ? selectedButton.pushMidi : selectedButton.pullMidi) : undefined;
+  const canPropose = Boolean(reading && reading.confidence > .72 && expectedMidi !== undefined && reading.midi !== expectedMidi);
 
   useEffect(() => { void start(); return stop; }, [start, stop]);
+
+  const applyDetectedNote = async () => {
+    if (!selectedButton || !reading || !canPropose) return;
+    setSaving(true); setSaveMessage('');
+    try {
+      const buttons = accordion.buttons.map((button) => button.id !== selectedButton.id ? button : direction === 'push'
+        ? { ...button, pushMidi: reading.midi, push: noteFromMidi(reading.midi) }
+        : { ...button, pullMidi: reading.midi, pull: noteFromMidi(reading.midi) });
+      const isCustom = accordion.id.startsWith('custom-');
+      const draft = { ...accordion, ...(isCustom ? {} : { model: `${accordion.model} — mon instrument` }), buttons, verified: false, sourceNote: `Configuration ajustée avec l’accordeur le ${new Date().toLocaleDateString('fr-FR')}.` };
+      const response = await fetch(isCustom ? `/api/accordions/${accordion.id}` : '/api/accordions', {
+        method: isCustom ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft),
+      });
+      const payload = await response.json() as { accordion?: AccordionConfig; error?: string };
+      if (!response.ok || !payload.accordion) throw new Error(payload.error ?? 'Impossible d’enregistrer la note.');
+      onAccordionChange(payload.accordion);
+      setSelectedButtonId(payload.accordion.buttons.find((button) => button.row === selectedButton.row && button.index === selectedButton.index)?.id ?? selectedButton.id);
+      setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} · bouton ${selectedButton.index} enregistré en ${noteFromMidi(reading.midi)}.`);
+    } catch (reason) { setSaveMessage(reason instanceof Error ? reason.message : 'Impossible d’enregistrer la note.'); }
+    finally { setSaving(false); }
+  };
 
   return (
     <main className="tuner-page page-content">
@@ -40,10 +70,18 @@ export function TunerPage({ accordion, notation, onBack }: TunerPageProps) {
 
         <div className="tuner-instrument-card">
           <div className="card-title-row"><div><small>OÙ EST CETTE NOTE ?</small><h2>{matchingButtons.length ? `${matchingButtons.length} position${matchingButtons.length > 1 ? 's' : ''} sur ton accordéon` : 'Joue une note pour la localiser'}</h2></div><span className="local-badge"><span /> Analyse locale</span></div>
-          <AccordionView config={accordion} notation={notation} direction={matchingButtons[0] && matchingButtons[0].pullMidi === reading?.midi ? 'pull' : 'push'} detectedMidi={reading?.midi} compact />
+          <AccordionView config={accordion} notation={notation} direction={direction} detectedMidi={reading?.midi} onButtonPress={(buttonId, pressedDirection) => { setSelectedButtonId(buttonId); setDirection(pressedDirection); setSaveMessage(''); }} />
           {matchingButtons.length > 0 && <div className="matching-buttons">{matchingButtons.map((button) => <span key={button.id}><strong>Bouton {button.index}</strong>{button.pushMidi === detector.reading?.midi ? 'Pousser →' : '← Tirer'}{button.row === 1 ? ' · rang extérieur' : button.row === 2 ? ' · rang intérieur' : ' · demi-rang'}</span>)}</div>}
         </div>
       </section>
+
+      {selectedButton && <section className="tuner-mapping-card">
+        <div><span className="eyebrow">Cartographie de ton instrument</span><h2>Bouton {selectedButton.index} · rang {selectedButton.row}</h2><p>Choisis une direction, écoute le son attendu en touchant le bouton, puis joue la même note sur ton accordéon.</p></div>
+        <div className="direction-choice"><button type="button" className={direction === 'push' ? 'is-active' : ''} onClick={() => setDirection('push')}><ArrowRight /> Pousser</button><button type="button" className={direction === 'pull' ? 'is-active' : ''} onClick={() => setDirection('pull')}><ArrowLeft /> Tirer</button></div>
+        <div className="mapping-comparison"><span><small>Note attendue</small><strong>{noteFromMidi(expectedMidi ?? 60)}</strong></span><i>{reading ? (reading.midi === expectedMidi ? <Check /> : <AlertTriangle />) : <Mic2 />}</i><span><small>Note entendue</small><strong>{reading?.note ?? '—'}</strong><em>{reading ? `${Math.round(reading.confidence * 100)} % de confiance` : 'Joue une note tenue'}</em></span></div>
+        <button type="button" className="primary-button" disabled={!canPropose || saving} onClick={() => void applyDetectedNote()}>{saving ? 'Enregistrement…' : canPropose ? `Utiliser ${reading?.note} pour ce bouton` : reading?.midi === expectedMidi ? 'La configuration correspond' : 'En attente d’une note fiable'} <Save /></button>
+        {saveMessage && <p className="mapping-message">{saveMessage}</p>}
+      </section>}
 
       <section className="tuner-help"><Info /><div><strong>Pour une mesure fiable</strong><p>Une seule note à la fois · soufflet régulier · éloigne le téléphone des bruits mécaniques · attends que l’aiguille se stabilise.</p></div><button type="button" className="secondary-button" onClick={() => { detector.stop(); void detector.start(); }}><RotateCcw /> Recalibrer</button></section>
       <section className="signal-bar"><span><Volume2 /> Niveau du signal</span><i><b style={{ width: `${Math.min(100, (reading?.volume ?? 0) * 900)}%` }} /></i><span>{reading ? `Confiance ${Math.round(reading.confidence * 100)} %` : 'Signal faible ou ambigu'}</span><SlidersHorizontal /></section>

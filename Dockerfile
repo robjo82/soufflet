@@ -8,9 +8,11 @@ COPY server ./server
 RUN npm run build
 
 FROM node:24-alpine AS runtime
+ARG APP_VERSION=development
 ENV NODE_ENV=production \
     PORT=8787 \
-    DATA_DIR=/app/data
+    DATA_DIR=/app/data \
+    APP_VERSION=${APP_VERSION}
 WORKDIR /app
 RUN addgroup -S soufflet && adduser -S soufflet -G soufflet
 COPY package.json package-lock.json ./

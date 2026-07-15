@@ -5,17 +5,21 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 ## Ce qui fonctionne aujourd’hui
 
 - onboarding en cinq étapes : instrument, notation, micro et premier geste ;
-- configurations SQLite préchargées : Hohner Club I C/F 10+9+2 avec Gleichton, G/C 21+8 et D/G 21+8 ;
+- création de compte obligatoire, mot de passe dérivé avec scrypt et session HttpOnly ;
+- migrations SQLite incrémentales et données persistantes dans un volume Docker ;
+- configurations SQLite préchargées : variante Hohner Club I C/F 10+9+2 (P1 = F♯5) avec Gleichton, G/C 21+8 et D/G 21+8 ;
 - lecteur animé au tempo avec partition interactive, synthèse locale et soufflet synchronisé ;
 - modes démonstration, lecture guidée, attente de la bonne note, notes, rythme, soufflet, chaque main et performance ;
-- accordeur monophonique réel dans le navigateur avec fréquence, cents, confiance et localisation sur l’instrument ;
-- détection de hauteur pendant l’entraînement et conseils différenciés ;
+- accordeur monophonique réel avec fréquence, cents, confiance, localisation et correction guidée de chaque bouton ;
+- détection de hauteur pendant l’entraînement, évaluation automatique et conseils de note et de rythme ;
+- bibliothèque commune de 12 airs du domaine public ou traditionnels, dont le Brise-pieds en 12 mesures, plus une référence protégée sans transcription ;
 - bibliothèque, import audio/vidéo/PDF/image/tablature, liens YouTube et références Spotify ;
 - transcription Gemini 3.5 Flash côté serveur avec scores de confiance ;
-- parseur déterministe des tablatures simples (`4P 4T 5P`, `4′T`, `4P:2`) sans IA ;
+- parseur déterministe des tablatures simples et structurées (`4P`, `4′T`, ornements, subdivisions, mesures et notes tenues) sans IA ;
 - studio de correction des notes, boutons, directions, doigtés et durées avec annulation et autosauvegarde locale ;
 - interface responsive, priorité tablette paysage, plein écran, raccourcis `Espace`, `R` et `L` ;
 - image Docker non-root, healthcheck, volume SQLite persistant.
+- CI de qualité, Semantic Release, images immuables et déploiement Portainer suivi par Watchtower.
 
 Les fonctions encore en validation sont explicitement signalées dans l’interface. Une transcription musicale automatique n’est jamais présentée comme certaine.
 
@@ -46,6 +50,7 @@ L’application est alors disponible sur [http://localhost:8787](http://localhos
 
 ```bash
 npm run typecheck
+npm run lint
 npm test
 npm run build
 curl http://localhost:8787/api/health
@@ -65,4 +70,4 @@ curl http://localhost:8787/api/health
 
 ## Licence et contenu
 
-Le code ne contient aucun morceau protégé ni audio tiers. L’exercice fourni est une gamme originale. Avant toute distribution, choisir une licence de code et définir les conditions d’utilisation, la politique de confidentialité et le traitement des contenus importés.
+Le code ne contient aucun audio tiers. Les mélodies jouables incluses sont traditionnelles ou dans le domaine public et portent une provenance. Les œuvres protégées, comme *Vesoul*, ne sont présentes que sous forme de référence sans notes ni partition. Avant une diffusion commerciale, faire valider les éditions musicales, choisir une licence de code et publier les conditions d’utilisation ainsi que la politique de confidentialité.

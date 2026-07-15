@@ -76,25 +76,62 @@ function inferMimeType(file: Express.Multer.File) {
   return mimeByExtension[extname(file.originalname).toLowerCase()] ?? 'application/octet-stream';
 }
 
-function parseTablature(text: string, accordion: NonNullable<ReturnType<SouffletDatabase['getAccordion']>>): RawTranscription {
+export function parseTablature(text: string, accordion: NonNullable<ReturnType<SouffletDatabase['getAccordion']>>): RawTranscription {
   const bpm = Number(text.match(/(?:tempo|bpm)\s*[:=]?\s*(\d+)/i)?.[1] ?? 80);
   const title = text.match(/titre\s*:\s*(.+)/i)?.[1]?.trim() ?? 'Tablature importée';
-  const tokens = [...text.matchAll(/\b(\d{1,2})(['′]?)([PpTt])(?::(\d+(?:\.\d+)?))?(\s*[-–—])?/g)];
-  let beat = 0;
-  const events = tokens.flatMap((match) => {
+  const tokenPattern = /(\d{1,2})(['′]?)([PpTt])(?::(\d+(?:\.\d+)?))?/g;
+  const resolveToken = (match: RegExpMatchArray, beat: number, duration: number) => {
     const index = Number(match[1]);
     const row = match[2] ? 2 : 1;
     const direction = match[3].toUpperCase() === 'T' ? 'pull' : 'push';
-    const duration = match[4] ? Number(match[4]) : match[5] ? 2 : 1;
     const found = accordion.buttons.find((item) => item.row === row && item.index === index);
-    if (!found) { beat += duration; return []; }
+    if (!found) return undefined;
     const midi = direction === 'push' ? found.pushMidi : found.pullMidi;
-    const event = { beat, duration, midi, note: noteFromMidi(midi), confidence: 1 };
-    beat += duration;
-    return [event];
-  });
+    return { beat, duration: match[4] ? Number(match[4]) : duration, midi, note: noteFromMidi(midi), confidence: 1 };
+  };
+
+  const measuredLines = text.split(/\r?\n/).map((line) => {
+    const measure = line.match(/^\s*(\d{1,3})\s+/);
+    const firstTab = line.search(/\b\d{1,2}['′]?[PpTt]\b/);
+    return measure && firstTab >= 0 ? { number: Number(measure[1]), tab: line.slice(firstTab) } : undefined;
+  }).filter((line): line is { number: number; tab: string } => Boolean(line));
+
+  let events: RawTranscription['events'] = [];
+  if (measuredLines.length >= 2) {
+    events = measuredLines.flatMap(({ number, tab }) => {
+      const measureStart = (number - 1) * 4;
+      const heldLastNote = /2\s*temps/i.test(tab);
+      const groups = tab.replace(/\(?2\s*temps\)?/gi, '').split('/').slice(0, 4);
+      return groups.flatMap((group, groupIndex) => {
+        const groupStart = measureStart + groupIndex;
+        const graceMatches = [...group.matchAll(/\((\d{1,2})(['′]?)([PpTt])\)/g)].map((match) => {
+          const compatible = [match[0], match[1], match[2], match[3]] as unknown as RegExpMatchArray;
+          const graceBeat = groupIndex === 0 ? groupStart : groupStart - .25;
+          return resolveToken(compatible, graceBeat, .25);
+        }).filter((event): event is NonNullable<typeof event> => Boolean(event));
+        const mainText = group.replace(/\([^)]*\)/g, ' ');
+        const mainMatches = [...mainText.matchAll(tokenPattern)];
+        const subdivision = mainMatches.length > 1 ? 1 / mainMatches.length : 1;
+        const mainEvents = mainMatches.map((match, index) => resolveToken(match, groupStart + index * subdivision, heldLastNote && groupIndex === groups.length - 1 && index === mainMatches.length - 1 ? 2 : subdivision))
+          .filter((event): event is NonNullable<typeof event> => Boolean(event));
+        if (groupIndex === 0 && graceMatches.length && mainEvents[0]) mainEvents[0] = { ...mainEvents[0], beat: groupStart + .25, duration: Math.max(.25, mainEvents[0].duration - .25) };
+        return [...graceMatches, ...mainEvents];
+      });
+    }).sort((left, right) => left.beat - right.beat);
+  } else {
+    let beat = 0;
+    const sequentialGroups = text.split(/\s+|\//).filter(Boolean);
+    events = sequentialGroups.flatMap((group) => {
+      const matches = [...group.matchAll(tokenPattern)];
+      if (!matches.length) return [];
+      const duration = 1 / matches.length;
+      const parsed = matches.map((match, index) => resolveToken(match, beat + index * duration, duration)).filter((event): event is NonNullable<typeof event> => Boolean(event));
+      beat += 1;
+      return parsed;
+    });
+  }
   if (!events.length) throw new Error('Aucun symbole reconnu. Utilise par exemple « 4P 4T 5P » et une apostrophe pour le rang intérieur : « 4′T ».');
-  return { title, artist: 'Tablature texte', bpm, key: 'À confirmer', timeSignature: [4, 4], confidence: 0.9, warnings: ['Le rythme absent du texte a été interprété à une noire par symbole.'], events };
+  return { title, artist: 'Tablature texte', bpm, key: 'À confirmer', timeSignature: [4, 4], confidence: measuredLines.length >= 2 ? 1 : 0.9, warnings: measuredLines.length >= 2 ? ['Mesures, ornements, subdivisions et tenues interprétés depuis la tablature structurée.'] : ['Le rythme absent du texte a été interprété à une noire par groupe.'], events };
 }
 
 export function createTranscriber(db: SouffletDatabase) {

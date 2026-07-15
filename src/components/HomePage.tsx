@@ -7,13 +7,14 @@ interface HomePageProps {
   song: Song;
   onPractice: (song: Song) => void;
   onNavigateLearn: () => void;
+  displayName: string;
 }
 
-export function HomePage({ accordion, song, onPractice, onNavigateLearn }: HomePageProps) {
+export function HomePage({ accordion, song, onPractice, onNavigateLearn, displayName }: HomePageProps) {
   return (
     <main className="home-page page-content">
       <section className="hero-dashboard">
-        <div className="hero-copy"><span className="eyebrow"><Sparkles size={15} /> Bonjour Robin, prêt pour quelques notes ?</span><h1>Un petit souffle,<br /><em>un grand pas.</em></h1><p>Ta séance d’aujourd’hui est courte et ciblée : stabiliser le passage entre pousser et tirer.</p><div className="hero-actions"><button type="button" className="primary-button" onClick={() => onPractice(song)}><Play fill="currentColor" /> Commencer ma séance <span>12 min</span></button><button type="button" className="secondary-button" onClick={onNavigateLearn}>Voir mon parcours <ArrowRight /></button></div><div className="hero-reassurance"><span><CheckCircle2 /> Reprends là où tu t’es arrêté</span><span><Headphones /> Micro facultatif</span></div></div>
+        <div className="hero-copy"><span className="eyebrow"><Sparkles size={15} /> Bonjour {displayName}, prêt pour quelques notes ?</span><h1>Un petit souffle,<br /><em>un grand pas.</em></h1><p>Ta séance d’aujourd’hui est courte et ciblée : stabiliser le passage entre pousser et tirer.</p><div className="hero-actions"><button type="button" className="primary-button" onClick={() => onPractice(song)}><Play fill="currentColor" /> Commencer ma séance <span>12 min</span></button><button type="button" className="secondary-button" onClick={onNavigateLearn}>Voir mon parcours <ArrowRight /></button></div><div className="hero-reassurance"><span><CheckCircle2 /> Reprends là où tu t’es arrêté</span><span><Headphones /> Micro intégré</span></div></div>
         <div className="hero-visual">
           <div className="daily-card"><div className="daily-card-head"><span><small>SÉANCE DU JOUR</small><strong>Pousser, tirer… respirer</strong></span><b>2 / 4</b></div><div className="lesson-preview"><AccordionView config={accordion} direction="pull" notation="tablature" compact /><span className="gesture-tip"><Repeat2 /> Un seul changement de direction aujourd’hui</span></div><div className="lesson-progress"><i><b style={{ width: '50%' }} /></i><span>6 min restantes</span></div></div>
           <span className="floating-badge badge-streak"><Flame /><b>3 jours</b><small>Ta série démarre !</small></span><span className="floating-badge badge-skill"><Award /><b>+1 compétence</b><small>Boutons 4 et 5</small></span>

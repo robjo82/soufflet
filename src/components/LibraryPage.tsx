@@ -26,8 +26,8 @@ export function LibraryPage({ songs, onImport, onPractice, onEdit }: LibraryPage
       <section className="song-grid">
         <button type="button" className="add-song-card" onClick={onImport}><span><Sparkles /></span><strong>Transformer un nouveau morceau</strong><p>Audio, vidéo, partition, tablature ou lien</p><em>Importer <Import /></em></button>
         {filteredSongs.map((song, index) => (
-          <article className="song-card" key={song.id}>
-            <div className={`song-cover cover-${index % 4}`}><span>{iconFor(song)}</span><button type="button" onClick={() => song.events.length ? onPractice(song) : onEdit(song)}><Play fill="currentColor" /></button><small>{song.duration ? `${Math.floor(song.duration / 60)}:${String(song.duration % 60).padStart(2, '0')}` : 'Référence'}</small></div>
+          <article className="song-card" key={song.id} title={song.provenance}>
+            <div className={`song-cover cover-${index % 4}`}><span>{iconFor(song)}</span><button type="button" aria-label={song.events.length ? `Jouer ${song.title}` : `Ouvrir ${song.title}`} onClick={() => song.events.length ? onPractice(song) : onEdit(song)}><Play fill="currentColor" /></button><small>{song.duration ? `${Math.floor(song.duration / 60)}:${String(song.duration % 60).padStart(2, '0')}` : 'Référence'}</small></div>
             <div className="song-card-body"><div><span className={`status-pill status-${song.status}`}>{song.status === 'ready' ? 'Prêt à jouer' : song.status === 'needs-review' ? 'À vérifier' : song.status === 'reference-only' ? 'Lien externe' : 'Analyse…'}</span></div><h3>{song.title}</h3><p>{song.artist}</p><div className="song-facts"><span>{song.bpm} BPM</span><span>{song.key}</span><span>Niveau {Math.max(1, song.difficulty)}</span></div>{song.status === 'needs-review' && <button type="button" className="review-link" onClick={() => onEdit(song)}><AlertTriangle /> Vérifier {song.uncertainBeats?.length ?? 0} passage(s)</button>}{song.status === 'reference-only' && <a href={song.sourceUrl} target="_blank" rel="noreferrer" className="review-link"><Music2 /> Ouvrir la source</a>}</div>
           </article>
         ))}

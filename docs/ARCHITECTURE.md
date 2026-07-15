@@ -9,11 +9,13 @@ Navigateur React
 ├── préférences et autosauvegarde locale
 └── API HTTPS
     ├── configurations d’accordéons (SQLite)
+    ├── comptes et sessions opaques (SQLite)
+    ├── bibliothèque commune licenciée (SQLite)
     ├── parseur de tablature déterministe
     └── transcription multimodale Gemini
 ```
 
-Le front est construit par Vite. Express sert l’API et le build statique en production. SQLite utilise le module natif `node:sqlite`, le journal WAL et un volume Docker persistant. Les configurations intégrées sont réappliquées de façon idempotente au démarrage ; une future configuration utilisateur portera `is_builtin = 0` et ne sera pas écrasée.
+Le front est construit par Vite. Express sert l’API et le build statique en production. SQLite utilise le module natif `node:sqlite`, le journal WAL et un volume Docker persistant. Les migrations sont enregistrées dans `schema_migrations`. Les configurations et morceaux intégrés sont réappliqués de façon idempotente ; les configurations personnelles portent un propriétaire et ne sont jamais écrasées par un seed.
 
 ## Audio local
 
@@ -25,11 +27,11 @@ Ce détecteur est adapté aux notes isolées. Il ne prétend pas distinguer de m
 
 La clé serveur vient de `GEMINI_API_KEY`. Une clé de session facultative arrive dans l’en-tête `x-gemini-key` et n’est jamais journalisée ni stockée. Les uploads utilisent une mémoire temporaire limitée à 25 Mo et ne sont pas écrits sur disque. Le délai d’appel est limité à 120 secondes et la réponse est assainie : bornes de tempo, MIDI, confiance, taille et tri chronologique.
 
-Avant une exposition publique, ajouter au reverse proxy : limitation de débit par IP/compte, quota par taille et durée, authentification, protection CSRF si des cookies sont introduits, journal d’audit sans contenu musical et analyse antivirus des fichiers.
+Avant une exposition publique intensive, ajouter au reverse proxy : quota par compte, limitation de débit distribuée, journal d’audit sans contenu musical et analyse antivirus des fichiers. Les mutations restent sur la même origine avec des cookies `SameSite=Lax`; le cookie passe en mode `Secure` derrière HTTPS.
 
 ## Données utilisateur
 
-Ce prototype local-first stocke morceaux corrigés et préférences dans `localStorage`. Cela garantit l’absence de perte lors d’une coupure réseau, mais ne remplace pas la synchronisation multi-appareils. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
+Les comptes, sessions, configurations d’instruments et morceaux communs vivent dans SQLite. Les morceaux importés, corrections et préférences restent local-first dans `localStorage`. Cela garantit une reprise immédiate lors d’une coupure réseau, mais ne remplace pas encore la synchronisation multi-appareils. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
 
 ## Accessibilité
 

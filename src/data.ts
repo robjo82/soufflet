@@ -33,8 +33,8 @@ const gcInner = [
 ];
 
 const clubOuter = [
-  [53, 55], [57, 58], [60, 62], [65, 64], [69, 67],
-  [72, 70], [77, 74], [81, 76], [84, 79], [89, 82],
+  [78, 75], [82, 80], [60, 62], [64, 65], [67, 69],
+  [72, 71], [76, 74], [79, 77], [84, 81], [88, 86],
 ];
 const clubInner = [
   [48, 54], [52, 55], [55, 59], [60, 60], [64, 65],
@@ -61,7 +61,7 @@ export const FALLBACK_ACCORDIONS: AccordionConfig[] = [
     color: '#6e2f28',
     rightRows: [10, 9, 2],
     bassCount: 8,
-    description: 'Configuration Club compacte avec rang d’altérations et bouton Gleichton.',
+    description: 'Variante Club I avec deux boutons aigus en tête, dont P1 = F♯5, et bouton Gleichton.',
     buttons: [
       ...mapRow('c1-out', 1, clubOuter),
       ...mapRow('c1-in', 2, clubInner).map((button) => button.index === 4 ? { ...button, isGleichton: true } : button),
@@ -70,7 +70,7 @@ export const FALLBACK_ACCORDIONS: AccordionConfig[] = [
     ],
     basses: standardBasses('CF'),
     verified: false,
-    sourceNote: 'Disposition Club C/F courante. Les Club I anciens varient : vérifier chaque bouton avec l’accordeur intégré.',
+    sourceNote: 'Variante relevée : P1 = F♯5 et boutons 5P/5T à 9T validés par la tablature du Brise-pieds. Les autres Club I peuvent différer.',
   },
   {
     id: 'standard-gc-21-8',
@@ -154,4 +154,28 @@ export function displayNote(note: string, notation: 'french' | 'english' | 'butt
   if (notation === 'button') return `${buttonNumber}`;
   if (notation === 'tablature') return `${buttonNumber}${direction === 'pull' ? 'T' : 'P'}`;
   return note;
+}
+
+export function adaptSongToAccordion(song: Song, accordion: AccordionConfig): Song {
+  let previousDirection: 'push' | 'pull' | undefined;
+  const events = song.events.map((event) => {
+    const existing = accordion.buttons.find((button) => button.id === event.buttonId);
+    if (existing && (event.direction === 'push' ? existing.pushMidi : existing.pullMidi) === event.midi) {
+      previousDirection = event.direction;
+      return event;
+    }
+    const choices = accordion.buttons.flatMap((button) => [
+      ...(button.pushMidi === event.midi ? [{ button, direction: 'push' as const }] : []),
+      ...(button.pullMidi === event.midi ? [{ button, direction: 'pull' as const }] : []),
+    ]).sort((left, right) => {
+      const leftContinuity = left.direction === previousDirection ? 0 : 1;
+      const rightContinuity = right.direction === previousDirection ? 0 : 1;
+      return leftContinuity - rightContinuity || left.button.row - right.button.row || left.button.index - right.button.index;
+    });
+    const choice = choices[0];
+    if (!choice) return { ...event, buttonId: '', confidence: Math.min(event.confidence ?? 1, .45) };
+    previousDirection = choice.direction;
+    return { ...event, buttonId: choice.button.id, direction: choice.direction, finger: choice.button.finger ?? event.finger };
+  });
+  return { ...song, events };
 }
