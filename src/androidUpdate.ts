@@ -24,6 +24,16 @@ export interface AndroidRelease {
   publishedAt: string;
 }
 
+export async function fetchLatestAndroidRelease(signal?: AbortSignal) {
+  const response = await fetch(GITHUB_RELEASE_API, {
+    signal,
+    cache: 'no-store',
+    headers: { Accept: 'application/vnd.github+json' },
+  });
+  if (!response.ok) throw new Error('Release GitHub indisponible');
+  return findAndroidRelease(await response.json() as GithubRelease);
+}
+
 export function normalizeVersion(version: string) {
   return version.trim().replace(/^v/i, '').split('-')[0];
 }
@@ -37,6 +47,10 @@ export function compareVersions(left: string, right: string) {
     if (difference !== 0) return difference > 0 ? 1 : -1;
   }
   return 0;
+}
+
+export function isAndroidUpdateAvailable(release: AndroidRelease | null, currentVersion: string | null) {
+  return Boolean(release && currentVersion && compareVersions(release.version, currentVersion) > 0);
 }
 
 export function findAndroidRelease(release: GithubRelease): AndroidRelease | null {

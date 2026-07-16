@@ -24,7 +24,7 @@ La cible Android est une coque Capacitor native qui charge exclusivement l’ori
 
 Le front détecte `Capacitor.getPlatform() === 'android'` pour activer la navigation basse, les zones sûres et le mode entraînement immersif. Les liens externes quittent la WebView dans un onglet système. Seul `soufflet.robin-joseph.fr` est autorisé dans la navigation interne et les connexions HTTP non chiffrées sont refusées.
 
-`SouffletUpdaterPlugin` accepte uniquement une URL HTTPS sur `github.com` et un nom `soufflet-android-vX.Y.Z.apk`. Android contrôle ensuite que la signature de la mise à jour correspond à celle de l’application installée. L’API publique des Releases GitHub sert uniquement à lire la version et l’URL de l’artefact ; aucun jeton GitHub n’est embarqué dans l’app.
+`SouffletUpdaterPlugin` accepte uniquement une URL HTTPS sur `github.com` et un nom `soufflet-android-vX.Y.Z.apk`. Android contrôle ensuite que la signature de la mise à jour correspond à celle de l’application installée. Au démarrage, le client compare silencieusement son `versionName` à la dernière Release GitHub et n’affiche une proposition que si cette dernière est plus récente ; « Plus tard » reporte simplement la proposition au prochain redémarrage. L’API publique des Releases GitHub sert uniquement à lire la version et l’URL de l’artefact ; aucun jeton GitHub n’est embarqué dans l’app.
 
 ## Audio local
 
