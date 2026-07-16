@@ -115,6 +115,10 @@ export class SouffletDatabase {
         ALTER TABLE practice_sessions ADD COLUMN instrument_type TEXT NOT NULL DEFAULT 'accordion'
           CHECK(instrument_type IN ('accordion', 'piano'));
       `,
+      `
+        ALTER TABLE user_preferences ADD COLUMN learning_instruments TEXT NOT NULL DEFAULT '["accordion"]';
+        ALTER TABLE user_preferences ADD COLUMN instrument_setup_done INTEGER NOT NULL DEFAULT 1;
+      `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -245,16 +249,16 @@ export class SouffletDatabase {
 
   getUserPreferences(userId: string) {
     const row = this.db.prepare(`
-      SELECT accordion_id, notation, count_in, instrument_type, piano_keyboard_size, piano_input, updated_at
+      SELECT accordion_id, notation, count_in, instrument_type, piano_keyboard_size, piano_input, learning_instruments, instrument_setup_done, updated_at
       FROM user_preferences WHERE user_id = ?
-    `).get(userId) as { accordion_id: string; notation: 'french' | 'english' | 'tablature' | 'button'; count_in: number; instrument_type: 'accordion' | 'piano'; piano_keyboard_size: number; piano_input: 'midi' | 'microphone' | 'computer-keyboard'; updated_at: string } | undefined;
-    return row ? { accordionId: row.accordion_id, notation: row.notation, countIn: Boolean(row.count_in), instrumentType: row.instrument_type, pianoKeyboardSize: row.piano_keyboard_size, pianoInput: row.piano_input, updatedAt: row.updated_at } : null;
+    `).get(userId) as { accordion_id: string; notation: 'french' | 'english' | 'tablature' | 'button'; count_in: number; instrument_type: 'accordion' | 'piano'; piano_keyboard_size: number; piano_input: 'midi' | 'microphone' | 'computer-keyboard'; learning_instruments: string; instrument_setup_done: number; updated_at: string } | undefined;
+    return row ? { accordionId: row.accordion_id, notation: row.notation, countIn: Boolean(row.count_in), instrumentType: row.instrument_type, pianoKeyboardSize: row.piano_keyboard_size, pianoInput: row.piano_input, learningInstruments: JSON.parse(row.learning_instruments) as Array<'accordion' | 'piano'>, instrumentSetupDone: Boolean(row.instrument_setup_done), updatedAt: row.updated_at } : null;
   }
 
-  saveUserPreferences(userId: string, preferences: { accordionId: string; notation: 'french' | 'english' | 'tablature' | 'button'; countIn: boolean; instrumentType?: 'accordion' | 'piano'; pianoKeyboardSize?: number; pianoInput?: 'midi' | 'microphone' | 'computer-keyboard' }) {
+  saveUserPreferences(userId: string, preferences: { accordionId: string; notation: 'french' | 'english' | 'tablature' | 'button'; countIn: boolean; instrumentType?: 'accordion' | 'piano'; pianoKeyboardSize?: number; pianoInput?: 'midi' | 'microphone' | 'computer-keyboard'; learningInstruments?: Array<'accordion' | 'piano'>; instrumentSetupDone?: boolean }) {
     this.db.prepare(`
-      INSERT INTO user_preferences (user_id, accordion_id, notation, count_in, instrument_type, piano_keyboard_size, piano_input)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO user_preferences (user_id, accordion_id, notation, count_in, instrument_type, piano_keyboard_size, piano_input, learning_instruments, instrument_setup_done)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         accordion_id = excluded.accordion_id,
         notation = excluded.notation,
@@ -262,8 +266,10 @@ export class SouffletDatabase {
         instrument_type = excluded.instrument_type,
         piano_keyboard_size = excluded.piano_keyboard_size,
         piano_input = excluded.piano_input,
+        learning_instruments = excluded.learning_instruments,
+        instrument_setup_done = excluded.instrument_setup_done,
         updated_at = CURRENT_TIMESTAMP
-    `).run(userId, preferences.accordionId, preferences.notation, Number(preferences.countIn), preferences.instrumentType ?? 'accordion', preferences.pianoKeyboardSize ?? 49, preferences.pianoInput ?? 'computer-keyboard');
+    `).run(userId, preferences.accordionId, preferences.notation, Number(preferences.countIn), preferences.instrumentType ?? 'accordion', preferences.pianoKeyboardSize ?? 49, preferences.pianoInput ?? 'computer-keyboard', JSON.stringify(preferences.learningInstruments ?? ['accordion']), Number(preferences.instrumentSetupDone ?? true));
     return this.getUserPreferences(userId)!;
   }
 

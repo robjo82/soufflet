@@ -13,6 +13,7 @@ import { ImportModal } from './components/ImportModal';
 import { AuthPage } from './components/AuthPage';
 import { AccountPage } from './components/AccountPage';
 import { PianoMode } from './components/PianoMode';
+import { InstrumentChoice } from './components/InstrumentChoice';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
 import { isAndroidOnboardingPreview, isAndroidPreview, setNativePracticeMode } from './nativeApp';
 import type { AccordionConfig, InstrumentType, Notation, Page, PianoInput, PianoKeyboardSize, PracticeSessionInput, PracticeStats, Song, UserAccount } from './types';
@@ -26,9 +27,11 @@ interface UserPreferences {
   instrumentType: InstrumentType;
   pianoKeyboardSize: PianoKeyboardSize;
   pianoInput: PianoInput;
+  learningInstruments: InstrumentType[];
+  instrumentSetupDone: boolean;
 }
 
-type PortablePreferences = Pick<UserPreferences, 'accordionId' | 'notation' | 'countIn' | 'instrumentType' | 'pianoKeyboardSize' | 'pianoInput'>;
+type PortablePreferences = Pick<UserPreferences, 'accordionId' | 'notation' | 'countIn' | 'instrumentType' | 'pianoKeyboardSize' | 'pianoInput' | 'learningInstruments' | 'instrumentSetupDone'>;
 
 const defaultPreferences: UserPreferences = {
   accordionId: 'standard-gc-21-8',
@@ -39,6 +42,8 @@ const defaultPreferences: UserPreferences = {
   instrumentType: 'accordion',
   pianoKeyboardSize: 49,
   pianoInput: 'computer-keyboard',
+  learningInstruments: ['accordion'],
+  instrumentSetupDone: true,
 };
 
 function getStored<T>(key: string, fallback: T): T {
@@ -102,7 +107,7 @@ export function App() {
         const local = { ...defaultPreferences, ...getStored('soufflet.preferences', defaultPreferences) };
         await fetch('/api/preferences', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-          body: JSON.stringify({ accordionId: local.accordionId, notation: local.notation, countIn: local.countIn, instrumentType: local.instrumentType, pianoKeyboardSize: local.pianoKeyboardSize, pianoInput: local.pianoInput }),
+          body: JSON.stringify({ accordionId: local.accordionId, notation: local.notation, countIn: local.countIn, instrumentType: local.instrumentType, pianoKeyboardSize: local.pianoKeyboardSize, pianoInput: local.pianoInput, learningInstruments: local.learningInstruments, instrumentSetupDone: local.instrumentSetupDone }),
         });
       }
     }).catch(() => undefined);
@@ -120,7 +125,7 @@ export function App() {
     if (user) {
       void fetch('/api/preferences', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accordionId: next.accordionId, notation: next.notation, countIn: next.countIn, instrumentType: next.instrumentType, pianoKeyboardSize: next.pianoKeyboardSize, pianoInput: next.pianoInput }),
+        body: JSON.stringify({ accordionId: next.accordionId, notation: next.notation, countIn: next.countIn, instrumentType: next.instrumentType, pianoKeyboardSize: next.pianoKeyboardSize, pianoInput: next.pianoInput, learningInstruments: next.learningInstruments, instrumentSetupDone: next.instrumentSetupDone }),
       });
     }
   }, [user]);
@@ -184,8 +189,13 @@ export function App() {
   }, [navigate, page, practiceSong, showImport]);
 
   if (authLoading) return <div className="app-loading"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong><small>Préparation de ton espace…</small></div>;
-  if (!user) return <AuthPage onAuthenticated={(account, instrumentType) => { if (instrumentType) savePreferences({ ...preferences, instrumentType }); setUser(account); }} />;
+  if (!user) return <AuthPage onAuthenticated={(account, newAccount) => { if (newAccount) savePreferences({ ...preferences, instrumentSetupDone: false, onboardingDone: false, tutorialDone: false }); setUser(account); }} />;
   if (!selectedAccordion) return null;
+
+  if (!preferences.instrumentSetupDone) return <InstrumentChoice onComplete={(learningInstruments) => {
+    const pianoOnly = learningInstruments.length === 1 && learningInstruments[0] === 'piano';
+    savePreferences({ ...preferences, learningInstruments, instrumentType: pianoOnly ? 'piano' : 'accordion', instrumentSetupDone: true, onboardingDone: pianoOnly, tutorialDone: pianoOnly });
+  }} />;
 
   if (preferences.instrumentType === 'accordion' && !preferences.onboardingDone) {
     return <Onboarding accordions={accordions} initialAccordionId={preferences.accordionId} initialNotation={preferences.notation} onSkip={(accordionId, notation) => savePreferences({ ...preferences, accordionId, notation, onboardingDone: true, tutorialDone: false })} onComplete={(accordionId, notation) => {
@@ -226,7 +236,7 @@ export function App() {
         savePreferences({ ...preferences, accordionId: payload.accordion.id });
         return payload.accordion;
       }} />}
-      {page === 'account' && <AccountPage user={user} accordions={accordions} selectedAccordionId={preferences.accordionId} instrumentType={preferences.instrumentType} onInstrumentChange={(instrumentType) => savePreferences({ ...preferences, instrumentType })} onUserUpdated={setUser} onOpenSettings={() => navigate('settings')} onLogout={logout} onAccountDeleted={accountDeleted} />}
+      {page === 'account' && <AccountPage user={user} accordions={accordions} selectedAccordionId={preferences.accordionId} instrumentType={preferences.instrumentType} learningInstruments={preferences.learningInstruments} onInstrumentChange={(instrumentType) => savePreferences({ ...preferences, instrumentType, learningInstruments: preferences.learningInstruments.includes(instrumentType) ? preferences.learningInstruments : [...preferences.learningInstruments, instrumentType] })} onUserUpdated={setUser} onOpenSettings={() => navigate('settings')} onLogout={logout} onAccountDeleted={accountDeleted} />}
       {showImport && <ImportModal accordion={selectedAccordion} apiKey={apiKey} onClose={() => setShowImport(false)} onImported={(song) => { saveSong(song); if (song.events.length) { setStudioSong(song); navigate('studio'); } }} />}
     </AppShell>
   );

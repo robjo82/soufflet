@@ -59,10 +59,10 @@ const credentialsSchema = z.object({
 
 app.post('/api/auth/register', authRateLimit, async (request, response) => {
   try {
-    const body = credentialsSchema.extend({ displayName: z.string().trim().min(2).max(60), instrumentType: z.enum(['accordion', 'piano']).default('accordion') }).parse(request.body);
+    const body = credentialsSchema.extend({ displayName: z.string().trim().min(2).max(60) }).parse(request.body);
     const user = db.createUser({ id: createUserId(), email: body.email, displayName: body.displayName, passwordHash: await hashPassword(body.password) });
     if (!user) throw new Error('Le compte n’a pas pu être créé.');
-    db.saveUserPreferences(user.id, { accordionId: 'standard-gc-21-8', notation: 'french', countIn: true, instrumentType: body.instrumentType });
+    db.saveUserPreferences(user.id, { accordionId: 'standard-gc-21-8', notation: 'french', countIn: true, instrumentType: 'accordion', instrumentSetupDone: false });
     setSession(response, db, user.id);
     response.status(201).json({ user });
   } catch (error) {
@@ -106,6 +106,8 @@ const preferencesSchema = z.object({
   instrumentType: z.enum(['accordion', 'piano']).default('accordion'),
   pianoKeyboardSize: z.union([z.literal(25), z.literal(32), z.literal(49), z.literal(61), z.literal(76), z.literal(88)]).default(49),
   pianoInput: z.enum(['midi', 'microphone', 'computer-keyboard']).default('computer-keyboard'),
+  learningInstruments: z.array(z.enum(['accordion', 'piano'])).min(1).max(2).default(['accordion']),
+  instrumentSetupDone: z.boolean().default(true),
 });
 
 app.get('/api/preferences', requireUser, (_request, response) => {
