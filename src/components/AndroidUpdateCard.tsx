@@ -1,16 +1,10 @@
 import { App as CapacitorApp } from '@capacitor/app';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import { AlertCircle, CheckCircle2, Download, ExternalLink, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { compareVersions, findAndroidRelease, formatFileSize, GITHUB_RELEASE_API, type AndroidRelease, type GithubRelease } from '../androidUpdate';
+import { fetchLatestAndroidRelease, formatFileSize, isAndroidUpdateAvailable, type AndroidRelease } from '../androidUpdate';
+import { startAndroidUpdate } from '../androidUpdateInstaller';
 
-interface SouffletUpdaterPlugin {
-  canInstallPackages(): Promise<{ allowed: boolean }>;
-  openInstallSettings(): Promise<void>;
-  downloadAndInstall(options: { url: string; fileName: string }): Promise<{ downloadId: number }>;
-}
-
-const SouffletUpdater = registerPlugin<SouffletUpdaterPlugin>('SouffletUpdater');
 const RELEASES_URL = 'https://github.com/robjo82/soufflet/releases/latest';
 
 type UpdateState = 'loading' | 'ready' | 'downloading' | 'error';
@@ -26,18 +20,16 @@ export function AndroidUpdateCard() {
     const controller = new AbortController();
     const load = async () => {
       try {
-        const [response, appInfo] = await Promise.all([
-          fetch(GITHUB_RELEASE_API, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } }),
+        const [latest, appInfo] = await Promise.all([
+          fetchLatestAndroidRelease(controller.signal),
           isAndroid ? CapacitorApp.getInfo() : Promise.resolve(null),
         ]);
-        if (!response.ok) throw new Error('Release GitHub indisponible');
-        const latest = findAndroidRelease(await response.json() as GithubRelease);
         setCurrentVersion(appInfo?.version ?? null);
         setRelease(latest);
         setState('ready');
         if (!latest) setMessage('L’APK Android sera disponible avec la prochaine release.');
         else if (!appInfo) setMessage(`Version ${latest.version} prête à installer.`);
-        else if (compareVersions(latest.version, appInfo.version) > 0) setMessage(`La version ${latest.version} est disponible.`);
+        else if (isAndroidUpdateAvailable(latest, appInfo.version)) setMessage(`La version ${latest.version} est disponible.`);
         else setMessage('Tu utilises déjà la dernière version.');
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -56,14 +48,12 @@ export function AndroidUpdateCard() {
       return;
     }
     try {
-      const permission = await SouffletUpdater.canInstallPackages();
-      if (!permission.allowed) {
-        await SouffletUpdater.openInstallSettings();
+      const result = await startAndroidUpdate(release);
+      if (result === 'permission-required') {
         setMessage('Autorise Soufflet à installer cette mise à jour, puis appuie à nouveau sur le bouton.');
         return;
       }
       setState('downloading');
-      await SouffletUpdater.downloadAndInstall({ url: release.downloadUrl, fileName: release.assetName });
       setMessage('Téléchargement lancé. Android proposera l’installation dès qu’il sera terminé.');
     } catch (error) {
       setState('error');
@@ -71,7 +61,7 @@ export function AndroidUpdateCard() {
     }
   };
 
-  const updateAvailable = Boolean(release && currentVersion && compareVersions(release.version, currentVersion) > 0);
+  const updateAvailable = isAndroidUpdateAvailable(release, currentVersion);
   return (
     <div className="android-update-card">
       <span className="android-app-icon"><Smartphone /></span>

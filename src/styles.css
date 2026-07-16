@@ -1129,6 +1129,25 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .android-update-actions .primary-button { white-space: nowrap; }
 .android-update-actions > a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: var(--green); font-size: 9px; font-weight: 800; text-decoration: none; }
 .android-update-actions > a svg { width: 13px; }
+.update-prompt-backdrop { position: fixed; inset: 0; z-index: 1000; padding: max(24px, var(--safe-top)) max(20px, var(--safe-right)) max(24px, var(--safe-bottom)) max(20px, var(--safe-left)); display: grid; place-items: center; background: rgba(24, 31, 27, .58); backdrop-filter: blur(10px); }
+.update-prompt { position: relative; width: min(440px, 100%); padding: 32px; border: 1px solid rgba(255, 255, 255, .7); border-radius: 28px; background: linear-gradient(155deg, #fff 0%, #f5f1e9 100%); box-shadow: 0 28px 90px rgba(14, 35, 25, .3); text-align: center; }
+.update-prompt-close { position: absolute; top: 15px; right: 15px; width: 38px; height: 38px; border: 0; border-radius: 50%; display: grid; place-items: center; color: var(--muted); background: rgba(47, 99, 78, .08); cursor: pointer; }
+.update-prompt-close svg { width: 18px; }
+.update-prompt-icon { position: relative; width: 78px; height: 78px; margin: 0 auto 20px; border-radius: 24px; display: grid; place-items: center; color: white; background: linear-gradient(145deg, #3b795f, #214c3b); box-shadow: 0 16px 35px rgba(47, 99, 78, .28); }
+.update-prompt-icon > svg { width: 36px; height: 36px; }
+.update-prompt-icon span { position: absolute; right: -7px; bottom: -7px; width: 30px; height: 30px; border: 3px solid #f7f3ec; border-radius: 50%; display: grid; place-items: center; color: white; background: var(--coral); }
+.update-prompt-icon span svg { width: 14px; }
+.update-prompt h2 { margin: 7px 0 10px; color: var(--ink); font-size: clamp(26px, 6vw, 34px); letter-spacing: -.045em; }
+.update-prompt > p { margin: 0 auto; max-width: 360px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.update-prompt-trust { margin: 20px 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: var(--green); font-size: 10px; font-weight: 800; }
+.update-prompt-trust svg { width: 16px; }
+.update-prompt-status { margin: 0 0 18px; padding: 12px 14px; border-radius: 13px; display: flex; align-items: start; gap: 9px; color: #315745; background: #eaf2ed; text-align: left; font-size: 11px; line-height: 1.45; }
+.update-prompt-status.is-error { color: #8b4334; background: #f9e9e4; }
+.update-prompt-status svg { width: 17px; flex: 0 0 auto; }
+.update-prompt-actions { display: grid; gap: 10px; }
+.update-prompt-actions .primary-button, .update-prompt-actions .secondary-button { min-height: 50px; justify-content: center; font-size: 12px; }
+.update-prompt-release { margin-top: 17px; display: inline-flex; align-items: center; gap: 5px; color: var(--green); font-size: 10px; font-weight: 800; text-decoration: none; }
+.update-prompt-release svg { width: 13px; }
 .is-spinning { animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .switch-control { min-width: 102px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 10px; background: #eeeae3; display: flex; align-items: center; gap: 7px; cursor: pointer; }
@@ -1462,6 +1481,10 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .android-update-card { padding: 16px; grid-template-columns: 48px 1fr; gap: 13px; }
   .android-app-icon { width: 48px; height: 48px; border-radius: 14px; }
   .android-update-actions { min-width: 0; grid-column: 1 / -1; }
+  .update-prompt-backdrop { padding: var(--safe-top) 0 0; align-items: end; }
+  .update-prompt { width: 100%; padding: 28px 20px calc(20px + var(--safe-bottom)); border-radius: 28px 28px 0 0; }
+  .update-prompt-icon { width: 68px; height: 68px; margin-bottom: 16px; border-radius: 21px; }
+  .update-prompt h2 { font-size: 29px; }
   .settings-options { grid-template-columns: 1fr 1fr; }
   .preference-row { grid-template-columns: 42px 1fr; }
   .preference-row .switch-control { grid-column: 1 / -1; width: 100%; justify-content: center; }
