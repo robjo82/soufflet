@@ -229,6 +229,11 @@ export class SouffletDatabase {
     return Boolean(result.changes);
   }
 
+  deleteUser(id: string) {
+    const result = this.db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    return Boolean(result.changes);
+  }
+
   getUserPreferences(userId: string) {
     const row = this.db.prepare(`
       SELECT accordion_id, notation, count_in, updated_at

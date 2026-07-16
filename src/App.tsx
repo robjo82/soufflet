@@ -154,6 +154,13 @@ export function App() {
     setUser(null); setPracticeSong(null); setPracticeStats(null);
   }, []);
 
+  const accountDeleted = useCallback(() => {
+    for (const key of Object.keys(localStorage)) if (key.startsWith('soufflet.')) localStorage.removeItem(key);
+    for (const key of Object.keys(sessionStorage)) if (key.startsWith('soufflet.')) sessionStorage.removeItem(key);
+    setUser(null); setPracticeSong(null); setPracticeStats(null); setSongs([]); setAccordions(FALLBACK_ACCORDIONS);
+    setPreferences(defaultPreferences); setPage('home');
+  }, []);
+
   useEffect(() => {
     void setNativePracticeMode(Boolean(practiceSong));
     return () => { void setNativePracticeMode(false); };
@@ -211,7 +218,7 @@ export function App() {
         savePreferences({ ...preferences, accordionId: payload.accordion.id });
         return payload.accordion;
       }} />}
-      {page === 'account' && <AccountPage user={user} accordions={accordions} selectedAccordionId={preferences.accordionId} onUserUpdated={setUser} onOpenSettings={() => navigate('settings')} onLogout={logout} />}
+      {page === 'account' && <AccountPage user={user} accordions={accordions} selectedAccordionId={preferences.accordionId} onUserUpdated={setUser} onOpenSettings={() => navigate('settings')} onLogout={logout} onAccountDeleted={accountDeleted} />}
       {showImport && <ImportModal accordion={selectedAccordion} apiKey={apiKey} onClose={() => setShowImport(false)} onImported={(song) => { saveSong(song); if (song.events.length) { setStudioSong(song); navigate('studio'); } }} />}
     </AppShell>
   );

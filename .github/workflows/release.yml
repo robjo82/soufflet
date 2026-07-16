@@ -67,7 +67,7 @@ jobs:
           fi
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/soufflet-release.jks"
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/soufflet-release.jks" >> "$GITHUB_ENV"
-      - name: Build signed Android APK
+      - name: Build signed Android artifacts
         if: startsWith(steps.version.outputs.version, 'v')
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -81,18 +81,30 @@ jobs:
           IFS=. read -r major minor patch <<< "$clean_version"
           version_code=$((major * 1000000 + minor * 1000 + patch))
           cd android
-          ./gradlew :app:assembleRelease -PappVersionName="$clean_version" -PappVersionCode="$version_code"
+          ./gradlew :app:assembleGithubRelease :app:bundlePlayRelease -PappVersionName="$clean_version" -PappVersionCode="$version_code"
           cd ..
           apk="soufflet-android-${version}.apk"
-          cp android/app/build/outputs/apk/release/app-release.apk "$apk"
+          aab="soufflet-google-play-${version}.aab"
+          cp android/app/build/outputs/apk/github/release/app-github-release.apk "$apk"
+          cp android/app/build/outputs/bundle/playRelease/app-play-release.aab "$aab"
+          if unzip -p "$aab" base/dex/classes.dex | strings | grep -q 'SouffletUpdater'; then
+            echo "::error::The Google Play bundle contains the GitHub self-updater."
+            exit 1
+          fi
+          if unzip -p "$aab" base/manifest/AndroidManifest.xml | strings | grep -q 'REQUEST_INSTALL_PACKAGES'; then
+            echo "::error::The Google Play bundle requests external package installation."
+            exit 1
+          fi
+          jarsigner -verify "$aab"
           sha256sum "$apk" > "$apk.sha256"
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "aab=$aab" >> "$GITHUB_OUTPUT"
         id: android
-      - name: Attach Android APK to GitHub release
+      - name: Attach Android artifacts to GitHub release
         if: startsWith(steps.version.outputs.version, 'v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ steps.version.outputs.version }}" "${{ steps.android.outputs.apk }}" "${{ steps.android.outputs.apk }}.sha256" --clobber
+        run: gh release upload "${{ steps.version.outputs.version }}" "${{ steps.android.outputs.apk }}" "${{ steps.android.outputs.apk }}.sha256" "${{ steps.android.outputs.aab }}" --clobber
       - uses: actions/upload-artifact@v7
         if: startsWith(steps.version.outputs.version, 'v')
         with:
@@ -100,7 +112,25 @@ jobs:
           path: |
             ${{ steps.android.outputs.apk }}
             ${{ steps.android.outputs.apk }}.sha256
+            ${{ steps.android.outputs.aab }}
           if-no-files-found: error
+      - name: Validate Google Play credentials
+        if: startsWith(steps.version.outputs.version, 'v') && vars.GOOGLE_PLAY_ENABLED == 'true'
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          node -e 'const value = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || "{}"); if (!value.client_email || !value.private_key) throw new Error("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is missing or invalid")'
+      - name: Publish to Google Play internal testing
+        if: startsWith(steps.version.outputs.version, 'v') && vars.GOOGLE_PLAY_ENABLED == 'true'
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: fr.robinjoseph.soufflet
+          releaseFiles: ${{ steps.android.outputs.aab }}
+          track: internal
+          status: completed
+          releaseName: ${{ steps.version.outputs.version }}
+          inAppUpdatePriority: 2
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:

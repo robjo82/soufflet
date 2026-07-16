@@ -37,7 +37,7 @@
 - observabilité, sauvegardes restaurées en test, SLO et procédure d’incident ;
 - tests end-to-end CI sur Chromium/WebKit, audits axe/Lighthouse ;
 - créer des profils visuels vérifiés pour les autres fabricants ; leur rendu actuel reprend la géométrie et la couleur configurées, mais pas encore chaque détail de carrosserie ;
-- mentions légales, politique de confidentialité, licences musicales et procédure de retrait.
+- conditions d’utilisation, mentions légales complètes, licences musicales et procédure de retrait.
 
 ## Livraison actuelle
 
@@ -45,7 +45,7 @@
 
 ## Publication Android
 
-Chaque nouvelle version sémantique construit également un APK Android signé, calcule son SHA-256 et joint les deux fichiers à la Release GitHub. Les pushes sans nouvelle release sémantique continuent de publier l’image Docker mais ne produisent pas d’APK artificiellement versionné.
+Chaque nouvelle version sémantique construit un APK GitHub signé et un AAB Google Play signé. L’APK et son SHA-256 sont joints à la Release GitHub ; les trois fichiers sont conservés comme artefact CI. Les pushes sans nouvelle release sémantique continuent de publier l’image Docker mais ne produisent pas de binaire Android artificiellement versionné.
 
 Secrets GitHub Actions requis :
 
@@ -57,6 +57,8 @@ Secrets GitHub Actions requis :
 La clé de production locale est ignorée par Git dans `.android-signing/soufflet-release.jks`. Son mot de passe est conservé dans le trousseau macOS sous le service `fr.robinjoseph.soufflet.android-keystore` et le compte `robjo82`. Cette clé doit être sauvegardée : sans elle, Android refusera toute mise à jour des installations existantes.
 
 La CI utilise Java 21, Android SDK 36 et R8. Le `versionName` vient du tag Semantic Release et le `versionCode` est calculé avec `major × 1 000 000 + minor × 1 000 + patch`. Les PR compilent une APK debug non distribuée afin de détecter les ruptures du projet natif.
+
+La publication sur le canal interne Google Play reste désactivée tant que la variable de dépôt `GOOGLE_PLAY_ENABLED` ne vaut pas `true`. Elle exige alors le secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`. La CI vérifie avant envoi que l’AAB est signé, qu’il ne contient pas `SouffletUpdaterPlugin` et qu’il ne demande pas `REQUEST_INSTALL_PACKAGES`. Le parcours complet est documenté dans [`GOOGLE_PLAY.md`](GOOGLE_PLAY.md).
 
 Le port direct permet la recette initiale. Avant d’ouvrir l’application aux apprenants, ajouter un nom de domaine et un reverse proxy HTTPS, puis passer `COOKIE_SECURE=true` : hors `localhost`, les navigateurs refusent le microphone sur une origine HTTP.
 
