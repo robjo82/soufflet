@@ -1,4 +1,7 @@
 export type Direction = 'push' | 'pull';
+export type InstrumentType = 'accordion' | 'piano';
+export type PianoInput = 'midi' | 'microphone' | 'computer-keyboard';
+export type PianoKeyboardSize = 25 | 32 | 49 | 61 | 76 | 88;
 export type Hand = 'right' | 'left' | 'both';
 export type Notation = 'french' | 'english' | 'button' | 'tablature';
 export type PracticeMode =
@@ -137,6 +140,7 @@ export interface PracticeSessionInput {
   completionPercent: number;
   tempoPercent: number;
   flagged: boolean;
+  instrumentType?: InstrumentType;
 }
 
 export interface PracticeStats {

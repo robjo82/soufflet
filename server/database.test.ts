@@ -74,6 +74,18 @@ describe('production data migrations', () => {
     expect(db.getUserPreferences('usr_preferences')).toMatchObject({ notation: 'tablature', countIn: false });
   });
 
+  it('defaults existing preferences to accordion and stores piano preferences explicitly', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_piano', email: 'piano@example.fr', displayName: 'Piano', passwordHash: 'test' });
+    expect(db.saveUserPreferences('usr_piano', {
+      accordionId: 'standard-gc-21-8', notation: 'french', countIn: true,
+    })).toMatchObject({ instrumentType: 'accordion', pianoKeyboardSize: 49, pianoInput: 'computer-keyboard' });
+    expect(db.saveUserPreferences('usr_piano', {
+      accordionId: 'standard-gc-21-8', notation: 'french', countIn: true,
+      instrumentType: 'piano', pianoKeyboardSize: 61, pianoInput: 'midi',
+    })).toMatchObject({ instrumentType: 'piano', pianoKeyboardSize: 61, pianoInput: 'midi' });
+  });
+
   it('seeds the shared, licensed learning library', () => {
     const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }> }>;
     expect(songs.length).toBeGreaterThanOrEqual(10);

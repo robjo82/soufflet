@@ -13,6 +13,7 @@ export interface StoredPracticeSession {
   completionPercent: number;
   tempoPercent: number;
   flagged: boolean;
+  instrumentType?: 'accordion' | 'piano';
 }
 
 const DAY_MS = 86_400_000;

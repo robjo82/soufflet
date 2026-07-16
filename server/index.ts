@@ -59,9 +59,10 @@ const credentialsSchema = z.object({
 
 app.post('/api/auth/register', authRateLimit, async (request, response) => {
   try {
-    const body = credentialsSchema.extend({ displayName: z.string().trim().min(2).max(60) }).parse(request.body);
+    const body = credentialsSchema.extend({ displayName: z.string().trim().min(2).max(60), instrumentType: z.enum(['accordion', 'piano']).default('accordion') }).parse(request.body);
     const user = db.createUser({ id: createUserId(), email: body.email, displayName: body.displayName, passwordHash: await hashPassword(body.password) });
     if (!user) throw new Error('Le compte n’a pas pu être créé.');
+    db.saveUserPreferences(user.id, { accordionId: 'standard-gc-21-8', notation: 'french', countIn: true, instrumentType: body.instrumentType });
     setSession(response, db, user.id);
     response.status(201).json({ user });
   } catch (error) {
@@ -102,6 +103,9 @@ const preferencesSchema = z.object({
   accordionId: z.string().min(1).max(120),
   notation: z.enum(['french', 'english', 'tablature', 'button']),
   countIn: z.boolean(),
+  instrumentType: z.enum(['accordion', 'piano']).default('accordion'),
+  pianoKeyboardSize: z.union([z.literal(25), z.literal(32), z.literal(49), z.literal(61), z.literal(76), z.literal(88)]).default(49),
+  pianoInput: z.enum(['midi', 'microphone', 'computer-keyboard']).default('computer-keyboard'),
 });
 
 app.get('/api/preferences', requireUser, (_request, response) => {
@@ -210,11 +214,13 @@ const practiceSessionSchema = z.object({
   completionPercent: z.number().min(0).max(100),
   tempoPercent: z.number().int().min(40).max(120),
   flagged: z.boolean(),
+  instrumentType: z.enum(['accordion', 'piano']).default('accordion'),
 }).refine((session) => new Date(session.endedAt).getTime() >= new Date(session.startedAt).getTime(), { message: 'La fin de séance précède son début.' });
 
 app.get('/api/progress', requireUser, (request, response) => {
   const timezoneOffset = z.coerce.number().int().min(-840).max(840).catch(0).parse(request.query.timezoneOffset);
-  response.json({ stats: db.getPracticeStats(response.locals.user.id as string, timezoneOffset) });
+  const instrumentType = z.enum(['accordion', 'piano']).catch('accordion').parse(request.query.instrumentType);
+  response.json({ stats: db.getPracticeStats(response.locals.user.id as string, timezoneOffset, new Date(), instrumentType) });
 });
 
 app.post('/api/practice-sessions', requireUser, (request, response) => {
@@ -222,7 +228,7 @@ app.post('/api/practice-sessions', requireUser, (request, response) => {
     const session = practiceSessionSchema.parse(request.body);
     db.savePracticeSession(response.locals.user.id as string, session);
     const timezoneOffset = z.coerce.number().int().min(-840).max(840).catch(0).parse(request.query.timezoneOffset);
-    response.json({ session, stats: db.getPracticeStats(response.locals.user.id as string, timezoneOffset) });
+    response.json({ session, stats: db.getPracticeStats(response.locals.user.id as string, timezoneOffset, new Date(), session.instrumentType) });
   } catch (error) {
     response.status(422).json({ error: error instanceof Error ? error.message : 'Séance invalide.' });
   }

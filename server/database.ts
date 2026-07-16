@@ -106,6 +106,15 @@ export class SouffletDatabase {
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `,
+      `
+        ALTER TABLE user_preferences ADD COLUMN instrument_type TEXT NOT NULL DEFAULT 'accordion'
+          CHECK(instrument_type IN ('accordion', 'piano'));
+        ALTER TABLE user_preferences ADD COLUMN piano_keyboard_size INTEGER NOT NULL DEFAULT 49;
+        ALTER TABLE user_preferences ADD COLUMN piano_input TEXT NOT NULL DEFAULT 'computer-keyboard'
+          CHECK(piano_input IN ('midi', 'microphone', 'computer-keyboard'));
+        ALTER TABLE practice_sessions ADD COLUMN instrument_type TEXT NOT NULL DEFAULT 'accordion'
+          CHECK(instrument_type IN ('accordion', 'piano'));
+      `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -236,22 +245,25 @@ export class SouffletDatabase {
 
   getUserPreferences(userId: string) {
     const row = this.db.prepare(`
-      SELECT accordion_id, notation, count_in, updated_at
+      SELECT accordion_id, notation, count_in, instrument_type, piano_keyboard_size, piano_input, updated_at
       FROM user_preferences WHERE user_id = ?
-    `).get(userId) as { accordion_id: string; notation: 'french' | 'english' | 'tablature' | 'button'; count_in: number; updated_at: string } | undefined;
-    return row ? { accordionId: row.accordion_id, notation: row.notation, countIn: Boolean(row.count_in), updatedAt: row.updated_at } : null;
+    `).get(userId) as { accordion_id: string; notation: 'french' | 'english' | 'tablature' | 'button'; count_in: number; instrument_type: 'accordion' | 'piano'; piano_keyboard_size: number; piano_input: 'midi' | 'microphone' | 'computer-keyboard'; updated_at: string } | undefined;
+    return row ? { accordionId: row.accordion_id, notation: row.notation, countIn: Boolean(row.count_in), instrumentType: row.instrument_type, pianoKeyboardSize: row.piano_keyboard_size, pianoInput: row.piano_input, updatedAt: row.updated_at } : null;
   }
 
-  saveUserPreferences(userId: string, preferences: { accordionId: string; notation: 'french' | 'english' | 'tablature' | 'button'; countIn: boolean }) {
+  saveUserPreferences(userId: string, preferences: { accordionId: string; notation: 'french' | 'english' | 'tablature' | 'button'; countIn: boolean; instrumentType?: 'accordion' | 'piano'; pianoKeyboardSize?: number; pianoInput?: 'midi' | 'microphone' | 'computer-keyboard' }) {
     this.db.prepare(`
-      INSERT INTO user_preferences (user_id, accordion_id, notation, count_in)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO user_preferences (user_id, accordion_id, notation, count_in, instrument_type, piano_keyboard_size, piano_input)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         accordion_id = excluded.accordion_id,
         notation = excluded.notation,
         count_in = excluded.count_in,
+        instrument_type = excluded.instrument_type,
+        piano_keyboard_size = excluded.piano_keyboard_size,
+        piano_input = excluded.piano_input,
         updated_at = CURRENT_TIMESTAMP
-    `).run(userId, preferences.accordionId, preferences.notation, Number(preferences.countIn));
+    `).run(userId, preferences.accordionId, preferences.notation, Number(preferences.countIn), preferences.instrumentType ?? 'accordion', preferences.pianoKeyboardSize ?? 49, preferences.pianoInput ?? 'computer-keyboard');
     return this.getUserPreferences(userId)!;
   }
 
@@ -304,20 +316,22 @@ export class SouffletDatabase {
       session.activeSeconds, session.correctCount, session.earlyCount, session.lateCount, session.wrongCount,
       session.completionPercent, session.tempoPercent, Number(session.flagged),
     );
+    this.db.prepare('UPDATE practice_sessions SET instrument_type = ? WHERE id = ? AND user_id = ?')
+      .run(session.instrumentType ?? 'accordion', session.id, userId);
     return session;
   }
 
-  listPracticeSessions(userId: string): StoredPracticeSession[] {
+  listPracticeSessions(userId: string, instrumentType?: 'accordion' | 'piano'): StoredPracticeSession[] {
     const rows = this.db.prepare(`
       SELECT id, song_id, song_title, mode, started_at, ended_at, active_seconds,
-             correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged
+             correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged, instrument_type
       FROM practice_sessions
-      WHERE user_id = ? AND active_seconds > 0
+      WHERE user_id = ? AND active_seconds > 0 AND (? IS NULL OR instrument_type = ?)
       ORDER BY ended_at DESC
-    `).all(userId) as Array<{
+    `).all(userId, instrumentType ?? null, instrumentType ?? null) as Array<{
       id: string; song_id: string; song_title: string; mode: string; started_at: string; ended_at: string;
       active_seconds: number; correct_count: number; early_count: number; late_count: number; wrong_count: number;
-      completion_percent: number; tempo_percent: number; flagged: number;
+      completion_percent: number; tempo_percent: number; flagged: number; instrument_type: 'accordion' | 'piano';
     }>;
     return rows.map((row) => ({
       id: row.id,
@@ -334,10 +348,11 @@ export class SouffletDatabase {
       completionPercent: row.completion_percent,
       tempoPercent: row.tempo_percent,
       flagged: Boolean(row.flagged),
+      instrumentType: row.instrument_type,
     }));
   }
 
-  getPracticeStats(userId: string, timezoneOffset = 0, now = new Date()) {
-    return summarizePractice(this.listPracticeSessions(userId), timezoneOffset, now);
+  getPracticeStats(userId: string, timezoneOffset = 0, now = new Date(), instrumentType?: 'accordion' | 'piano') {
+    return summarizePractice(this.listPracticeSessions(userId, instrumentType), timezoneOffset, now);
   }
 }
