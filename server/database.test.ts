@@ -34,8 +34,8 @@ describe('production data migrations', () => {
     db.createUser({ id: 'usr_account', email: 'avant@example.fr', displayName: 'Avant', passwordHash });
     db.createSession('session-account', 'usr_account', new Date(Date.now() + 60_000).toISOString());
 
-    expect(db.updateUserProfile('usr_account', { email: 'apres@example.fr', displayName: 'Après' })).toMatchObject({
-      email: 'apres@example.fr', displayName: 'Après',
+    expect(db.updateUserProfile('usr_account', { email: 'apres@example.fr', displayName: 'Après', avatarId: 'woman-1' })).toMatchObject({
+      email: 'apres@example.fr', displayName: 'Après', avatarId: 'woman-1',
     });
     const nextHash = await hashPassword('nouveau-mot-de-passe');
     expect(db.updateUserPassword('usr_account', nextHash)).toBe(true);

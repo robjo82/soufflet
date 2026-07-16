@@ -132,6 +132,7 @@ app.put('/api/preferences', requireUser, (request, response) => {
 const profileSchema = z.object({
   email: z.string().trim().email('Saisis une adresse e-mail valide.').max(254),
   displayName: z.string().trim().min(2, 'Le nom doit contenir au moins 2 caractères.').max(60),
+  avatarId: z.enum(['man-1', 'man-2', 'woman-1', 'woman-2', 'neutral']).default('neutral'),
 });
 
 app.patch('/api/account/profile', requireUser, (request, response) => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { AlertTriangle, Check, ChevronRight, Copy, Eye, EyeOff, KeyRound, Mic2, Palette, Save, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, TimerReset, Volume2, X } from 'lucide-react';
-import type { AccordionConfig, Notation } from '../types';
+import { AlertTriangle, Check, ChevronRight, Copy, Eye, EyeOff, KeyRound, Mic2, Palette, Piano, Save, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, TimerReset, Volume2, X } from 'lucide-react';
+import type { AccordionConfig, InstrumentType, Notation, PianoInput, PianoKeyboardSize } from '../types';
 import { AccordionView } from './AccordionView';
 import { AndroidUpdateCard } from './AndroidUpdateCard';
 
@@ -10,7 +10,10 @@ interface SettingsPageProps {
   notation: Notation;
   countIn: boolean;
   apiKey: string;
-  onSave: (accordionId: string, notation: Notation, countIn: boolean, apiKey: string) => void;
+  learningInstruments: InstrumentType[];
+  pianoKeyboardSize: PianoKeyboardSize;
+  pianoInput: PianoInput;
+  onSave: (accordionId: string, notation: Notation, countIn: boolean, apiKey: string, pianoKeyboardSize: PianoKeyboardSize, pianoInput: PianoInput) => void;
   onCreateAccordion: (accordion: AccordionConfig) => Promise<AccordionConfig>;
 }
 
@@ -21,10 +24,12 @@ const NOTE_OPTIONS = Array.from({ length: 61 }, (_, index) => {
   return { midi, label: noteName(midi) };
 });
 
-export function SettingsPage({ accordions, selectedId, notation, countIn, apiKey, onSave, onCreateAccordion }: SettingsPageProps) {
+export function SettingsPage({ accordions, selectedId, notation, countIn, apiKey, learningInstruments, pianoKeyboardSize, pianoInput, onSave, onCreateAccordion }: SettingsPageProps) {
   const [selected, setSelected] = useState(selectedId);
   const [nextNotation, setNextNotation] = useState(notation);
   const [nextCountIn, setNextCountIn] = useState(countIn);
+  const [nextPianoSize, setNextPianoSize] = useState(pianoKeyboardSize);
+  const [nextPianoInput, setNextPianoInput] = useState(pianoInput);
   const [key, setKey] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
   const accordion = accordions.find((item) => item.id === selected) ?? accordions[0];
@@ -49,10 +54,11 @@ export function SettingsPage({ accordions, selectedId, notation, countIn, apiKey
     } finally { setCreating(false); }
   };
   return (
-    <main className="page-content settings-page">
-      <header className="page-heading split-heading"><div><span className="eyebrow">Personnalisation</span><h1>Réglages</h1><p>Ton instrument, tes repères, ton environnement de pratique.</p></div><button type="button" className="primary-button" onClick={() => { onSave(selected, nextNotation, nextCountIn, key); setSaved(true); setTimeout(() => setSaved(false), 1600); }}>{saved ? <Check /> : <Save />} {saved ? 'Enregistré' : 'Enregistrer'}</button></header>
-      <div className="settings-layout"><nav className="settings-nav"><button type="button" className="is-active" onClick={() => document.getElementById('settings-instrument')?.scrollIntoView({ behavior: 'smooth' })}><span><SlidersHorizontal /> Instrument</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-notation')?.scrollIntoView({ behavior: 'smooth' })}><span><Palette /> Affichage</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-practice')?.scrollIntoView({ behavior: 'smooth' })}><span><TimerReset /> Séances</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-android')?.scrollIntoView({ behavior: 'smooth' })}><span><Smartphone /> Android</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-audio')?.scrollIntoView({ behavior: 'smooth' })}><span><Mic2 /> Audio et latence</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-ai')?.scrollIntoView({ behavior: 'smooth' })}><span><Sparkles /> Intelligence artificielle</span><ChevronRight /></button></nav>
+    <main className={`page-content settings-page ${learningInstruments.includes('accordion') ? '' : 'piano-only'}`}>
+      <header className="page-heading split-heading"><div><span className="eyebrow">Personnalisation</span><h1>Réglages</h1><p>Configure séparément tes instruments et ton environnement de pratique.</p></div><button type="button" className="primary-button" onClick={() => { onSave(selected, nextNotation, nextCountIn, key, nextPianoSize, nextPianoInput); setSaved(true); setTimeout(() => setSaved(false), 1600); }}>{saved ? <Check /> : <Save />} {saved ? 'Enregistré' : 'Enregistrer'}</button></header>
+      <div className="settings-layout"><nav className="settings-nav"><button type="button" className="is-active" onClick={() => document.getElementById('settings-instrument')?.scrollIntoView({ behavior: 'smooth' })}><span><SlidersHorizontal /> Mes instruments</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-notation')?.scrollIntoView({ behavior: 'smooth' })}><span><Palette /> Notation des notes</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-practice')?.scrollIntoView({ behavior: 'smooth' })}><span><TimerReset /> Démarrage des séances</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-audio')?.scrollIntoView({ behavior: 'smooth' })}><span><Mic2 /> Micro et latence</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-android')?.scrollIntoView({ behavior: 'smooth' })}><span><Smartphone /> Application Android</span><ChevronRight /></button><button type="button" onClick={() => document.getElementById('settings-ai')?.scrollIntoView({ behavior: 'smooth' })}><span><Sparkles /> Transcription IA</span><ChevronRight /></button></nav>
       <div className="settings-content">
+        {learningInstruments.includes('piano') && <section className="settings-section piano-settings" id="settings-piano"><div className="section-title"><div><span className="eyebrow">Piano</span><h2>Configurer le clavier</h2><p>Choisis le format du clavier et la méthode utilisée pour reconnaître tes notes.</p></div><Piano /></div><div className="piano-setting-options"><label>Format<select value={nextPianoSize} onChange={(event) => setNextPianoSize(Number(event.target.value) as PianoKeyboardSize)}>{[25, 32, 49, 61, 76, 88].map((size) => <option key={size} value={size}>{size} touches</option>)}</select></label><label>Entrée<select value={nextPianoInput} onChange={(event) => setNextPianoInput(event.target.value as PianoInput)}><option value="midi">MIDI</option><option value="microphone">Microphone</option><option value="computer-keyboard">Clavier PC</option></select></label></div></section>}
         <section className="settings-section" id="settings-instrument"><div className="section-title"><div><span className="eyebrow">Instrument actif</span><h2>Ton accordéon</h2></div></div><div className="accordion-setting-grid"><div className="accordion-list">{accordions.map((item) => <button type="button" key={item.id} className={item.id === selected ? 'is-selected' : ''} onClick={() => setSelected(item.id)}><span style={{ background: item.color }} /><span><small>{item.maker}</small><strong>{item.model}</strong><em>{item.tuning}</em></span>{item.id === selected && <Check />}</button>)}<button type="button" className="custom-instrument" onClick={openCustomEditor}><span>+</span><strong>Créer une configuration personnalisée</strong></button></div><div className="instrument-preview"><AccordionView config={accordion} direction="push" notation={nextNotation} compact /><p>{accordion.description}</p>{!accordion.verified && <div className="warning-inline"><AlertTriangle /> Cette disposition varie selon l’année. Vérifie-la bouton par bouton avec l’accordeur.</div>}</div></div></section>
         <section className="settings-section" id="settings-notation"><div className="section-title"><div><span className="eyebrow">Convention</span><h2>Nom des notes</h2></div></div><div className="settings-options">{([['french', 'Do · Ré · Mi', 'Française'], ['english', 'C · D · E', 'Anglo-saxonne'], ['tablature', '4P · 4T · 5P', 'Tablature pousser / tirer'], ['button', '4 · 4 · 5', 'Numéros de boutons']] as Array<[Notation, string, string]>).map(([id, sample, label]) => <button type="button" key={id} className={nextNotation === id ? 'is-selected' : ''} onClick={() => setNextNotation(id)}><span>{sample}</span><strong>{label}</strong>{nextNotation === id && <Check />}</button>)}</div></section>
         <section className="settings-section" id="settings-practice"><div className="section-title"><div><span className="eyebrow">Préparation</span><h2>Démarrage des morceaux</h2></div></div><div className="preference-row"><span><TimerReset /></span><div><strong>Décompte d’une mesure</strong><p>Affiche et fait entendre 4–3–2–1, ou le nombre de temps de la mesure, avant chaque nouveau départ.</p></div><button type="button" className={`switch-control ${nextCountIn ? 'is-on' : ''}`} role="switch" aria-checked={nextCountIn} onClick={() => setNextCountIn(!nextCountIn)}><i /><b>{nextCountIn ? 'Activé' : 'Désactivé'}</b></button></div></section>

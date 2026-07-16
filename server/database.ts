@@ -10,6 +10,7 @@ interface PublicUserRow {
   email: string;
   display_name: string;
   created_at: string;
+  avatar_id: string;
 }
 
 export class SouffletDatabase {
@@ -119,6 +120,7 @@ export class SouffletDatabase {
         ALTER TABLE user_preferences ADD COLUMN learning_instruments TEXT NOT NULL DEFAULT '["accordion"]';
         ALTER TABLE user_preferences ADD COLUMN instrument_setup_done INTEGER NOT NULL DEFAULT 1;
       `,
+      `ALTER TABLE users ADD COLUMN avatar_id TEXT NOT NULL DEFAULT 'neutral';`,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -220,16 +222,16 @@ export class SouffletDatabase {
   }
 
   getUserById(id: string) {
-    const row = this.db.prepare('SELECT id, email, display_name, created_at FROM users WHERE id = ?').get(id) as PublicUserRow | undefined;
-    return row ? { id: row.id, email: row.email, displayName: row.display_name, createdAt: row.created_at } : undefined;
+    const row = this.db.prepare('SELECT id, email, display_name, created_at, avatar_id FROM users WHERE id = ?').get(id) as PublicUserRow | undefined;
+    return row ? { id: row.id, email: row.email, displayName: row.display_name, createdAt: row.created_at, avatarId: row.avatar_id } : undefined;
   }
 
-  updateUserProfile(id: string, profile: { email: string; displayName: string }) {
+  updateUserProfile(id: string, profile: { email: string; displayName: string; avatarId?: string }) {
     const result = this.db.prepare(`
       UPDATE users
-      SET email = ?, display_name = ?, updated_at = CURRENT_TIMESTAMP
+      SET email = ?, display_name = ?, avatar_id = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(profile.email.trim().toLowerCase(), profile.displayName.trim(), id);
+    `).run(profile.email.trim().toLowerCase(), profile.displayName.trim(), profile.avatarId ?? 'neutral', id);
     return result.changes ? this.getUserById(id) : undefined;
   }
 
@@ -280,11 +282,11 @@ export class SouffletDatabase {
 
   getSessionUser(tokenHash: string) {
     const row = this.db.prepare(`
-      SELECT users.id, users.email, users.display_name, users.created_at
+      SELECT users.id, users.email, users.display_name, users.created_at, users.avatar_id
       FROM sessions JOIN users ON users.id = sessions.user_id
       WHERE sessions.token_hash = ? AND datetime(sessions.expires_at) > CURRENT_TIMESTAMP
     `).get(tokenHash) as PublicUserRow | undefined;
-    return row ? { id: row.id, email: row.email, displayName: row.display_name, createdAt: row.created_at } : undefined;
+    return row ? { id: row.id, email: row.email, displayName: row.display_name, createdAt: row.created_at, avatarId: row.avatar_id } : undefined;
   }
 
   deleteSession(tokenHash: string) {
