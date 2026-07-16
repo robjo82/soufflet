@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { AlertTriangle, ArrowRight, Eye, EyeOff, LockKeyhole, Mic2, Music2, ShieldCheck, UserRound } from 'lucide-react';
-import type { UserAccount } from '../types';
+import { AlertTriangle, ArrowRight, Eye, EyeOff, LockKeyhole, Mic2, Music2, Piano, ShieldCheck, UserRound } from 'lucide-react';
+import type { InstrumentType, UserAccount } from '../types';
 
 interface AuthPageProps {
-  onAuthenticated: (user: UserAccount) => void;
+  onAuthenticated: (user: UserAccount, instrumentType?: InstrumentType) => void;
 }
 
 export function AuthPage({ onAuthenticated }: AuthPageProps) {
@@ -14,6 +14,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [instrumentType, setInstrumentType] = useState<InstrumentType>('accordion');
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -22,11 +23,11 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       const response = await fetch(`/api/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, ...(mode === 'register' ? { displayName } : {}) }),
+        body: JSON.stringify({ email, password, ...(mode === 'register' ? { displayName, instrumentType } : {}) }),
       });
       const payload = await response.json() as { user?: UserAccount; error?: string };
       if (!response.ok || !payload.user) throw new Error(payload.error ?? 'Impossible de continuer.');
-      onAuthenticated(payload.user);
+      onAuthenticated(payload.user, mode === 'register' ? instrumentType : undefined);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Impossible de continuer.');
     } finally { setSubmitting(false); }
@@ -47,6 +48,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
           <p>{mode === 'register' ? 'Trois informations, puis nous configurons ton instrument ensemble.' : 'Connecte-toi pour retrouver ta bibliothèque et ton accordéon.'}</p>
           <form onSubmit={(event) => void submit(event)}>
             {mode === 'register' && <label>Comment doit-on t’appeler ?<input autoFocus value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={2} maxLength={60} required placeholder="Robin" autoComplete="name" /></label>}
+            {mode === 'register' && <fieldset className="auth-instrument"><legend>Quel instrument veux-tu apprendre ?</legend><button type="button" className={instrumentType === 'accordion' ? 'is-selected' : ''} onClick={() => setInstrumentType('accordion')}><Music2 /><span><strong>Accordéon</strong><small>Parcours historique</small></span></button><button type="button" className={instrumentType === 'piano' ? 'is-selected' : ''} onClick={() => setInstrumentType('piano')}><Piano /><span><strong>Piano</strong><small>Clavier et piano roll</small></span></button></fieldset>}
             <label>Adresse e-mail<input autoFocus={mode === 'login'} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="toi@exemple.fr" autoComplete="email" /></label>
             <label>Mot de passe<span className="password-field"><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} minLength={10} maxLength={200} required placeholder="10 caractères minimum" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>{showPassword ? <EyeOff /> : <Eye />}</button></span></label>
             {error && <div className="auth-error"><AlertTriangle /> {error}</div>}
