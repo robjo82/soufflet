@@ -20,7 +20,7 @@ Le front est construit par Vite. Express sert l’API et le build statique en pr
 
 ## Android
 
-La cible Android est une coque Capacitor native qui charge exclusivement l’origine HTTPS de production. Ce choix conserve les cookies de session en contexte propriétaire, évite un second système d’authentification et rend immédiatement disponibles les mêmes données sur le web, le téléphone et la tablette. Le binaire fournit les permissions et comportements natifs : microphone, maintien de l’écran, barre d’état, retour système, retours haptiques et installation d’une mise à jour.
+La cible Android est une coque Capacitor native qui charge exclusivement l’origine HTTPS de production. Ce choix conserve les cookies de session en contexte propriétaire, évite un second système d’authentification et rend immédiatement disponibles les mêmes données sur le web, le téléphone et la tablette. Le binaire fournit les permissions et comportements natifs : microphone, maintien de l’écran, barre d’état, retour système, retours haptiques et installation d’une mise à jour. Sur Android 15 et versions ultérieures, `SystemBars` injecte les insets réels de la barre d’état, de la navigation gestuelle et des découpes d’écran ; les surfaces interactives les consomment via les variables CSS `--safe-area-inset-*`.
 
 Le front détecte `Capacitor.getPlatform() === 'android'` pour activer la navigation basse, les zones sûres et le mode entraînement immersif. Les liens externes quittent la WebView dans un onglet système. Seul `soufflet.robin-joseph.fr` est autorisé dans la navigation interne et les connexions HTTP non chiffrées sont refusées.
 

@@ -13,7 +13,7 @@ import { ImportModal } from './components/ImportModal';
 import { AuthPage } from './components/AuthPage';
 import { AccountPage } from './components/AccountPage';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
-import { isAndroidPreview, setNativePracticeMode } from './nativeApp';
+import { isAndroidOnboardingPreview, isAndroidPreview, setNativePracticeMode } from './nativeApp';
 import type { AccordionConfig, Notation, Page, PracticeSessionInput, PracticeStats, Song, UserAccount } from './types';
 
 interface UserPreferences {
@@ -48,9 +48,8 @@ export function App() {
   const [accordions, setAccordions] = useState<AccordionConfig[]>(FALLBACK_ACCORDIONS);
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
     const stored = { ...defaultPreferences, ...getStored('soufflet.preferences', defaultPreferences) };
-    return isAndroidPreview()
-      ? { ...stored, onboardingDone: true, tutorialDone: true }
-      : stored;
+    if (isAndroidOnboardingPreview()) return { ...stored, onboardingDone: false, tutorialDone: false };
+    return isAndroidPreview() ? { ...stored, onboardingDone: true, tutorialDone: true } : stored;
   });
   const [songs, setSongs] = useState<Song[]>(() => getStored<Song[]>('soufflet.songs', []).filter((song) => !song.builtIn));
   const [practiceSong, setPracticeSong] = useState<Song | null>(null);
