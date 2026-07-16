@@ -5,6 +5,7 @@ import { getMelodyButtonSize } from './components/accordionLayout';
 import { PRACTICE_MODES } from './practiceModes';
 import { TUTORIAL_MODE_TRIALS } from './tutorialFlow';
 import { getWaitAdvance } from './practiceProgress';
+import { classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, type AudioFeatureFrame, type BellowsProfile } from './audioTraining';
 
 describe('accordion configurations', () => {
   it('ships the Hohner Club I 10 + 9 + 2 layout', () => {
@@ -62,6 +63,48 @@ describe('pitch and notation', () => {
 describe('first lesson tutorial', () => {
   it('includes a validated trial for every practice mode', () => {
     expect(TUTORIAL_MODE_TRIALS.map((trial) => trial.id)).toEqual(PRACTICE_MODES.map((mode) => mode.id));
+  });
+
+  it('requires the real instrument for rhythm, bellows and both hands', () => {
+    expect(TUTORIAL_MODE_TRIALS.find((trial) => trial.id === 'rhythm')?.instruction).toContain('accordéon');
+    expect(TUTORIAL_MODE_TRIALS.find((trial) => trial.id === 'left')?.instruction).toContain('accordéon');
+    expect(TUTORIAL_MODE_TRIALS.find((trial) => trial.id === 'combined')?.instruction).toContain('accordéon');
+  });
+});
+
+describe('microphone-first training', () => {
+  const frame = (midi: number, frequency: number, at = 0): AudioFeatureFrame => ({
+    at,
+    volume: .08,
+    spectralCentroid: frequency * 2.4,
+    brightness: .12,
+    pitch: { midi, frequency, note: `N${midi}`, cents: 0, confidence: .9, volume: .08 },
+  });
+
+  it('builds compact bellows references without retaining audio samples', () => {
+    const reference = createBellowsReference('push', Array.from({ length: 8 }, (_, index) => frame(60, 261.63 + index * .03, index * 70)));
+    expect(reference).toMatchObject({ direction: 'push', midi: 60, samples: 8 });
+    expect(reference).not.toHaveProperty('audio');
+  });
+
+  it('classifies a calibrated push and rejects a weak signal', () => {
+    const profile: BellowsProfile = {
+      accordionId: 'test', buttonId: 'button-1', createdAt: '2026-07-16T00:00:00.000Z',
+      push: createBellowsReference('push', Array.from({ length: 8 }, () => frame(60, 261.63)))!,
+      pull: createBellowsReference('pull', Array.from({ length: 8 }, () => frame(62, 293.66)))!,
+    };
+    expect(classifyBellows(frame(60, 261.7), profile)).toMatchObject({ direction: 'push', reason: 'matched' });
+    expect(classifyBellows({ ...frame(60, 261.7), volume: .001, pitch: null }, profile)).toMatchObject({ direction: null, reason: 'weak-signal' });
+  });
+
+  it('accepts regular attacks and catches an irregular rhythm', () => {
+    expect(evaluateRhythm([0, 600, 1200, 1800]).regular).toBe(true);
+    expect(evaluateRhythm([0, 250, 1100, 1400]).regular).toBe(false);
+  });
+
+  it('tolerates the common octave error for a bass note only', () => {
+    expect(midiMatches(48, 60)).toBe(true);
+    expect(midiMatches(48, 61)).toBe(false);
   });
 });
 

@@ -8,6 +8,7 @@
 - représentation bisonore et soufflet synchronisé ;
 - lecture/synthèse au tempo, boucle et raccourcis ;
 - accordeur monophonique navigateur ;
+- tutoriel microphone-first : notes, attaques rythmiques, basses monophoniques et profil acoustique pousser/tirer local ;
 - SQLite, API, validation d’entrée, limite d’upload et conteneur non-root ;
 - import de tablature simple et pipeline Gemini réel ;
 - correction et autosauvegarde locale ;
@@ -20,6 +21,7 @@
 - mesurer précision, faux positifs et latence P50/P95 sur au moins un ordinateur, une tablette iOS/Android et un téléphone ;
 - calibrer la compensation de latence par boucle audio et non avec une valeur déclarative ;
 - tester les anches avec trémolo et les attaques mécaniques ;
+- évaluer la classification pousser/tirer avec plusieurs boutons et instruments ; la version actuelle compare uniquement les deux sons d’un bouton de référence préalablement calibré et ne détecte pas un mouvement de soufflet silencieux ;
 - ajouter un détecteur polyphonique pour les basses/accords, avec état « ambigu » explicite ;
 - vérifier les dispositions de chaque Club I réel : les instruments anciens ont des variantes. Le seed C/F est donc marqué non vérifié dans l’interface.
 

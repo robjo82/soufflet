@@ -8,6 +8,18 @@
 4. **Pratique distribuée** : les gestes fragiles reviennent tôt ; les gestes maîtrisés sont espacés. Une séance courte alterne rappel, nouveauté, application et mini-performance.
 5. **Démonstration puis retrait de l’aide** : démonstration, guidage, attente de la bonne note, boucle ralentie, puis performance sans repères.
 
+## Premier tutoriel instrument en main
+
+Les exercices actifs se réalisent sur l’accordéon. La représentation à l’écran sert à écouter la consigne, repérer le bouton et comprendre le mouvement ; elle ne valide un geste par clic qu’en solution de repli si le microphone est indisponible.
+
+- le rythme est validé à partir de quatre attaques réellement entendues, avec un retour sur leur régularité ;
+- la main droite est validée par la hauteur de la note ;
+- la main gauche compare la basse attendue et accepte son équivalent à l’octave ;
+- les mains combinées demandent d’abord la basse puis la note mélodique ;
+- le soufflet utilise un bouton de référence dont les sons pousser et tirer sont enregistrés successivement sous forme de caractéristiques acoustiques agrégées.
+
+Le profil de soufflet reste lié à l’instrument dans le navigateur. Aucun son brut n’est conservé. La détection n’infère pas un mouvement silencieux : elle distingue les deux sons calibrés pendant que le bouton indiqué est tenu.
+
 La recherche sur l’apprentissage moteur musical montre que l’alternance et l’espacement peuvent réduire l’aisance ressentie pendant la séance tout en améliorant la rétention. L’app ne doit donc pas optimiser seulement le score immédiat. Référence : [Optimizing Music Learning: Blocked and Interleaved Practice](https://pmc.ncbi.nlm.nih.gov/articles/PMC4989027/).
 
 ## Modèle adaptatif prévu
