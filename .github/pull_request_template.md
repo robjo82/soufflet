@@ -12,6 +12,7 @@ Décrire le besoin utilisateur ou le problème résolu.
 - [ ] `npm run typecheck`
 - [ ] `npm test`
 - [ ] `npm run build`
+- [ ] Build Android debug (si Android/Capacitor est concerné)
 - [ ] Parcours concerné vérifié visuellement
 
 ## Assurance qualité

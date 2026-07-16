@@ -13,6 +13,7 @@ import { ImportModal } from './components/ImportModal';
 import { AuthPage } from './components/AuthPage';
 import { AccountPage } from './components/AccountPage';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
+import { isAndroidPreview, setNativePracticeMode } from './nativeApp';
 import type { AccordionConfig, Notation, Page, PracticeSessionInput, PracticeStats, Song, UserAccount } from './types';
 
 interface UserPreferences {
@@ -22,6 +23,8 @@ interface UserPreferences {
   onboardingDone: boolean;
   tutorialDone: boolean;
 }
+
+type PortablePreferences = Pick<UserPreferences, 'accordionId' | 'notation' | 'countIn'>;
 
 const defaultPreferences: UserPreferences = {
   accordionId: 'standard-gc-21-8',
@@ -43,7 +46,12 @@ export function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<UserAccount | null>(null);
   const [accordions, setAccordions] = useState<AccordionConfig[]>(FALLBACK_ACCORDIONS);
-  const [preferences, setPreferences] = useState<UserPreferences>(() => ({ ...defaultPreferences, ...getStored('soufflet.preferences', defaultPreferences) }));
+  const [preferences, setPreferences] = useState<UserPreferences>(() => {
+    const stored = { ...defaultPreferences, ...getStored('soufflet.preferences', defaultPreferences) };
+    return isAndroidPreview()
+      ? { ...stored, onboardingDone: true, tutorialDone: true }
+      : stored;
+  });
   const [songs, setSongs] = useState<Song[]>(() => getStored<Song[]>('soufflet.songs', []).filter((song) => !song.builtIn));
   const [practiceSong, setPracticeSong] = useState<Song | null>(null);
   const [studioSong, setStudioSong] = useState<Song | undefined>();
@@ -75,6 +83,23 @@ export function App() {
       const payload = await response.json() as { accordions: AccordionConfig[] };
       if (payload.accordions.length) setAccordions(payload.accordions);
     }).catch(() => undefined);
+    fetch('/api/preferences', { signal: controller.signal }).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { preferences: (PortablePreferences & { updatedAt: string }) | null };
+      if (payload.preferences) {
+        setPreferences((current) => {
+          const synced = { ...current, accordionId: payload.preferences!.accordionId, notation: payload.preferences!.notation, countIn: payload.preferences!.countIn };
+          localStorage.setItem('soufflet.preferences', JSON.stringify(synced));
+          return synced;
+        });
+      } else {
+        const local = { ...defaultPreferences, ...getStored('soufflet.preferences', defaultPreferences) };
+        await fetch('/api/preferences', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+          body: JSON.stringify({ accordionId: local.accordionId, notation: local.notation, countIn: local.countIn }),
+        });
+      }
+    }).catch(() => undefined);
     fetch(`/api/progress?timezoneOffset=${new Date().getTimezoneOffset()}`, { signal: controller.signal }).then(async (response) => {
       if (!response.ok) return;
       const payload = await response.json() as { stats: PracticeStats };
@@ -86,7 +111,13 @@ export function App() {
   const savePreferences = useCallback((next: UserPreferences) => {
     setPreferences(next);
     localStorage.setItem('soufflet.preferences', JSON.stringify(next));
-  }, []);
+    if (user) {
+      void fetch('/api/preferences', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accordionId: next.accordionId, notation: next.notation, countIn: next.countIn }),
+      });
+    }
+  }, [user]);
 
   const selectedAccordion = useMemo(() => accordions.find((item) => item.id === preferences.accordionId) ?? accordions[0], [accordions, preferences.accordionId]);
   const firstLessonSong = useMemo(() => selectedAccordion ? adaptSongToAccordion(DEMO_SONG, selectedAccordion) : DEMO_SONG, [selectedAccordion]);
@@ -114,15 +145,30 @@ export function App() {
     setPracticeStats(payload.stats);
   }, []);
 
-  const navigate = (next: Page) => {
+  const navigate = useCallback((next: Page) => {
     setPage(next);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
   const logout = useCallback(() => {
     void fetch('/api/auth/logout', { method: 'POST' });
     setUser(null); setPracticeSong(null); setPracticeStats(null);
   }, []);
+
+  useEffect(() => {
+    void setNativePracticeMode(Boolean(practiceSong));
+    return () => { void setNativePracticeMode(false); };
+  }, [practiceSong]);
+
+  useEffect(() => {
+    const onNativeBack = (event: Event) => {
+      if (showImport) { event.preventDefault(); setShowImport(false); return; }
+      if (practiceSong) { event.preventDefault(); setPracticeSong(null); return; }
+      if (page !== 'home') { event.preventDefault(); navigate('home'); }
+    };
+    document.addEventListener('soufflet:native-back', onNativeBack);
+    return () => document.removeEventListener('soufflet:native-back', onNativeBack);
+  }, [navigate, page, practiceSong, showImport]);
 
   if (authLoading) return <div className="app-loading"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong><small>Préparation de ton espace…</small></div>;
   if (!user) return <AuthPage onAuthenticated={setUser} />;

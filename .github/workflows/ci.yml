@@ -31,3 +31,15 @@ jobs:
       - run: npm run build
       - name: Validate production image
         run: docker build --build-arg APP_VERSION=pr-${GITHUB_SHA::7} -t soufflet:test .
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Synchronize Android project
+        run: npx cap sync android
+      - name: Test Android debug build
+        working-directory: android
+        run: ./gradlew testDebugUnitTest assembleDebug

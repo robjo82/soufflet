@@ -18,6 +18,14 @@ Navigateur React
 
 Le front est construit par Vite. Express sert l’API et le build statique en production. SQLite utilise le module natif `node:sqlite`, le journal WAL et un volume Docker persistant. Les migrations sont enregistrées dans `schema_migrations`. Les configurations et morceaux intégrés sont réappliqués de façon idempotente ; les configurations personnelles portent un propriétaire et ne sont jamais écrasées par un seed.
 
+## Android
+
+La cible Android est une coque Capacitor native qui charge exclusivement l’origine HTTPS de production. Ce choix conserve les cookies de session en contexte propriétaire, évite un second système d’authentification et rend immédiatement disponibles les mêmes données sur le web, le téléphone et la tablette. Le binaire fournit les permissions et comportements natifs : microphone, maintien de l’écran, barre d’état, retour système, retours haptiques et installation d’une mise à jour.
+
+Le front détecte `Capacitor.getPlatform() === 'android'` pour activer la navigation basse, les zones sûres et le mode entraînement immersif. Les liens externes quittent la WebView dans un onglet système. Seul `soufflet.robin-joseph.fr` est autorisé dans la navigation interne et les connexions HTTP non chiffrées sont refusées.
+
+`SouffletUpdaterPlugin` accepte uniquement une URL HTTPS sur `github.com` et un nom `soufflet-android-vX.Y.Z.apk`. Android contrôle ensuite que la signature de la mise à jour correspond à celle de l’application installée. L’API publique des Releases GitHub sert uniquement à lire la version et l’URL de l’artefact ; aucun jeton GitHub n’est embarqué dans l’app.
+
 ## Audio local
 
 `usePitchDetector` demande un flux `getUserMedia` sans annulation d’écho ni gain automatique, calcule le RMS, puis une autocorrélation normalisée entre 55 et 1 200 Hz. Une note n’est publiée qu’au-dessus d’un seuil de clarté. Le flux n’est ni enregistré, ni uploadé, et ses pistes sont arrêtées à la fermeture de l’écran.
@@ -38,7 +46,7 @@ Les comptes, sessions d’authentification, configurations d’instruments, séa
 
 Le profil et le mot de passe se modifient depuis l’espace personnel. Un changement de mot de passe invalide toutes les sessions existantes, puis crée une nouvelle session pour l’appareil courant. Les profils audio restent annoncés comme absents jusqu’à ce qu’une calibration réelle ait été enregistrée : aucune valeur de microphone ou de latence n’est simulée.
 
-Les morceaux importés, corrections et préférences restent local-first dans `localStorage`. Cela garantit une reprise immédiate lors d’une coupure réseau, mais ne remplace pas encore la synchronisation multi-appareils. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
+L’instrument actif, la notation et le décompte sont synchronisés dans `user_preferences`, tout en restant copiés localement pour un démarrage immédiat. L’avancement du tutoriel reste propre à l’appareil afin que l’expérience Android puisse être découverte séparément. Les morceaux importés et leurs corrections restent local-first dans `localStorage` et ne sont pas encore synchronisés. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
 
 ## Accessibilité
 

@@ -44,6 +44,16 @@ describe('production data migrations', () => {
     expect(db.getSessionUser('session-account')).toBeUndefined();
   });
 
+  it('synchronizes portable learning preferences without device tutorial state', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_preferences', email: 'prefs@example.fr', displayName: 'Préférences', passwordHash: 'test' });
+    expect(db.getUserPreferences('usr_preferences')).toBeNull();
+    expect(db.saveUserPreferences('usr_preferences', {
+      accordionId: 'hohner-club-i-cf-10-9-2', notation: 'tablature', countIn: false,
+    })).toMatchObject({ accordionId: 'hohner-club-i-cf-10-9-2', notation: 'tablature', countIn: false });
+    expect(db.getUserPreferences('usr_preferences')).toMatchObject({ notation: 'tablature', countIn: false });
+  });
+
   it('seeds the shared, licensed learning library', () => {
     const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }> }>;
     expect(songs.length).toBeGreaterThanOrEqual(10);

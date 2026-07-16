@@ -98,6 +98,31 @@ app.post('/api/auth/logout', (request, response) => {
   response.status(204).end();
 });
 
+const preferencesSchema = z.object({
+  accordionId: z.string().min(1).max(120),
+  notation: z.enum(['french', 'english', 'tablature', 'button']),
+  countIn: z.boolean(),
+});
+
+app.get('/api/preferences', requireUser, (_request, response) => {
+  response.json({ preferences: db.getUserPreferences(response.locals.user.id as string) });
+});
+
+app.put('/api/preferences', requireUser, (request, response) => {
+  try {
+    const preferences = preferencesSchema.parse(request.body);
+    const userId = response.locals.user.id as string;
+    const accessible = db.listAccordions(userId) as Array<{ id: string }>;
+    if (!accessible.some((accordion) => accordion.id === preferences.accordionId)) {
+      response.status(422).json({ error: 'Cet accordéon n’est pas disponible sur ton compte.' });
+      return;
+    }
+    response.json({ preferences: db.saveUserPreferences(userId, preferences) });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof z.ZodError ? error.issues[0]?.message : 'Préférences invalides.' });
+  }
+});
+
 const profileSchema = z.object({
   email: z.string().trim().email('Saisis une adresse e-mail valide.').max(254),
   displayName: z.string().trim().min(2, 'Le nom doit contenir au moins 2 caractères.').max(60),

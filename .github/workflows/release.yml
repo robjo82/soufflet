@@ -44,6 +44,63 @@ jobs:
           if [ -z "$version" ]; then version="build-$GITHUB_RUN_NUMBER"; fi
           echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@v5
+        if: startsWith(steps.version.outputs.version, 'v')
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4
+        if: startsWith(steps.version.outputs.version, 'v')
+      - name: Install Android SDK
+        if: startsWith(steps.version.outputs.version, 'v')
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+        if: startsWith(steps.version.outputs.version, 'v')
+      - name: Restore Android signing key
+        if: startsWith(steps.version.outputs.version, 'v')
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not configured."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/soufflet-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/soufflet-release.jks" >> "$GITHUB_ENV"
+      - name: Build signed Android APK
+        if: startsWith(steps.version.outputs.version, 'v')
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          npx cap sync android
+          version="${{ steps.version.outputs.version }}"
+          clean_version="${version#v}"
+          IFS=. read -r major minor patch <<< "$clean_version"
+          version_code=$((major * 1000000 + minor * 1000 + patch))
+          cd android
+          ./gradlew :app:assembleRelease -PappVersionName="$clean_version" -PappVersionCode="$version_code"
+          cd ..
+          apk="soufflet-android-${version}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "$apk"
+          sha256sum "$apk" > "$apk.sha256"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+        id: android
+      - name: Attach Android APK to GitHub release
+        if: startsWith(steps.version.outputs.version, 'v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.version.outputs.version }}" "${{ steps.android.outputs.apk }}" "${{ steps.android.outputs.apk }}.sha256" --clobber
+      - uses: actions/upload-artifact@v7
+        if: startsWith(steps.version.outputs.version, 'v')
+        with:
+          name: soufflet-android-${{ steps.version.outputs.version }}
+          path: |
+            ${{ steps.android.outputs.apk }}
+            ${{ steps.android.outputs.apk }}.sha256
+          if-no-files-found: error
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
