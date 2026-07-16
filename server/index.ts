@@ -165,6 +165,34 @@ app.put('/api/account/password', authRateLimit, requireUser, async (request, res
   }
 });
 
+const accountDeletionSchema = z.object({
+  email: z.string().trim().email().max(254).optional(),
+  password: z.string().min(1).max(200),
+});
+
+app.post('/api/account/delete', authRateLimit, async (request, response) => {
+  try {
+    const body = accountDeletionSchema.parse(request.body);
+    const sessionUser = currentUser(request);
+    if (sessionUser && body.email && body.email.toLowerCase() !== sessionUser.email.toLowerCase()) {
+      response.status(401).json({ error: 'L’adresse saisie ne correspond pas au compte connecté.' });
+      return;
+    }
+    const email = sessionUser?.email ?? body.email;
+    if (!email) { response.status(422).json({ error: 'Saisis l’adresse e-mail du compte.' }); return; }
+    const credentials = db.getUserCredentials(email);
+    if (!credentials || (sessionUser && credentials.id !== sessionUser.id) || !await verifyPassword(body.password, credentials.password_hash)) {
+      response.status(401).json({ error: 'Adresse ou mot de passe incorrect.' });
+      return;
+    }
+    db.deleteUser(credentials.id);
+    clearSession(response);
+    response.json({ message: 'Le compte et toutes ses données ont été supprimés.' });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof z.ZodError ? error.issues[0]?.message : 'Suppression impossible.' });
+  }
+});
+
 app.get('/api/library', requireUser, (_request, response) => response.json({ songs: db.listCommonSongs() }));
 
 const practiceSessionSchema = z.object({

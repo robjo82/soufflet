@@ -42,4 +42,4 @@ jobs:
         run: npx cap sync android
       - name: Test Android debug build
         working-directory: android
-        run: ./gradlew testDebugUnitTest assembleDebug
+        run: ./gradlew testGithubDebugUnitTest testPlayDebugUnitTest assembleGithubDebug assemblePlayDebug

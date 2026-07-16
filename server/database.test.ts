@@ -44,6 +44,26 @@ describe('production data migrations', () => {
     expect(db.getSessionUser('session-account')).toBeUndefined();
   });
 
+  it('deletes an account and all server-side learning data', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_delete', email: 'delete@example.fr', displayName: 'À supprimer', passwordHash: 'test' });
+    db.createSession('session-delete', 'usr_delete', new Date(Date.now() + 60_000).toISOString());
+    db.saveUserPreferences('usr_delete', { accordionId: 'hohner-club-i-cf-10-9-2', notation: 'french', countIn: true });
+    db.saveAccordion({ id: 'custom-delete', maker: 'Test', model: 'Privé', tuning: 'Do/Fa' }, 'usr_delete');
+    db.savePracticeSession('usr_delete', {
+      id: '065f8f4b-d1ae-4bb1-9c13-a2db57f42f96', songId: 'first-breath', songTitle: 'Premier souffle', mode: 'guided',
+      startedAt: '2026-07-16T18:00:00.000Z', endedAt: '2026-07-16T18:01:00.000Z', activeSeconds: 60,
+      correctCount: 2, earlyCount: 0, lateCount: 0, wrongCount: 0, completionPercent: 100, tempoPercent: 80, flagged: false,
+    });
+
+    expect(db.deleteUser('usr_delete')).toBe(true);
+    expect(db.getUserById('usr_delete')).toBeUndefined();
+    expect(db.getSessionUser('session-delete')).toBeUndefined();
+    expect(db.getUserPreferences('usr_delete')).toBeNull();
+    expect(db.listPracticeSessions('usr_delete')).toEqual([]);
+    expect((db.listAccordions('usr_delete') as Array<{ id: string }>).some((item) => item.id === 'custom-delete')).toBe(false);
+  });
+
   it('synchronizes portable learning preferences without device tutorial state', () => {
     const db = makeDatabase();
     db.createUser({ id: 'usr_preferences', email: 'prefs@example.fr', displayName: 'Préférences', passwordHash: 'test' });

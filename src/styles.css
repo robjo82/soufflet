@@ -71,6 +71,39 @@ svg { stroke-width: 1.8; }
 .auth-switch { width: 100%; margin: 17px 0; border: 0; background: none; color: var(--green); cursor: pointer; font-weight: 800; }
 .auth-privacy { padding-top: 16px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 9px; }
 .auth-privacy svg { width: 15px; }
+.auth-privacy a { color: var(--green); font-weight: 700; }
+
+/* Public legal and deletion pages */
+.legal-page { min-height: 100vh; padding: 0 max(22px, calc((100vw - 980px) / 2)); background: radial-gradient(circle at 90% 5%, rgba(49,92,75,.12), transparent 28%), var(--cream); }
+.legal-page > header { min-height: 84px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.legal-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+.legal-brand strong { font: 800 23px 'Manrope'; letter-spacing: -.04em; }
+.legal-page > header nav { display: flex; gap: 18px; }
+.legal-page > header nav a, .legal-page > footer a { color: var(--green); font-size: 11px; font-weight: 800; text-decoration: none; }
+.legal-card { padding: clamp(28px, 6vw, 66px); border: 1px solid var(--line); border-radius: 28px; background: var(--paper); box-shadow: var(--shadow); }
+.legal-card > h1, .legal-success h1 { max-width: 720px; margin: 10px 0 14px; font-size: clamp(38px, 7vw, 62px); line-height: 1; letter-spacing: -.055em; }
+.legal-intro { max-width: 720px; color: var(--muted); font-size: 17px; line-height: 1.65; }
+.legal-date { color: var(--muted); font-size: 10px; font-weight: 800; }
+.legal-card > section { max-width: 760px; margin-top: 34px; }
+.legal-card > section h2 { margin-bottom: 9px; font-size: 22px; }
+.legal-card > section p, .legal-card > section li { color: #575650; font-size: 13px; line-height: 1.75; }
+.legal-card a { color: var(--green); font-weight: 800; }
+.legal-delete-summary { max-width: 700px; margin: 26px 0; padding: 16px; border-radius: 13px; display: flex; align-items: start; gap: 10px; color: #873f33; background: var(--coral-soft); }
+.legal-delete-summary svg { width: 20px; flex: 0 0 auto; }
+.legal-delete-summary p { margin: 0; font-size: 12px; line-height: 1.55; }
+.legal-delete-form { max-width: 560px; display: grid; gap: 16px; }
+.legal-delete-form label { display: grid; gap: 7px; font-size: 11px; font-weight: 800; }
+.legal-delete-form label > div { height: 50px; padding: 0 13px; border: 1px solid var(--line); border-radius: 11px; display: flex; align-items: center; gap: 9px; background: white; }
+.legal-delete-form label svg { width: 17px; color: var(--muted); }
+.legal-delete-form input { flex: 1; height: 100%; border: 0; outline: 0; background: none; }
+.legal-delete-form .danger-button { justify-self: start; }
+.legal-footnote { margin: 19px 0 0; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; }
+.legal-footnote svg { width: 15px; }
+.legal-success { max-width: 630px; min-height: 420px; display: flex; flex-direction: column; align-items: start; justify-content: center; }
+.legal-success > svg { width: 56px; height: 56px; color: var(--green); }
+.legal-success p { color: var(--muted); line-height: 1.6; }
+.legal-success .primary-button { color: white; text-decoration: none; }
+.legal-page > footer { min-height: 90px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 10px; text-align: center; }
 
 .page-content { width: min(1240px, calc(100% - 56px)); margin: 0 auto; padding: 68px 0 88px; }
 .eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
@@ -1129,6 +1162,9 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .android-update-actions .primary-button { white-space: nowrap; }
 .android-update-actions > a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: var(--green); font-size: 9px; font-weight: 800; text-decoration: none; }
 .android-update-actions > a svg { width: 13px; }
+.android-update-actions > .primary-button { color: white; font-size: 10px; text-decoration: none; }
+.android-update-actions > .android-store-note { display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: var(--green); font-size: 8px; font-weight: 800; }
+.android-store-note svg { width: 13px; }
 .update-prompt-backdrop { position: fixed; inset: 0; z-index: 1000; padding: max(24px, var(--safe-top)) max(20px, var(--safe-right)) max(24px, var(--safe-bottom)) max(20px, var(--safe-left)); display: grid; place-items: center; background: rgba(24, 31, 27, .58); backdrop-filter: blur(10px); }
 .update-prompt { position: relative; width: min(440px, 100%); padding: 32px; border: 1px solid rgba(255, 255, 255, .7); border-radius: 28px; background: linear-gradient(155deg, #fff 0%, #f5f1e9 100%); box-shadow: 0 28px 90px rgba(14, 35, 25, .3); text-align: center; }
 .update-prompt-close { position: absolute; top: 15px; right: 15px; width: 38px; height: 38px; border: 0; border-radius: 50%; display: grid; place-items: center; color: var(--muted); background: rgba(47, 99, 78, .08); cursor: pointer; }
@@ -1220,6 +1256,19 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .account-field > svg { width: 17px; flex: 0 0 auto; color: var(--muted); }
 .account-field input { width: 100%; height: 100%; border: 0; outline: 0; background: none; font-size: 11px; }
 .account-form .primary-button, .account-form .secondary-button { justify-self: start; margin-top: 2px; }
+.danger-zone { border-color: #e4b7ad; }
+.danger-zone > header > span { color: #9a4638; background: var(--coral-soft); }
+.danger-button { min-height: 46px; padding: 0 17px; border: 1px solid #c96755; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: white; background: #a94e3e; cursor: pointer; font-weight: 800; }
+.danger-button:hover { background: #913e31; }
+.danger-button:disabled { opacity: .45; cursor: not-allowed; }
+.danger-button svg { width: 17px; }
+.danger-warning { padding: 13px; border-radius: 11px; display: flex; align-items: start; gap: 9px; color: #873f33; background: var(--coral-soft); }
+.danger-warning svg { width: 18px; flex: 0 0 auto; }
+.danger-warning p { margin: 0; font-size: 10px; line-height: 1.5; }
+.danger-warning strong { display: block; }
+.danger-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.account-legal-links { margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 7px; }
+.account-legal-links a { color: var(--green); font-size: 9px; font-weight: 800; text-decoration: none; }
 .show-passwords { justify-self: start; padding: 0; border: 0; background: none; display: flex; align-items: center; gap: 6px; color: var(--green); cursor: pointer; font-size: 9px; font-weight: 800; }
 .show-passwords svg { width: 15px; }
 .password-hint { margin: -7px 0 0; color: var(--muted); font-size: 8px; }
@@ -1511,6 +1560,12 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .weekly-activity-card > footer { align-items: start; flex-direction: column; }
   .skill-analysis { margin-top: 50px; }
   .trend-chart { gap: 8px; padding-inline: 14px; }
+  .legal-page > header { padding: 18px 18px; align-items: flex-start; gap: 14px; flex-direction: column; }
+  .legal-page > header nav { width: 100%; gap: 15px; font-size: 11px; }
+  .legal-card { margin: 22px 14px; padding: 26px 20px; border-radius: 20px; }
+  .legal-card h1 { font-size: 36px; }
+  .legal-card h2 { font-size: 19px; }
+  .legal-page > footer { padding-inline: 18px; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -53,7 +53,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
             <button type="submit" className="primary-button auth-submit" disabled={submitting}>{submitting ? 'Un instant…' : mode === 'register' ? 'Créer mon espace' : 'Me connecter'} <ArrowRight /></button>
           </form>
           <button type="button" className="auth-switch" onClick={() => { setMode(mode === 'register' ? 'login' : 'register'); setError(''); }}>{mode === 'register' ? 'J’ai déjà un compte' : 'Je découvre Soufflet'}</button>
-          <small className="auth-privacy"><LockKeyhole /> Aucun son du micro n’est envoyé ni conservé pendant les exercices.</small>
+          <small className="auth-privacy"><LockKeyhole /><span>Aucun son du micro n’est envoyé ni conservé pendant les exercices. <a href="/privacy">Confidentialité</a> · <a href="/delete-account">Supprimer un compte</a></span></small>
         </div>
       </section>
     </main>

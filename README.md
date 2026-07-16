@@ -67,14 +67,19 @@ curl http://localhost:8787/api/health
 
 Soufflet dispose d’une application Android Capacitor (`fr.robinjoseph.soufflet`) reliée à [soufflet.robin-joseph.fr](https://soufflet.robin-joseph.fr). Elle utilise donc le même compte, la même bibliothèque, les mêmes accordéons personnels, le même instrument actif, la même notation et le même historique de séances que la version web. Une connexion reste nécessaire ; le mode hors-ligne complet n’est pas encore disponible.
 
-L’APK signé se trouve dans la [dernière Release GitHub](https://github.com/robjo82/soufflet/releases/latest), sous le nom `soufflet-android-vX.Y.Z.apk`. Après la première installation manuelle, l’application vérifie silencieusement la dernière release à chaque démarrage et propose l’installation lorsqu’une version plus récente existe. Le contrôle manuel reste disponible dans **Réglages → Android**. Android demande une seule fois d’autoriser Soufflet comme source d’installation ; la signature stable empêche ensuite de remplacer l’app par un APK signé avec une autre clé.
+Deux distributions signées sont produites avec la même identité d’application :
+
+- l’APK GitHub `soufflet-android-vX.Y.Z.apk`, disponible dans la [dernière Release](https://github.com/robjo82/soufflet/releases/latest), conserve le programme de mise à jour directe ;
+- le bundle `soufflet-google-play-vX.Y.Z.aab` est destiné à Google Play. Il ne demande pas l’autorisation d’installer des paquets et laisse le Play Store vérifier et mettre à jour l’application.
+
+Après la première installation de l’APK GitHub, l’application vérifie silencieusement la dernière release à chaque démarrage et propose l’installation lorsqu’une version plus récente existe. Le contrôle manuel reste disponible dans **Réglages → Android**. Les deux distributions utilisent la clé historique afin de permettre un passage futur de l’APK au Play Store sans réinstallation.
 
 ```bash
 npm run android:sync
 npm run android:debug
 ```
 
-Le build local requiert Java 21, le SDK Android 36 et `ANDROID_HOME`. Le build de release est volontairement refusé sans les quatre variables de signature documentées dans `docs/PRODUCTION.md`.
+Le build local requiert Java 21, le SDK Android 36 et `ANDROID_HOME`. Le build de release est volontairement refusé sans les quatre variables de signature documentées dans [`docs/GOOGLE_PLAY.md`](docs/GOOGLE_PLAY.md) et `docs/PRODUCTION.md`.
 
 ## Import : règles importantes
 
@@ -87,6 +92,7 @@ Le build local requiert Java 21, le SDK Android 36 et `ANDROID_HOME`. Le build d
 - [Architecture et sécurité](docs/ARCHITECTURE.md)
 - [Pédagogie et feuille de route](docs/PEDAGOGIE.md)
 - [État de production et limites](docs/PRODUCTION.md)
+- [Publication Google Play](docs/GOOGLE_PLAY.md)
 
 ## Licence et contenu
 

@@ -4,6 +4,7 @@ import { CheckCircle2, Download, ExternalLink, RefreshCw, ShieldCheck, Smartphon
 import { useEffect, useRef, useState } from 'react';
 import { fetchLatestAndroidRelease, formatFileSize, isAndroidUpdateAvailable, type AndroidRelease } from '../androidUpdate';
 import { startAndroidUpdate } from '../androidUpdateInstaller';
+import { getAndroidDistributionChannel } from '../androidDistribution';
 import { isAndroidPreview } from '../nativeApp';
 
 type PromptState = 'ready' | 'permission-required' | 'downloading' | 'error' | 'download-started';
@@ -24,6 +25,7 @@ export function AndroidUpdatePrompt() {
     const controller = new AbortController();
     const check = async () => {
       try {
+        if (await getAndroidDistributionChannel() !== 'github') return;
         const [latest, appInfo] = await Promise.all([
           fetchLatestAndroidRelease(controller.signal),
           isAndroid ? CapacitorApp.getInfo() : Promise.resolve({ version: '0.0.0-preview' }),
