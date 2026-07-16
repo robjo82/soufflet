@@ -14,7 +14,7 @@ interface SettingsPageProps {
   pianoKeyboardSize: PianoKeyboardSize;
   pianoInput: PianoInput;
   onSave: (accordionId: string, notation: Notation, countIn: boolean, apiKey: string, pianoKeyboardSize: PianoKeyboardSize, pianoInput: PianoInput) => void;
-  onCreateAccordion: (accordion: AccordionConfig) => Promise<AccordionConfig>;
+  onSaveAccordion: (accordion: AccordionConfig) => Promise<AccordionConfig>;
 }
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -24,7 +24,7 @@ const NOTE_OPTIONS = Array.from({ length: 61 }, (_, index) => {
   return { midi, label: noteName(midi) };
 });
 
-export function SettingsPage({ accordions, selectedId, notation, countIn, apiKey, learningInstruments, pianoKeyboardSize, pianoInput, onSave, onCreateAccordion }: SettingsPageProps) {
+export function SettingsPage({ accordions, selectedId, notation, countIn, apiKey, learningInstruments, pianoKeyboardSize, pianoInput, onSave, onSaveAccordion }: SettingsPageProps) {
   const [selected, setSelected] = useState(selectedId);
   const [nextNotation, setNextNotation] = useState(notation);
   const [nextCountIn, setNextCountIn] = useState(countIn);
@@ -40,14 +40,14 @@ export function SettingsPage({ accordions, selectedId, notation, countIn, apiKey
 
   const openCustomEditor = () => {
     setCreateError('');
-    setDraft({ ...structuredClone(accordion), id: 'draft', maker: accordion.maker, model: `${accordion.model} personnalisé`, verified: false, sourceNote: 'Configuration personnalisée à vérifier avec l’accordeur.' });
+    setDraft({ ...structuredClone(accordion), id: accordion.id.startsWith('custom-') ? accordion.id : 'draft', maker: accordion.maker, model: accordion.id.startsWith('custom-') ? accordion.model : `${accordion.model} personnalisé`, verified: false, sourceNote: 'Configuration personnalisée à vérifier avec l’accordeur.' });
   };
 
   const createAccordion = async () => {
     if (!draft) return;
     setCreating(true); setCreateError('');
     try {
-      const created = await onCreateAccordion(draft);
+      const created = await onSaveAccordion(draft);
       setSelected(created.id); setDraft(null); setSaved(true); setTimeout(() => setSaved(false), 1600);
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'Impossible d’enregistrer cette configuration.');

@@ -86,6 +86,16 @@ describe('production data migrations', () => {
     })).toMatchObject({ instrumentType: 'piano', learningInstruments: ['accordion', 'piano'], pianoKeyboardSize: 61, pianoInput: 'midi' });
   });
 
+  it('limits personal instruments to five and lets their owner delete them', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_material', email: 'material@example.fr', displayName: 'Matériel', passwordHash: 'test' });
+    for (let index = 1; index <= 5; index += 1) db.saveAccordion({ id: `custom-${index}`, maker: 'Test', model: `Instrument ${index}`, tuning: 'Do' }, 'usr_material');
+    expect(() => db.saveAccordion({ id: 'custom-6', maker: 'Test', model: 'Instrument 6', tuning: 'Do' }, 'usr_material')).toThrow(/maximum 5/);
+    expect(db.deleteAccordion('custom-1', 'usr_material')).toBe(true);
+    expect(db.deleteAccordion('custom-2', 'another-user')).toBe(false);
+    expect(() => db.saveAccordion({ id: 'custom-6', maker: 'Test', model: 'Instrument 6', tuning: 'Do' }, 'usr_material')).not.toThrow();
+  });
+
   it('seeds the shared, licensed learning library', () => {
     const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }> }>;
     expect(songs.length).toBeGreaterThanOrEqual(10);

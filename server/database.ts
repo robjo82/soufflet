@@ -185,6 +185,8 @@ export class SouffletDatabase {
   }
 
   saveAccordion(config: { id: string; maker: string; model: string; tuning: string; [key: string]: unknown }, ownerUserId: string) {
+    const owned = this.db.prepare('SELECT COUNT(*) AS count FROM accordion_configs WHERE owner_user_id = ?').get(ownerUserId) as { count: number };
+    if (owned.count >= 5) throw new Error('Tu peux enregistrer au maximum 5 instruments personnels.');
     this.db.prepare(`
       INSERT INTO accordion_configs (id, maker, model, tuning, payload, is_builtin, owner_user_id)
       VALUES (?, ?, ?, ?, ?, 0, ?)
@@ -203,6 +205,10 @@ export class SouffletDatabase {
       WHERE id = ? AND is_builtin = 0 AND owner_user_id = ?
     `).run(config.maker, config.model, config.tuning, JSON.stringify(config), id, ownerUserId);
     return result.changes ? config : undefined;
+  }
+
+  deleteAccordion(id: string, ownerUserId: string) {
+    return Boolean(this.db.prepare('DELETE FROM accordion_configs WHERE id = ? AND owner_user_id = ? AND is_builtin = 0').run(id, ownerUserId).changes);
   }
 
   listCommonSongs() {

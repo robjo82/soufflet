@@ -201,4 +201,4 @@ export interface TranscriptionResult {
   }>;
 }
 
-export type Page = 'home' | 'learn' | 'library' | 'studio' | 'tuner' | 'settings' | 'account';
+export type Page = 'home' | 'learn' | 'library' | 'studio' | 'tuner' | 'piano-songs' | 'piano-exercises' | 'settings' | 'account';

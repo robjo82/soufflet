@@ -272,6 +272,12 @@ app.put('/api/accordions/:id', requireUser, (request, response) => {
   }
 });
 
+app.delete('/api/accordions/:id', requireUser, (request, response) => {
+  const deleted = db.deleteAccordion(String(request.params.id), response.locals.user.id as string);
+  if (!deleted) { response.status(404).json({ error: 'Instrument personnel introuvable.' }); return; }
+  response.status(204).end();
+});
+
 app.post('/api/transcriptions', requireUser, upload.single('file'), async (request, response) => {
   try {
     const result = await transcriber.fromUpload(request.file, typeof request.body.tablature === 'string' ? request.body.tablature : undefined, String(request.body.accordionId ?? ''), request.get('x-gemini-key'));

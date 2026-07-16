@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ChevronDown, Gauge, Home, Library, LogOut, Menu, Mic2, Music2, Piano, Settings, Sparkles, UserRound, Wrench, X } from 'lucide-react';
+import { ChevronDown, Gauge, Home, Library, LogOut, Menu, Mic2, Music2, Piano, Settings, Sparkles, UserRound, Wrench, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { InstrumentType, Page, PracticeStats, UserAccount } from '../types';
 
@@ -14,11 +14,16 @@ interface AppShellProps {
   onInstrumentChange: (instrument: InstrumentType) => void;
 }
 
-const NAV: Array<{ id: Page; label: string; icon: typeof Home }> = [
+const ACCORDION_NAV: Array<{ id: Page; label: string; icon: typeof Home }> = [
   { id: 'home', label: 'Accueil', icon: Home },
   { id: 'library', label: 'Bibliothèque', icon: Library },
   { id: 'studio', label: 'Studio', icon: Music2 },
   { id: 'tuner', label: 'Accordeur', icon: Gauge },
+];
+const PIANO_NAV: Array<{ id: Page; label: string; icon: typeof Home }> = [
+  { id: 'home', label: 'Accueil', icon: Home },
+  { id: 'piano-songs', label: 'Morceaux', icon: Music2 },
+  { id: 'piano-exercises', label: 'Exercices', icon: Gauge },
 ];
 
 export function AppShell({ page, children, onNavigate, user, practiceStats, onLogout, instrumentType, learningInstruments, onInstrumentChange }: AppShellProps) {
@@ -36,7 +41,7 @@ export function AppShell({ page, children, onNavigate, user, practiceStats, onLo
     document.addEventListener('keydown', closeWithKeyboard);
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', closeWithKeyboard); };
   }, [accountOpen]);
-  const visibleNav = instrumentType === 'piano' ? NAV.filter((item) => item.id === 'home') : NAV;
+  const visibleNav = instrumentType === 'piano' ? PIANO_NAV : ACCORDION_NAV;
   return (
     <div className={`app-shell instrument-${instrumentType}`}>
       <header className="topbar">
@@ -46,11 +51,11 @@ export function AppShell({ page, children, onNavigate, user, practiceStats, onLo
           {visibleNav.map(({ id, label, icon: Icon }) => <button type="button" key={id} onClick={() => navigate(id)} className={page === id ? 'is-active' : ''}><Icon />{label}</button>)}
         </nav>
         <div className="topbar-actions">
-          {learningInstruments.length === 2 && <button type="button" className="instrument-switch" onClick={() => onInstrumentChange(instrumentType === 'accordion' ? 'piano' : 'accordion')}><ArrowLeftRight /><span>{instrumentType === 'accordion' ? <><Piano /> Piano</> : <><Music2 /> Accordéon</>}</span></button>}
+          {learningInstruments.length === 2 && <button type="button" className="instrument-switch" data-instrument={instrumentType} aria-label={`Passer au mode ${instrumentType === 'accordion' ? 'Piano' : 'Accordéon'}`} onClick={() => onInstrumentChange(instrumentType === 'accordion' ? 'piano' : 'accordion')}><span>{instrumentType === 'accordion' ? <Music2 /> : <Piano />}</span><i /><span>{instrumentType === 'accordion' ? <Piano /> : <Music2 />}</span></button>}
           <button type="button" className="streak-pill" title="Série calculée à partir de tes séances réelles"><Sparkles /> <strong>{practiceStats ? practiceStats.overview.currentStreak : '—'}</strong><span>{practiceStats ? `jour${practiceStats.overview.currentStreak === 1 ? '' : 's'}` : 'suivi'}</span></button>
           <div className="account-menu" ref={accountMenu}>
             <button type="button" className={`avatar-button ${page === 'account' ? 'is-active' : ''}`} aria-label={`Ouvrir le compte de ${user.displayName}`} aria-haspopup="menu" aria-expanded={accountOpen} onClick={() => setAccountOpen(!accountOpen)}><img src={`/avatars/${user.avatarId ?? 'neutral'}.svg`} alt="" /><ChevronDown /></button>
-            {accountOpen && <div className="account-popover" role="menu"><header><span><img src={`/avatars/${user.avatarId ?? 'neutral'}.svg`} alt="" /></span><div><strong>{user.displayName}</strong><small>{user.email}</small></div></header><button type="button" role="menuitem" onClick={() => navigate('account')}><UserRound /><span><strong>Mon compte</strong><small>Profil, sécurité et matériel</small></span></button><button type="button" role="menuitem" onClick={() => navigate('settings')}><Settings /><span><strong>Réglages</strong><small>Instrument, affichage et audio</small></span></button><button type="button" className="logout-menu-item" role="menuitem" onClick={() => { setAccountOpen(false); onLogout(); }}><LogOut /><span><strong>Se déconnecter</strong><small>Fermer cette session</small></span></button></div>}
+            {accountOpen && <div className="account-popover" role="menu"><header><span><img src={`/avatars/${user.avatarId ?? 'neutral'}.svg`} alt="" /></span><div><strong>{user.displayName}</strong><small>{user.email}</small></div></header><button type="button" role="menuitem" onClick={() => navigate('account')}><UserRound /><span><strong>Mon profil</strong><small>Identité, sécurité et matériel</small></span></button><button type="button" role="menuitem" onClick={() => navigate('settings')}><Settings /><span><strong>Réglages</strong><small>Instrument, affichage et audio</small></span></button><button type="button" className="logout-menu-item" role="menuitem" onClick={() => { setAccountOpen(false); onLogout(); }}><LogOut /><span><strong>Se déconnecter</strong><small>Fermer cette session</small></span></button></div>}
           </div>
         </div>
       </header>
