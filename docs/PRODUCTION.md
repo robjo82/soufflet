@@ -43,6 +43,21 @@
 
 `main` déclenche les contrôles, Semantic Release et la construction de trois tags : `latest`, `sha-*` et `v*` ou `build-*`. Portainer exécute `registry.robin-joseph.fr/soufflet:latest` sur le port hôte 39484 et conserve `/app/data` dans `soufflet_data`. La Watchtower globale ne suit que les conteneurs portant son label explicite.
 
+## Publication Android
+
+Chaque nouvelle version sémantique construit également un APK Android signé, calcule son SHA-256 et joint les deux fichiers à la Release GitHub. Les pushes sans nouvelle release sémantique continuent de publier l’image Docker mais ne produisent pas d’APK artificiellement versionné.
+
+Secrets GitHub Actions requis :
+
+- `ANDROID_KEYSTORE_BASE64` ;
+- `ANDROID_KEYSTORE_PASSWORD` ;
+- `ANDROID_KEY_ALIAS` ;
+- `ANDROID_KEY_PASSWORD`.
+
+La clé de production locale est ignorée par Git dans `.android-signing/soufflet-release.jks`. Son mot de passe est conservé dans le trousseau macOS sous le service `fr.robinjoseph.soufflet.android-keystore` et le compte `robjo82`. Cette clé doit être sauvegardée : sans elle, Android refusera toute mise à jour des installations existantes.
+
+La CI utilise Java 21, Android SDK 36 et R8. Le `versionName` vient du tag Semantic Release et le `versionCode` est calculé avec `major × 1 000 000 + minor × 1 000 + patch`. Les PR compilent une APK debug non distribuée afin de détecter les ruptures du projet natif.
+
 Le port direct permet la recette initiale. Avant d’ouvrir l’application aux apprenants, ajouter un nom de domaine et un reverse proxy HTTPS, puis passer `COOKIE_SECURE=true` : hors `localhost`, les navigateurs refusent le microphone sur une origine HTTP.
 
 ## Critères de sortie proposés

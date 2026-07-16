@@ -1,6 +1,6 @@
 # Contribuer à Soufflet
 
-Chaque évolution passe par une branche courte et une pull request vers `main`. Une PR n’est fusionnée que lorsque le lint, le typage, les tests, le build web et le build Docker sont verts.
+Chaque évolution passe par une branche courte et une pull request vers `main`. Une PR n’est fusionnée que lorsque le lint, le typage, les tests, le build web, le build Docker et le build Android sont verts.
 
 ## Commits et titres de PR
 
@@ -32,6 +32,15 @@ npm test
 npm run build
 docker build -t soufflet:test .
 ```
+
+Pour une modification Android ou Capacitor :
+
+```bash
+npm run android:sync
+npm run android:debug
+```
+
+Ne jamais ajouter de keystore, mot de passe, APK ou `local.properties` au dépôt. La signature de production est exclusivement injectée par les secrets GitHub Actions.
 
 ## Livraison
 

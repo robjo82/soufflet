@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Soufflet</string>
+    <string name="title_activity_main">Soufflet</string>
+    <string name="package_name">fr.robinjoseph.soufflet</string>
+    <string name="custom_url_scheme">fr.robinjoseph.soufflet</string>
+</resources>

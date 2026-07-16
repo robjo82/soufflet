@@ -63,6 +63,19 @@ npm run build
 curl http://localhost:8787/api/health
 ```
 
+## Application Android
+
+Soufflet dispose d’une application Android Capacitor (`fr.robinjoseph.soufflet`) reliée à [soufflet.robin-joseph.fr](https://soufflet.robin-joseph.fr). Elle utilise donc le même compte, la même bibliothèque, les mêmes accordéons personnels, le même instrument actif, la même notation et le même historique de séances que la version web. Une connexion reste nécessaire ; le mode hors-ligne complet n’est pas encore disponible.
+
+L’APK signé se trouve dans la [dernière Release GitHub](https://github.com/robjo82/soufflet/releases/latest), sous le nom `soufflet-android-vX.Y.Z.apk`. Après la première installation manuelle, **Réglages → Android** vérifie la dernière release et lance la mise à jour. Android demande une seule fois d’autoriser Soufflet comme source d’installation ; la signature stable empêche ensuite de remplacer l’app par un APK signé avec une autre clé.
+
+```bash
+npm run android:sync
+npm run android:debug
+```
+
+Le build local requiert Java 21, le SDK Android 36 et `ANDROID_HOME`. Le build de release est volontairement refusé sans les quatre variables de signature documentées dans `docs/PRODUCTION.md`.
+
 ## Import : règles importantes
 
 - **Spotify** : un lien est conservé comme référence seulement. La politique Spotify interdit l’analyse de son contenu, son ingestion dans une IA et la synchronisation d’un enregistrement Spotify avec un visuel. L’utilisateur doit fournir un fichier qu’il a le droit d’utiliser. Voir la [Spotify Developer Policy](https://developer.spotify.com/policy).

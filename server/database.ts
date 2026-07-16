@@ -97,6 +97,15 @@ export class SouffletDatabase {
         CREATE INDEX IF NOT EXISTS practice_sessions_user_ended_idx ON practice_sessions(user_id, ended_at DESC);
         CREATE INDEX IF NOT EXISTS practice_sessions_user_song_idx ON practice_sessions(user_id, song_id);
       `,
+      `
+        CREATE TABLE IF NOT EXISTS user_preferences (
+          user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+          accordion_id TEXT NOT NULL,
+          notation TEXT NOT NULL CHECK(notation IN ('french', 'english', 'tablature', 'button')),
+          count_in INTEGER NOT NULL DEFAULT 1,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -218,6 +227,27 @@ export class SouffletDatabase {
       WHERE id = ?
     `).run(passwordHash, id);
     return Boolean(result.changes);
+  }
+
+  getUserPreferences(userId: string) {
+    const row = this.db.prepare(`
+      SELECT accordion_id, notation, count_in, updated_at
+      FROM user_preferences WHERE user_id = ?
+    `).get(userId) as { accordion_id: string; notation: 'french' | 'english' | 'tablature' | 'button'; count_in: number; updated_at: string } | undefined;
+    return row ? { accordionId: row.accordion_id, notation: row.notation, countIn: Boolean(row.count_in), updatedAt: row.updated_at } : null;
+  }
+
+  saveUserPreferences(userId: string, preferences: { accordionId: string; notation: 'french' | 'english' | 'tablature' | 'button'; countIn: boolean }) {
+    this.db.prepare(`
+      INSERT INTO user_preferences (user_id, accordion_id, notation, count_in)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET
+        accordion_id = excluded.accordion_id,
+        notation = excluded.notation,
+        count_in = excluded.count_in,
+        updated_at = CURRENT_TIMESTAMP
+    `).run(userId, preferences.accordionId, preferences.notation, Number(preferences.countIn));
+    return this.getUserPreferences(userId)!;
   }
 
   createSession(tokenHash: string, userId: string, expiresAt: string) {
