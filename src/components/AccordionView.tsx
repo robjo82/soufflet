@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Hand, MoveHorizontal } from 'lucide-react';
 import type { AccordionConfig, Direction, Notation, SongEvent } from '../types';
 import { displayNote, FRENCH_NOTES } from '../data';
 import { useSynth } from '../hooks/useSynth';
-import { getMelodyButtonSize } from './accordionLayout';
+import { getAccordionVisualVariant, getMelodyButtonSize } from './accordionLayout';
 
 interface AccordionViewProps {
   config: AccordionConfig;
@@ -11,6 +11,7 @@ interface AccordionViewProps {
   notation: Notation;
   detectedMidi?: number;
   compact?: boolean;
+  depressActive?: boolean;
   onButtonPress?: (buttonId: string, direction: Direction) => void;
 }
 
@@ -28,6 +29,7 @@ export function AccordionView({
   notation,
   detectedMidi,
   compact = false,
+  depressActive = false,
   onButtonPress,
 }: AccordionViewProps) {
   const { playMidi } = useSynth();
@@ -40,6 +42,8 @@ export function AccordionView({
       .map((button) => button.id),
   );
   const expanded = direction === 'pull';
+  const visualVariant = getAccordionVisualVariant(config);
+  const isClubI = visualVariant === 'club-i';
 
   return (
     <div className={`accordion-wrap ${compact ? 'is-compact' : ''}`} aria-label={`Représentation du ${config.model}`}>
@@ -53,7 +57,7 @@ export function AccordionView({
       </div>
 
       <div
-        className={`accordion direction-${direction}`}
+        className={`accordion direction-${direction} visual-${visualVariant}`}
         style={{
           '--instrument': config.color,
           '--melody-button-size': `${melodyButtonSize}px`,
@@ -61,7 +65,10 @@ export function AccordionView({
         data-longest-row={longestRow}
       >
         <section className="accordion-case bass-case" aria-label="Main gauche, basses et accords">
+          <div className="case-depth" aria-hidden="true" />
           <div className="case-shine" />
+          <div className="case-hardware" aria-hidden="true"><i /><i /><i /><i /></div>
+          {isClubI ? <div className="club-brand" aria-hidden="true"><strong>HOHNER</strong><small>CLUB<br />MODELL I</small></div> : <div className="instrument-nameplate" aria-hidden="true"><strong>{config.maker}</strong><small>{config.model.split('—')[0]}</small></div>}
           <span className="hand-caption"><Hand size={14} /> Main gauche</span>
           <div className="bass-grid">
             {config.basses.map((button) => {
@@ -69,8 +76,9 @@ export function AccordionView({
               return (
                 <button
                   type="button"
-                  className={`bass-button ${active ? 'is-active' : ''}`}
+                  className={`bass-button ${active ? 'is-active' : ''} ${active && depressActive ? 'is-pressed' : ''}`}
                   key={button.id}
+                  aria-pressed={active && depressActive}
                   aria-label={`${button.role === 'bass' ? 'Basse' : 'Accord'} ${button.index}`}
                   onPointerDown={() => {
                     playMidi(direction === 'push' ? button.pushMidi : button.pullMidi, .5, .09);
@@ -86,13 +94,16 @@ export function AccordionView({
 
         <div className={`bellows ${expanded ? 'is-open' : 'is-closed'}`} aria-label={expanded ? 'Soufflet ouvert' : 'Soufflet fermé'}>
           <div className="bellows-edge" />
-          {Array.from({ length: 9 }).map((_, index) => <i key={index} />)}
+          {Array.from({ length: 15 }).map((_, index) => <i key={index} />)}
           <div className="bellows-center"><span>{expanded ? 'TIRER' : 'POUSSER'}</span></div>
           <div className="bellows-edge" />
         </div>
 
         <section className="accordion-case melody-case" aria-label="Main droite, clavier mélodique">
+          <div className="case-depth" aria-hidden="true" />
           <div className="case-shine" />
+          <div className="case-hardware" aria-hidden="true"><i /><i /><i /><i /></div>
+          {isClubI ? <div className="club-ornament" aria-hidden="true"><i>✣</i><span>II</span><i>✣</i></div> : <div className="instrument-nameplate is-right" aria-hidden="true"><strong>{config.maker}</strong><small>{config.tuning}</small></div>}
           <span className="hand-caption"><Hand size={14} /> Main droite</span>
           <div className={`melody-rows rows-${rows.length}`}>
             {rows.map((row, rowIndex) => (
@@ -114,8 +125,9 @@ export function AccordionView({
                         playMidi(pressedDirection === 'push' ? button.pushMidi : button.pullMidi, .5);
                         onButtonPress?.(button.id, pressedDirection);
                       }}
-                      className={`melody-button ${isActive ? 'is-active' : ''} ${isDetected ? 'is-detected' : ''} ${button.role === 'accidental' ? 'is-helper' : ''}`}
+                      className={`melody-button ${isActive ? 'is-active' : ''} ${isActive && depressActive ? 'is-pressed' : ''} ${isDetected ? 'is-detected' : ''} ${button.role === 'accidental' ? 'is-helper' : ''}`}
                       aria-label={`Bouton ${button.index}, ${direction === 'push' ? button.push : button.pull}`}
+                      aria-pressed={isActive && depressActive}
                       title={`Pousser : ${button.push} · Tirer : ${button.pull}${button.isGleichton ? ' · Gleichton' : ''}`}
                       data-midi={currentMidi}
                     >

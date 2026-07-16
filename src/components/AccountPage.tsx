@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, CalendarDays, Check, ChevronRight, Eye, EyeOff, KeyRound, LogOut, Mail, Mic2, Music2, Save, ShieldCheck, UserRound } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Check, ChevronRight, Eye, EyeOff, KeyRound, LogOut, Mail, Mic2, MoveHorizontal, Music2, Save, ShieldCheck, UserRound } from 'lucide-react';
 import type { AccordionConfig, UserAccount } from '../types';
+import { readBellowsProfiles } from '../audioTraining';
 
 interface AccountPageProps {
   user: UserAccount;
@@ -33,6 +34,7 @@ export function AccountPage({ user, accordions, selectedAccordionId, onUserUpdat
     const personal = accordions.filter((accordion) => accordion.id.startsWith('custom-'));
     return [selected, ...personal].filter((accordion, index, items): accordion is AccordionConfig => Boolean(accordion) && items.findIndex((item) => item?.id === accordion?.id) === index);
   }, [accordions, selectedAccordionId]);
+  const audioProfiles = useMemo(() => Object.values(readBellowsProfiles()), []);
   const accountDate = user.createdAt.includes('T') ? user.createdAt : `${user.createdAt.replace(' ', 'T')}Z`;
   const memberSince = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(new Date(accountDate));
 
@@ -70,7 +72,7 @@ export function AccountPage({ user, accordions, selectedAccordionId, onUserUpdat
         </div>
         <aside className="account-sidebar">
           <section className="account-card equipment-card"><header><span><Music2 /></span><div><h2>Mon matériel</h2><p>Accordéon actif et configurations personnelles.</p></div></header><div className="equipment-list">{instruments.map((accordion) => <article key={accordion.id}><i style={{ background: accordion.color }} /><div><small>{accordion.maker}</small><strong>{accordion.model}</strong><span>{accordion.tuning} · {accordion.rightRows.join('+')} + {accordion.bassCount}</span></div>{accordion.id === selectedAccordionId && <em>Actif</em>}</article>)}</div><button type="button" className="account-link" onClick={onOpenSettings}><span>Gérer mes accordéons</span><ChevronRight /></button></section>
-          <section className="account-card audio-profile-card"><header><span><Mic2 /></span><div><h2>Profils audio</h2><p>Microphones et latences calibrés sur tes appareils.</p></div></header><div className="empty-account-state"><Mic2 /><strong>Aucun profil enregistré</strong><p>Une calibration apparaîtra ici dès qu’elle aura été effectuée sur cet appareil.</p></div><button type="button" className="account-link" onClick={onOpenSettings}><span>Ouvrir Audio et latence</span><ChevronRight /></button></section>
+          <section className="account-card audio-profile-card"><header><span><Mic2 /></span><div><h2>Profils audio</h2><p>Calibrations acoustiques conservées sur cet appareil.</p></div></header>{audioProfiles.length ? <div className="audio-profile-list">{audioProfiles.map((profile) => { const instrument = accordions.find((accordion) => accordion.id === profile.accordionId); return <article key={profile.accordionId}><span><MoveHorizontal /></span><div><strong>Soufflet pousser / tirer</strong><small>{instrument?.model ?? 'Accordéon personnalisé'} · bouton {instrument?.buttons.find((button) => button.id === profile.buttonId)?.index ?? '—'}</small></div><em>Calibré</em></article>; })}</div> : <div className="empty-account-state"><Mic2 /><strong>Aucun profil enregistré</strong><p>La calibration du mode soufflet apparaîtra ici après ton premier essai au micro.</p></div>}<button type="button" className="account-link" onClick={onOpenSettings}><span>Ouvrir Audio et latence</span><ChevronRight /></button></section>
           <section className="account-card session-card"><header><span><CalendarDays /></span><div><h2>Session</h2><p>La connexion expire après 30 jours.</p></div></header><button type="button" className="logout-button" onClick={onLogout}><LogOut /> Se déconnecter de cet appareil</button></section>
         </aside>
       </div>

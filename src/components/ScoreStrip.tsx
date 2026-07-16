@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { displayNote } from '../data';
 import type { Notation, Song, SongEvent } from '../types';
@@ -10,6 +11,17 @@ interface ScoreStripProps {
 }
 
 export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStripProps) {
+  const stripRef = useRef<HTMLDivElement>(null);
+  const eventRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    const active = eventRefs.current[activeIndex];
+    if (!strip || !active) return;
+    const centeredLeft = active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2;
+    strip.scrollTo({ left: Math.max(0, centeredLeft), behavior: activeIndex === 0 ? 'auto' : 'smooth' });
+  }, [activeIndex]);
+
   const rhythmSymbol = (duration: number) => {
     const quarterNotes = duration * 4 / song.timeSignature[1];
     if (quarterNotes <= .25) return '♬';
@@ -28,7 +40,7 @@ export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStrip
         <span>Soufflet</span>
         <span>Notes</span>
       </div>
-      <div className="score-strip" aria-label="Partition interactive">
+      <div className="score-strip" aria-label="Partition interactive" ref={stripRef}>
         {song.events.map((event, index) => {
           const measure = Math.floor(event.beat / song.timeSignature[0]) + 1;
           const newMeasure = index === 0 || Math.floor(song.events[index - 1].beat / song.timeSignature[0]) !== measure - 1;
@@ -36,6 +48,7 @@ export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStrip
           return (
             <button
               type="button"
+              ref={(element) => { eventRefs.current[index] = element; }}
               className={`score-event ${index === activeIndex ? 'is-active' : ''} ${index < activeIndex ? 'is-past' : ''}`}
               style={{ '--duration': Math.max(.65, event.duration) } as React.CSSProperties}
               key={event.id}

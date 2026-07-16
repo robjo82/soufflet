@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PitchReading } from '../types';
+import type { AudioFeatureFrame, AudioOnset } from '../audioTraining';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 
@@ -62,12 +63,18 @@ export function rememberReliablePitch(previous: PitchReading | null, current: Pi
 
 export function usePitchDetector() {
   const [reading, setReading] = useState<PitchReading | null>(null);
+  const [audioFrame, setAudioFrame] = useState<AudioFeatureFrame | null>(null);
+  const [onset, setOnset] = useState<AudioOnset | null>(null);
   const [status, setStatus] = useState<'idle' | 'requesting' | 'listening' | 'denied' | 'error'>('idle');
   const [error, setError] = useState('');
   const contextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const frameRef = useRef<number>(0);
   const lastUpdateRef = useRef(0);
+  const envelopeRef = useRef(0);
+  const noiseFloorRef = useRef(.006);
+  const lastOnsetRef = useRef(0);
+  const onsetIdRef = useRef(0);
 
   const stop = useCallback(() => {
     cancelAnimationFrame(frameRef.current);
@@ -76,6 +83,8 @@ export function usePitchDetector() {
     streamRef.current = null;
     contextRef.current = null;
     setReading(null);
+    setAudioFrame(null);
+    setOnset(null);
     setStatus('idle');
   }, []);
 
@@ -99,6 +108,7 @@ export function usePitchDetector() {
       analyser.smoothingTimeConstant = 0.08;
       source.connect(analyser);
       const buffer = new Float32Array(analyser.fftSize);
+      const frequencyData = new Float32Array(analyser.frequencyBinCount);
       streamRef.current = stream;
       contextRef.current = context;
       setStatus('listening');
@@ -108,7 +118,43 @@ export function usePitchDetector() {
         const result = autoCorrelate(buffer, context.sampleRate);
         if (timestamp - lastUpdateRef.current > 70) {
           lastUpdateRef.current = timestamp;
-          setReading(result.frequency > 0 ? frequencyToPitch(result.frequency, result.clarity, result.volume) : null);
+          const pitch = result.frequency > 0 ? frequencyToPitch(result.frequency, result.clarity, result.volume) : null;
+          analyser.getFloatFrequencyData(frequencyData);
+          let spectralEnergy = 0;
+          let weightedFrequency = 0;
+          let brightEnergy = 0;
+          const binWidth = context.sampleRate / analyser.fftSize;
+          for (let index = 1; index < frequencyData.length; index += 1) {
+            if (frequencyData[index] < -90) continue;
+            const energy = 10 ** (frequencyData[index] / 20);
+            const frequency = index * binWidth;
+            spectralEnergy += energy;
+            weightedFrequency += frequency * energy;
+            if (frequency >= 2000) brightEnergy += energy;
+          }
+          const frame: AudioFeatureFrame = {
+            at: timestamp,
+            volume: result.volume,
+            spectralCentroid: spectralEnergy ? weightedFrequency / spectralEnergy : 0,
+            brightness: spectralEnergy ? brightEnergy / spectralEnergy : 0,
+            pitch,
+          };
+          const previousEnvelope = envelopeRef.current;
+          const threshold = Math.max(.012, noiseFloorRef.current * 2.7);
+          const isAttack = result.volume > threshold
+            && result.volume > Math.max(previousEnvelope * 1.42, threshold)
+            && timestamp - lastOnsetRef.current > 220;
+          envelopeRef.current = previousEnvelope * .7 + result.volume * .3;
+          if (result.volume < Math.max(.012, noiseFloorRef.current * 1.8)) {
+            noiseFloorRef.current = noiseFloorRef.current * .97 + result.volume * .03;
+          }
+          if (isAttack) {
+            lastOnsetRef.current = timestamp;
+            onsetIdRef.current += 1;
+            setOnset({ id: onsetIdRef.current, at: timestamp, volume: result.volume });
+          }
+          setReading(pitch);
+          setAudioFrame(frame);
         }
         frameRef.current = requestAnimationFrame(analyze);
       };
@@ -122,5 +168,5 @@ export function usePitchDetector() {
 
   useEffect(() => stop, [stop]);
 
-  return { reading, status, error, start, stop };
+  return { reading, audioFrame, onset, status, error, start, stop };
 }

@@ -6,13 +6,17 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 
 - onboarding en cinq étapes : instrument, notation, micro et premier geste ;
 - création et gestion de compte, mot de passe dérivé avec scrypt, renouvellement sécurisé et session HttpOnly ;
-- espace personnel pour le profil, les accordéons enregistrés et les futurs profils de calibration audio ;
+- espace personnel pour le profil, les accordéons enregistrés et les profils locaux de calibration du soufflet ;
 - migrations SQLite incrémentales et données persistantes dans un volume Docker ;
 - configurations SQLite préchargées : variante Hohner Club I C/F 10+9+2 (P1 = F♯5) avec Gleichton, G/C 21+8 et D/G 21+8 ;
-- lecteur animé au tempo avec partition interactive, synthèse locale et soufflet synchronisé ;
+- lecteur animé au tempo avec partition interactive, synthèse locale, soufflet plissé synchronisé et boutons réellement enfoncés ;
+- profil visuel en volume dédié au Hohner Club I (bois, ferrures, plaques et implantation 10+9+2), avec rendu générique en volume pour les autres modèles ;
+- décompte visuel et sonore d’une mesure avant un nouveau départ, désactivable dans les réglages ;
+- tablature centrée automatiquement sur la note active pendant la lecture et les modes guidés ;
 - modes démonstration, lecture guidée, attente de la bonne note, notes, rythme, soufflet, chaque main et performance ;
 - accordeur monophonique réel avec fréquence, cents, confiance, localisation et correction guidée de chaque bouton ;
-- détection de hauteur pendant l’entraînement, évaluation automatique et conseils de note et de rythme ;
+- tutoriel joué sur l’instrument réel : détection de hauteur, attaques rythmiques, basses monophoniques et calibration acoustique pousser/tirer sur un bouton de référence ;
+- évaluation automatique pendant l’entraînement et conseils de note et de rythme ;
 - suivi personnel persistant : temps actif, séances, séries, notes et rythme évalués, tempo, tendances, répertoire, historique et insights sans données de démonstration ;
 - bibliothèque commune de 12 airs du domaine public ou traditionnels, dont le Brise-pieds en 12 mesures, plus une référence protégée sans transcription ;
 - bibliothèque, import audio/vidéo/PDF/image/tablature, liens YouTube et références Spotify ;
@@ -20,6 +24,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - parseur déterministe des tablatures simples et structurées (`4P`, `4′T`, ornements, subdivisions, mesures et notes tenues) sans IA ;
 - studio de correction des notes, boutons, directions, doigtés et durées avec annulation et autosauvegarde locale ;
 - interface responsive, priorité tablette paysage, plein écran, raccourcis `Espace`, `R` et `L` ;
+- microphone automatiquement arrêté en mode démonstration ;
 - image Docker non-root, healthcheck, volume SQLite persistant.
 - CI de qualité, Semantic Release, images immuables et déploiement Portainer suivi par Watchtower.
 
