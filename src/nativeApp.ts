@@ -1,13 +1,13 @@
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, SystemBars, SystemBarsStyle, SystemBarType } from '@capacitor/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { SplashScreen } from '@capacitor/splash-screen';
-import { StatusBar, Style } from '@capacitor/status-bar';
 
 let initialized = false;
 
 export const isAndroidPreview = () => ['localhost', '127.0.0.1'].includes(window.location.hostname) && new URLSearchParams(window.location.search).has('android-preview');
+export const isAndroidOnboardingPreview = () => isAndroidPreview() && new URLSearchParams(window.location.search).get('android-preview') === 'onboarding';
 export const isAndroidApp = () => Capacitor.getPlatform() === 'android' || isAndroidPreview();
 
 export function initializeNativeApp() {
@@ -15,10 +15,15 @@ export function initializeNativeApp() {
   initialized = true;
   document.documentElement.classList.add('native-android');
 
-  if (isAndroidPreview()) return;
+  if (isAndroidPreview()) {
+    document.documentElement.style.setProperty('--safe-area-inset-top', '24px');
+    document.documentElement.style.setProperty('--safe-area-inset-right', '0px');
+    document.documentElement.style.setProperty('--safe-area-inset-bottom', '24px');
+    document.documentElement.style.setProperty('--safe-area-inset-left', '0px');
+    return;
+  }
 
-  void StatusBar.setStyle({ style: Style.Dark });
-  void StatusBar.setBackgroundColor({ color: '#F7F4EC' });
+  void SystemBars.setStyle({ style: SystemBarsStyle.Light });
   void SplashScreen.hide();
 
   void CapacitorApp.addListener('backButton', () => {
@@ -46,10 +51,9 @@ export async function setNativePracticeMode(active: boolean) {
   if (!isAndroidApp()) return;
   document.documentElement.classList.toggle('native-practice', active);
   if (isAndroidPreview()) return;
-  if (active) await StatusBar.hide();
+  if (active) await SystemBars.hide({ bar: SystemBarType.StatusBar });
   else {
-    await StatusBar.show();
-    await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: '#F7F4EC' });
+    await SystemBars.show({ bar: SystemBarType.StatusBar });
+    await SystemBars.setStyle({ style: SystemBarsStyle.Light });
   }
 }

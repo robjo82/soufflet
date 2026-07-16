@@ -20,10 +20,11 @@ const config: CapacitorConfig = {
       backgroundColor: '#f7f4ec',
       showSpinner: false,
     },
-    StatusBar: {
-      backgroundColor: '#f7f4ec',
-      style: 'DARK',
-      overlaysWebView: false,
+    SystemBars: {
+      insetsHandling: 'css',
+      style: 'LIGHT',
+      hidden: false,
+      animation: 'NONE',
     },
   },
 };
