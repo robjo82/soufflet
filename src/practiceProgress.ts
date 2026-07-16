@@ -4,6 +4,11 @@ export interface WaitAdvance {
   looped: boolean;
 }
 
+export function getCountInSequence(beatsPerMeasure: number) {
+  const beats = Math.min(12, Math.max(1, Math.round(beatsPerMeasure) || 4));
+  return Array.from({ length: beats }, (_, index) => beats - index);
+}
+
 export function getWaitAdvance(
   currentIndex: number,
   eventCount: number,

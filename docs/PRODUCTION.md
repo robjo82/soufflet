@@ -5,7 +5,8 @@
 - UI responsive et navigation complète ;
 - comptes, sessions HttpOnly, isolation des configurations personnelles et migrations SQLite ;
 - bibliothèque commune avec licence et provenance ;
-- représentation bisonore et soufflet synchronisé ;
+- représentation bisonore en volume, soufflet plissé synchronisé et touches animées ;
+- profil visuel procédural dédié au Hohner Club I, sans réutilisation des photographies de référence ;
 - lecture/synthèse au tempo, boucle et raccourcis ;
 - accordeur monophonique navigateur ;
 - tutoriel microphone-first : notes, attaques rythmiques, basses monophoniques et profil acoustique pousser/tirer local ;
@@ -35,6 +36,7 @@
 - budgets Gemini par utilisateur, limitation de débit distribuée et alertes de coût ;
 - observabilité, sauvegardes restaurées en test, SLO et procédure d’incident ;
 - tests end-to-end CI sur Chromium/WebKit, audits axe/Lighthouse ;
+- créer des profils visuels vérifiés pour les autres fabricants ; leur rendu actuel reprend la géométrie et la couleur configurées, mais pas encore chaque détail de carrosserie ;
 - mentions légales, politique de confidentialité, licences musicales et procédure de retrait.
 
 ## Livraison actuelle

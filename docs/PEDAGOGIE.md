@@ -8,6 +8,8 @@
 4. **Pratique distribuée** : les gestes fragiles reviennent tôt ; les gestes maîtrisés sont espacés. Une séance courte alterne rappel, nouveauté, application et mini-performance.
 5. **Démonstration puis retrait de l’aide** : démonstration, guidage, attente de la bonne note, boucle ralentie, puis performance sans repères.
 
+Chaque nouveau départ peut être précédé d’une mesure de décompte adaptée à la signature rythmique. Une reprise après pause repart immédiatement. La tablature recentre progressivement la note active pour rester lisible à distance sans demander d’action manuelle.
+
 ## Premier tutoriel instrument en main
 
 Les exercices actifs se réalisent sur l’accordéon. La représentation à l’écran sert à écouter la consigne, repérer le bouton et comprendre le mouvement ; elle ne valide un geste par clic qu’en solution de repli si le microphone est indisponible.

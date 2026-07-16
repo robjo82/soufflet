@@ -9,13 +9,14 @@ import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
 import type { AccordionConfig, Notation, PracticeSessionInput, PracticeSettings, Song } from '../types';
 import { PRACTICE_MODES } from '../practiceModes';
-import { getWaitAdvance } from '../practiceProgress';
+import { getCountInSequence, getWaitAdvance } from '../practiceProgress';
 
 interface PracticePlayerProps {
   song: Song;
   accordion: AccordionConfig;
   onClose: () => void;
   notation: Notation;
+  countIn: boolean;
   onNotationChange: (notation: Notation) => void;
   onSessionUpdate: (session: PracticeSessionInput) => Promise<void>;
 }
@@ -29,12 +30,13 @@ function accompanimentIndexAt(song: Song, beat: number) {
   return index;
 }
 
-export function PracticePlayer({ song, accordion, onClose, notation, onNotationChange, onSessionUpdate }: PracticePlayerProps) {
+export function PracticePlayer({ song, accordion, onClose, notation, countIn, onNotationChange, onSessionUpdate }: PracticePlayerProps) {
   const [settings, setSettings] = useState<PracticeSettings>({
-    mode: 'guided', tempo: 80, countIn: true, metronome: false, loop: false,
+    mode: 'guided', tempo: 80, countIn, metronome: false, loop: false,
     loopStart: 0, loopEnd: song.events.length - 1, notation,
   });
   const [playing, setPlaying] = useState(false);
+  const [countInBeat, setCountInBeat] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeAccompanimentIndex, setActiveAccompanimentIndex] = useState(0);
   const [modeOpen, setModeOpen] = useState(false);
@@ -57,6 +59,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   const ignoreMicrophoneUntilRef = useRef(0);
   const waitAdvanceTimerRef = useRef(0);
   const waitReleaseTimerRef = useRef(0);
+  const countInTimersRef = useRef<number[]>([]);
   const assessedRef = useRef(new Set<number>());
   const wrongRef = useRef(new Set<number>());
   const resultsRef = useRef(results);
@@ -69,7 +72,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   const accumulatedActiveMsRef = useRef(0);
   const sessionCompletedRef = useRef(false);
   const { playMidi, playLeftHand, click } = useSynth();
-  const detector = usePitchDetector();
+  const { reading: detectedReading, status: detectorStatus, start: startDetector, stop: stopDetector } = usePitchDetector();
   const currentEvent = song.events[activeIndex];
   const currentAccompaniment = song.accompaniment?.[activeAccompanimentIndex];
   const displayedEvent = useMemo(() => settings.mode === 'demo' && currentEvent && currentAccompaniment ? {
@@ -79,6 +82,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   } : currentEvent, [currentAccompaniment, currentEvent, settings.mode]);
   const actualBpm = song.bpm * settings.tempo / 100;
   const beatMs = 60000 / actualBpm;
+  const countInSequence = useMemo(() => getCountInSequence(song.timeSignature[0]), [song.timeSignature]);
   const practiceWithMic = settings.mode !== 'demo';
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, []);
@@ -147,6 +151,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   useEffect(() => () => {
     window.clearTimeout(waitAdvanceTimerRef.current);
     window.clearTimeout(waitReleaseTimerRef.current);
+    countInTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     finishActiveSegment();
     void persistSession(sessionCompletedRef.current);
   }, [finishActiveSegment, persistSession]);
@@ -168,7 +173,14 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     else await document.documentElement.requestFullscreen?.();
   }, []);
 
+  const clearCountIn = useCallback(() => {
+    countInTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    countInTimersRef.current = [];
+    setCountInBeat(null);
+  }, []);
+
   const selectIndex = useCallback((index: number) => {
+    clearCountIn();
     finishActiveSegment();
     void persistSession(false);
     resetSessionTracking();
@@ -184,15 +196,16 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     wrongRef.current.clear();
     resetResults();
     setPlaying(false);
-  }, [finishActiveSegment, persistSession, resetResults, resetSessionTracking, song]);
+  }, [clearCountIn, finishActiveSegment, persistSession, resetResults, resetSessionTracking, song]);
 
   const stop = useCallback(() => {
+    clearCountIn();
     finishActiveSegment();
     void persistSession(false);
     setPlaying(false);
     cancelAnimationFrame(rafRef.current);
     window.clearTimeout(waitAdvanceTimerRef.current);
-  }, [finishActiveSegment, persistSession]);
+  }, [clearCountIn, finishActiveSegment, persistSession]);
 
   const restart = useCallback(() => {
     stop();
@@ -212,9 +225,8 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     setFeedback({ kind: 'neutral', title: 'On reprend calmement', detail: 'Inspire, prépare le doigt et regarde la direction.' });
   }, [resetResults, resetSessionTracking, settings.loop, settings.loopStart, song, stop]);
 
-  const begin = useCallback(() => {
-    if (playing) { stop(); return; }
-    if (sessionCompletedRef.current) resetSessionTracking();
+  const startPlayback = useCallback(() => {
+    clearCountIn();
     if (!sessionStartedAtRef.current) sessionStartedAtRef.current = new Date().toISOString();
     activeSegmentStartedAtRef.current = performance.now();
     startedAtRef.current = performance.now();
@@ -226,8 +238,30 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     waitForReleaseRef.current = null;
     ignoreMicrophoneUntilRef.current = 0;
     setPlaying(true);
-    if (practiceWithMic && detector.status === 'idle') void detector.start();
-  }, [activeIndex, detector, playing, practiceWithMic, resetSessionTracking, song.events, stop]);
+    if (practiceWithMic && detectorStatus === 'idle') void startDetector();
+  }, [activeIndex, clearCountIn, detectorStatus, practiceWithMic, song.events, startDetector]);
+
+  const begin = useCallback(() => {
+    if (playing || countInBeat !== null) { stop(); return; }
+    if (sessionCompletedRef.current) resetSessionTracking();
+    if (!settings.countIn || sessionStartedAtRef.current) {
+      startPlayback();
+      return;
+    }
+    setCountInBeat(countInSequence[0]);
+    if (soundEnabled) click(true);
+    countInSequence.slice(1).forEach((remaining, index) => {
+      countInTimersRef.current.push(window.setTimeout(() => {
+        setCountInBeat(remaining);
+        if (soundEnabled) click(false);
+      }, (index + 1) * beatMs));
+    });
+    countInTimersRef.current.push(window.setTimeout(startPlayback, countInSequence.length * beatMs));
+  }, [beatMs, click, countInBeat, countInSequence, playing, resetSessionTracking, settings.countIn, soundEnabled, startPlayback, stop]);
+
+  useEffect(() => {
+    if (!practiceWithMic && detectorStatus !== 'idle') stopDetector();
+  }, [detectorStatus, practiceWithMic, stopDetector]);
 
   useEffect(() => {
     if (!playing) return;
@@ -352,7 +386,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
   }, [activeIndex, beatMs, currentEvent, finishActiveSegment, incrementResult, persistSession, playing, practiceWithMic, settings.loop, settings.loopEnd, settings.loopStart, settings.mode, song]);
 
   useEffect(() => {
-    const reading = detector.reading;
+    const reading = detectedReading;
     if (!reading) {
       if (settings.mode === 'wait' && waitForReleaseRef.current !== null) {
         window.clearTimeout(waitReleaseTimerRef.current);
@@ -362,7 +396,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
     }
     window.clearTimeout(waitReleaseTimerRef.current);
     assessPitch(reading.midi, reading.note, reading.confidence, undefined, true);
-  }, [assessPitch, detector.reading, settings.mode]);
+  }, [assessPitch, detectedReading, settings.mode]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -447,13 +481,15 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
         </div>
 
         <section className="instrument-stage">
+          {countInBeat !== null && <div className="count-in-overlay" aria-live="assertive"><small>PRÉPARE TON ACCORDÉON</small><strong>{countInBeat}</strong><p>Le morceau démarre après le dernier temps.</p><span>{countInSequence.map((beat) => <i key={beat} className={beat >= countInBeat ? 'is-counted' : ''} />)}</span></div>}
           {settings.mode !== 'performance' && (
             <AccordionView
               config={accordion}
               activeEvent={displayedEvent}
               direction={currentEvent?.direction}
               notation={notation}
-              detectedMidi={detector.reading?.midi}
+              detectedMidi={detectedReading?.midi}
+              depressActive={playing && countInBeat === null}
               onButtonPress={(buttonId, direction) => {
                 if (direction !== currentEvent?.direction) {
                   setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${currentEvent?.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
@@ -480,8 +516,8 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
           <div><small>CONSEIL EN DIRECT</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></div>
           {practiceWithMic && (
             <div className="mic-status">
-              <span className={detector.status === 'listening' ? 'mic-live' : ''} />
-              {detector.status === 'listening' ? (detector.reading ? `${detector.reading.note} · ${Math.round(detector.reading.confidence * 100)} %` : 'Écoute…') : 'Micro en attente'}
+              <span className={detectorStatus === 'listening' ? 'mic-live' : ''} />
+              {detectorStatus === 'listening' ? (detectedReading ? `${detectedReading.note} · ${Math.round(detectedReading.confidence * 100)} %` : 'Écoute…') : 'Micro en attente'}
             </div>
           )}
           {practiceWithMic && <div className="live-results" title="Évaluation automatique"><span><b>{results.correct}</b> justes</span><span><b>{results.early + results.late}</b> décalées</span><span><b>{results.wrong}</b> à corriger</span></div>}
@@ -494,7 +530,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, onNotationC
           <button type="button" className="transport-tool" onClick={restart}><Redo2 /> <span>Recommencer<kbd>R</kbd></span></button>
           <button type="button" className={`transport-tool ${settings.loop ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, loop: !value.loop }))}><Repeat2 /> <span>Boucle<kbd>L</kbd></span></button>
         </div>
-        <button type="button" className="primary-play" onClick={begin}>{playing ? <Pause /> : <Play fill="currentColor" />}<span>{playing ? 'Pause' : 'Commencer'}</span><kbd>Espace</kbd></button>
+        <button type="button" className="primary-play" onClick={begin}>{playing || countInBeat !== null ? <Pause /> : <Play fill="currentColor" />}<span>{countInBeat !== null ? `Départ dans ${countInBeat}` : playing ? 'Pause' : 'Commencer'}</span><kbd>Espace</kbd></button>
         <div className="transport-side align-right">
           <label className="tempo-control"><Gauge size={19} /><span>Tempo <strong>{settings.tempo} %</strong></span><input type="range" min="40" max="120" step="5" value={settings.tempo} onChange={(event) => setSettings((value) => ({ ...value, tempo: Number(event.target.value) }))} /></label>
           <button type="button" className={`transport-tool ${settings.metronome ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, metronome: !value.metronome }))}><TimerReset /><span>Métronome</span></button>

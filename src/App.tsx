@@ -18,6 +18,7 @@ import type { AccordionConfig, Notation, Page, PracticeSessionInput, PracticeSta
 interface UserPreferences {
   accordionId: string;
   notation: Notation;
+  countIn: boolean;
   onboardingDone: boolean;
   tutorialDone: boolean;
 }
@@ -25,6 +26,7 @@ interface UserPreferences {
 const defaultPreferences: UserPreferences = {
   accordionId: 'standard-gc-21-8',
   notation: 'french',
+  countIn: true,
   onboardingDone: false,
   tutorialDone: false,
 };
@@ -127,8 +129,8 @@ export function App() {
   if (!selectedAccordion) return null;
 
   if (!preferences.onboardingDone) {
-    return <Onboarding accordions={accordions} initialAccordionId={preferences.accordionId} initialNotation={preferences.notation} onSkip={(accordionId, notation) => savePreferences({ accordionId, notation, onboardingDone: true, tutorialDone: false })} onComplete={(accordionId, notation) => {
-      savePreferences({ accordionId, notation, onboardingDone: true, tutorialDone: false });
+    return <Onboarding accordions={accordions} initialAccordionId={preferences.accordionId} initialNotation={preferences.notation} onSkip={(accordionId, notation) => savePreferences({ ...preferences, accordionId, notation, onboardingDone: true, tutorialDone: false })} onComplete={(accordionId, notation) => {
+      savePreferences({ ...preferences, accordionId, notation, onboardingDone: true, tutorialDone: false });
     }} />;
   }
 
@@ -142,7 +144,7 @@ export function App() {
   }
 
   if (practiceSong) {
-    return <PracticePlayer song={practiceSong} accordion={selectedAccordion} notation={preferences.notation} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onSessionUpdate={recordPracticeSession} onClose={() => setPracticeSong(null)} />;
+    return <PracticePlayer song={practiceSong} accordion={selectedAccordion} notation={preferences.notation} countIn={preferences.countIn} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onSessionUpdate={recordPracticeSession} onClose={() => setPracticeSong(null)} />;
   }
 
   return (
@@ -152,8 +154,8 @@ export function App() {
       {page === 'library' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
       {page === 'studio' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} onSave={saveSong} onPractice={startPractice} />}
       {page === 'tuner' && <TunerPage accordion={selectedAccordion} notation={preferences.notation} onBack={() => navigate('home')} onAccordionChange={(updated) => { setAccordions((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); savePreferences({ ...preferences, accordionId: updated.id }); }} />}
-      {page === 'settings' && <SettingsPage accordions={accordions} selectedId={preferences.accordionId} notation={preferences.notation} apiKey={apiKey} onSave={(accordionId, notation, nextKey) => {
-        savePreferences({ ...preferences, accordionId, notation });
+      {page === 'settings' && <SettingsPage accordions={accordions} selectedId={preferences.accordionId} notation={preferences.notation} countIn={preferences.countIn} apiKey={apiKey} onSave={(accordionId, notation, countIn, nextKey) => {
+        savePreferences({ ...preferences, accordionId, notation, countIn });
         setApiKey(nextKey);
         if (nextKey) sessionStorage.setItem('soufflet.geminiKey', nextKey); else sessionStorage.removeItem('soufflet.geminiKey');
       }} onCreateAccordion={async (accordion) => {

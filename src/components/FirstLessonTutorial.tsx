@@ -470,7 +470,7 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
             {stage === 2 && (detector.status === 'denied' || detector.status === 'error') && <div className="tutorial-limitation">{detector.error} Utilise les boutons à l’écran pour terminer cet essai.</div>}
           </section>
           <section className="tutorial-instrument-card">
-            <AccordionView config={accordion} activeEvent={activeEvent} direction={activeEvent?.direction} notation={notation} detectedMidi={detector.reading?.midi} onButtonPress={handleButtonPress} />
+            <AccordionView config={accordion} activeEvent={activeEvent} direction={activeEvent?.direction} notation={notation} detectedMidi={detector.reading?.midi} depressActive={stage === 1 && demoPlaying} onButtonPress={handleButtonPress} />
           </section>
           {stage === 2 && <div className="tutorial-score"><ScoreStrip song={tutorialSong} activeIndex={Math.min(guidedProgress, events.length - 1)} notation={notation} onSelect={() => undefined} /></div>}
           <section className={`tutorial-feedback ${feedback.good ? 'is-good' : ''}`} aria-live="polite"><AudioLines /><span><small>TON PROFESSEUR</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></span></section>
