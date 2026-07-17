@@ -45,3 +45,11 @@ export function pianoScore(correct: number, missed: number, timingErrors: number
   const advice = missed > correct / 2 ? 'Ralentis et repère les positions des touches.' : averageDelay > 180 ? 'Anticipe légèrement l’arrivée des notes.' : rhythmAccuracy < 75 ? 'Refais le morceau plus lentement.' : 'Très bien : tu peux essayer le niveau suivant.';
   return { correct, missed, averageDelay, rhythmAccuracy, global, advice };
 }
+
+export function isPianoHit(expectedMidi: number, playedMidi: number, timingDeltaMs: number, toleranceMs = 300) {
+  return expectedMidi === playedMidi && Math.abs(timingDeltaMs) <= toleranceMs;
+}
+
+export function resumeTimeline(startTime: number, pausedAt: number, resumedAt: number) {
+  return startTime + Math.max(0, resumedAt - pausedAt);
+}

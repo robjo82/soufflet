@@ -56,6 +56,7 @@ function getStored<T>(key: string, fallback: T): T {
 export function App() {
   const [page, setPage] = useState<Page>('home');
   const [authLoading, setAuthLoading] = useState(true);
+  const [preferencesLoading, setPreferencesLoading] = useState(true);
   const [user, setUser] = useState<UserAccount | null>(null);
   const [accordions, setAccordions] = useState<AccordionConfig[]>(FALLBACK_ACCORDIONS);
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
@@ -69,6 +70,7 @@ export function App() {
   const [showImport, setShowImport] = useState(false);
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem('soufflet.geminiKey') ?? '');
   const [practiceStats, setPracticeStats] = useState<PracticeStats | null>(null);
+  const [pianoSessionActive, setPianoSessionActive] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -83,6 +85,7 @@ export function App() {
 
   useEffect(() => {
     if (!user) return;
+    setPreferencesLoading(true);
     const controller = new AbortController();
     fetch('/api/library', { signal: controller.signal }).then(async (response) => {
       if (!response.ok) return;
@@ -110,7 +113,13 @@ export function App() {
           body: JSON.stringify({ accordionId: local.accordionId, notation: local.notation, countIn: local.countIn, instrumentType: local.instrumentType, pianoKeyboardSize: local.pianoKeyboardSize, pianoInput: local.pianoInput, learningInstruments: local.learningInstruments, instrumentSetupDone: local.instrumentSetupDone }),
         });
       }
-    }).catch(() => undefined);
+    }).catch(() => undefined).finally(() => setPreferencesLoading(false));
+    return () => controller.abort();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const controller = new AbortController();
     fetch(`/api/progress?timezoneOffset=${new Date().getTimezoneOffset()}&instrumentType=${preferences.instrumentType}`, { signal: controller.signal }).then(async (response) => {
       if (!response.ok) return;
       const payload = await response.json() as { stats: PracticeStats };
@@ -157,19 +166,21 @@ export function App() {
   }, []);
 
   const navigate = useCallback((next: Page) => {
+    if (pianoSessionActive && next !== page && !window.confirm('Quitter le morceau en cours ? Ta tentative non terminée ne sera pas enregistrée.')) return;
+    setPianoSessionActive(false);
     setPage(next);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  }, [page, pianoSessionActive]);
 
   const logout = useCallback(() => {
     void fetch('/api/auth/logout', { method: 'POST' });
-    setUser(null); setPracticeSong(null); setPracticeStats(null);
+    setPreferencesLoading(true); setUser(null); setPracticeSong(null); setPracticeStats(null);
   }, []);
 
   const accountDeleted = useCallback(() => {
     for (const key of Object.keys(localStorage)) if (key.startsWith('soufflet.')) localStorage.removeItem(key);
     for (const key of Object.keys(sessionStorage)) if (key.startsWith('soufflet.')) sessionStorage.removeItem(key);
-    setUser(null); setPracticeSong(null); setPracticeStats(null); setSongs([]); setAccordions(FALLBACK_ACCORDIONS);
+    setPreferencesLoading(true); setUser(null); setPracticeSong(null); setPracticeStats(null); setSongs([]); setAccordions(FALLBACK_ACCORDIONS);
     setPreferences(defaultPreferences); setPage('home');
   }, []);
 
@@ -189,7 +200,8 @@ export function App() {
   }, [navigate, page, practiceSong, showImport]);
 
   if (authLoading) return <div className="app-loading"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong><small>Préparation de ton espace…</small></div>;
-  if (!user) return <AuthPage onAuthenticated={(account, newAccount) => { if (newAccount) savePreferences({ ...preferences, instrumentSetupDone: false, onboardingDone: false, tutorialDone: false }); setUser(account); }} />;
+  if (!user) return <AuthPage onAuthenticated={(account, newAccount) => { setPreferencesLoading(true); if (newAccount) savePreferences({ ...preferences, instrumentSetupDone: false, onboardingDone: false, tutorialDone: false }); setUser(account); }} />;
+  if (preferencesLoading) return <div className="app-loading"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong><small>Synchronisation de ton parcours…</small></div>;
   if (!selectedAccordion) return null;
 
   if (!preferences.instrumentSetupDone) return <InstrumentChoice onComplete={(learningInstruments) => {
@@ -217,8 +229,8 @@ export function App() {
   }
 
   return (
-    <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={logout} instrumentType={preferences.instrumentType} learningInstruments={preferences.learningInstruments} onInstrumentChange={(instrumentType) => { savePreferences({ ...preferences, instrumentType }); navigate('home'); }}>
-      {(page === 'home' || page === 'piano-songs' || page === 'piano-exercises') && preferences.instrumentType === 'piano' && <PianoMode keyboardSize={preferences.pianoKeyboardSize} input={preferences.pianoInput} view={page === 'piano-songs' ? 'songs' : page === 'piano-exercises' ? 'exercises' : 'home'} stats={practiceStats} onNavigate={navigate} onSessionUpdate={recordPracticeSession} />}
+    <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={logout} instrumentType={preferences.instrumentType} learningInstruments={preferences.learningInstruments} onInstrumentChange={(instrumentType) => { if (pianoSessionActive && !window.confirm('Quitter le morceau en cours pour changer d’instrument ?')) return; setPianoSessionActive(false); savePreferences({ ...preferences, instrumentType }); setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+      {(page === 'home' || page === 'piano-songs' || page === 'piano-exercises') && preferences.instrumentType === 'piano' && <PianoMode keyboardSize={preferences.pianoKeyboardSize} input={preferences.pianoInput} view={page === 'piano-songs' ? 'songs' : page === 'piano-exercises' ? 'exercises' : 'home'} stats={practiceStats} onNavigate={navigate} onSessionUpdate={recordPracticeSession} onSessionActiveChange={setPianoSessionActive} />}
       {page === 'home' && preferences.instrumentType === 'accordion' && <><HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} stats={practiceStats} onPractice={startPractice} onNavigateLearn={() => document.getElementById('learning-path')?.scrollIntoView({ behavior: 'smooth' })} displayName={user.displayName} /><div id="learning-path"><LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} /></div></>}
       {page === 'library' && preferences.instrumentType === 'accordion' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
       {page === 'studio' && preferences.instrumentType === 'accordion' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} onSave={saveSong} onPractice={startPractice} />}

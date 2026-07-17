@@ -84,6 +84,7 @@ describe('production data migrations', () => {
       accordionId: 'standard-gc-21-8', notation: 'french', countIn: true,
       instrumentType: 'piano', learningInstruments: ['accordion', 'piano'], instrumentSetupDone: true, pianoKeyboardSize: 61, pianoInput: 'midi',
     })).toMatchObject({ instrumentType: 'piano', learningInstruments: ['accordion', 'piano'], pianoKeyboardSize: 61, pianoInput: 'midi' });
+    expect(db.getUserPreferences('usr_piano')).toMatchObject({ instrumentSetupDone: true });
   });
 
   it('limits personal instruments to five and lets their owner delete them', () => {
