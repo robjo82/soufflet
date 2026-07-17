@@ -278,6 +278,31 @@ app.delete('/api/accordions/:id', requireUser, (request, response) => {
   response.status(204).end();
 });
 
+const pianoSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  keyboardSize: z.union([z.literal(25), z.literal(32), z.literal(49), z.literal(61), z.literal(76), z.literal(88)]),
+  input: z.enum(['midi', 'microphone', 'computer-keyboard']),
+  notation: z.enum(['french', 'english']),
+});
+
+app.get('/api/pianos', requireUser, (_request, response) => response.json({ pianos: db.listPianos(response.locals.user.id as string) }));
+app.post('/api/pianos', requireUser, (request, response) => {
+  try { const payload = pianoSchema.parse(request.body); response.status(201).json({ piano: db.savePiano({ ...payload, id: `piano-${crypto.randomUUID()}` }, response.locals.user.id as string) }); }
+  catch (error) { response.status(422).json({ error: error instanceof Error ? error.message : 'Piano invalide.' }); }
+});
+app.put('/api/pianos/:id', requireUser, (request, response) => {
+  try {
+    const payload = pianoSchema.parse(request.body); const id = String(request.params.id);
+    const piano = db.updatePiano(id, { ...payload, id }, response.locals.user.id as string);
+    if (!piano) { response.status(404).json({ error: 'Piano introuvable.' }); return; }
+    response.json({ piano });
+  } catch (error) { response.status(422).json({ error: error instanceof Error ? error.message : 'Piano invalide.' }); }
+});
+app.delete('/api/pianos/:id', requireUser, (request, response) => {
+  if (!db.deletePiano(String(request.params.id), response.locals.user.id as string)) { response.status(404).json({ error: 'Piano introuvable.' }); return; }
+  response.status(204).end();
+});
+
 app.post('/api/transcriptions', requireUser, upload.single('file'), async (request, response) => {
   try {
     const result = await transcriber.fromUpload(request.file, typeof request.body.tablature === 'string' ? request.body.tablature : undefined, String(request.body.accordionId ?? ''), request.get('x-gemini-key'));

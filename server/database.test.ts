@@ -90,11 +90,16 @@ describe('production data migrations', () => {
   it('limits personal instruments to five and lets their owner delete them', () => {
     const db = makeDatabase();
     db.createUser({ id: 'usr_material', email: 'material@example.fr', displayName: 'Matériel', passwordHash: 'test' });
-    for (let index = 1; index <= 5; index += 1) db.saveAccordion({ id: `custom-${index}`, maker: 'Test', model: `Instrument ${index}`, tuning: 'Do' }, 'usr_material');
+    for (let index = 1; index <= 4; index += 1) db.saveAccordion({ id: `custom-${index}`, maker: 'Test', model: `Instrument ${index}`, tuning: 'Do' }, 'usr_material');
+    db.savePiano({ id: 'piano-1', name: 'Salon', keyboardSize: 88, input: 'midi', notation: 'french' }, 'usr_material');
+    expect(db.listPianos('usr_material')).toMatchObject([{ id: 'piano-1', name: 'Salon' }]);
     expect(() => db.saveAccordion({ id: 'custom-6', maker: 'Test', model: 'Instrument 6', tuning: 'Do' }, 'usr_material')).toThrow(/maximum 5/);
+    expect(db.updatePiano('piano-1', { id: 'piano-1', name: 'Studio', keyboardSize: 61, input: 'midi', notation: 'english' }, 'usr_material')).toMatchObject({ name: 'Studio' });
     expect(db.deleteAccordion('custom-1', 'usr_material')).toBe(true);
     expect(db.deleteAccordion('custom-2', 'another-user')).toBe(false);
     expect(() => db.saveAccordion({ id: 'custom-6', maker: 'Test', model: 'Instrument 6', tuning: 'Do' }, 'usr_material')).not.toThrow();
+    expect(db.deletePiano('piano-1', 'another-user')).toBe(false);
+    expect(db.deletePiano('piano-1', 'usr_material')).toBe(true);
   });
 
   it('seeds the shared, licensed learning library', () => {

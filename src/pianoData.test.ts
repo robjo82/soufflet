@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { isPianoHit, PIANO_EXERCISES, pianoRange, pianoScore, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
-  it('ships three increasingly long monophonic exercises', () => {
-    expect(PIANO_EXERCISES.map((item) => item.notes.length)).toEqual([8, 14, 24]);
+  it('ships right-hand pieces and a first two-hand piece', () => {
+    expect(PIANO_EXERCISES.map((item) => item.notes.length)).toEqual([8, 14, 24, 18]);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(1);
     expect(PIANO_EXERCISES.every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
   });
   it('centers compact keyboards around middle C', () => {

@@ -1,20 +1,24 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Check, ChevronRight, Eye, EyeOff, KeyRound, Mail, Mic2, MoveHorizontal, Music2, Save, ShieldCheck, Trash2, UserRound } from 'lucide-react';
-import type { AccordionConfig, InstrumentType, UserAccount } from '../types';
+import { AlertTriangle, Check, Eye, EyeOff, KeyRound, Mail, Mic2, MoveHorizontal, Music2, Save, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import type { AccordionConfig, InstrumentType, PianoConfig, UserAccount } from '../types';
 import { readBellowsProfiles } from '../audioTraining';
+import { ProfileInstrumentManager } from './ProfileInstrumentManager';
 
 interface AccountPageProps {
   user: UserAccount;
   accordions: AccordionConfig[];
+  pianos: PianoConfig[];
   selectedAccordionId: string;
   instrumentType: InstrumentType;
   learningInstruments: InstrumentType[];
   onInstrumentChange: (instrument: InstrumentType) => void;
   onLearningInstrumentsChange: (instruments: InstrumentType[], active: InstrumentType) => void;
   onUserUpdated: (user: UserAccount) => void;
-  onOpenSettings: () => void;
   onAccountDeleted: () => void;
-  onDeleteInstrument: (id: string) => Promise<void>;
+  onSaveAccordion: (accordion: AccordionConfig) => Promise<AccordionConfig>;
+  onDeleteAccordion: (id: string) => Promise<void>;
+  onSavePiano: (piano: PianoConfig) => Promise<PianoConfig>;
+  onDeletePiano: (id: string) => Promise<void>;
 }
 
 async function readResponse<T>(response: Response) {
@@ -23,7 +27,7 @@ async function readResponse<T>(response: Response) {
   return payload;
 }
 
-export function AccountPage({ user, accordions, selectedAccordionId, instrumentType, learningInstruments, onInstrumentChange, onLearningInstrumentsChange, onUserUpdated, onOpenSettings, onAccountDeleted, onDeleteInstrument }: AccountPageProps) {
+export function AccountPage({ user, accordions, pianos, selectedAccordionId, instrumentType, learningInstruments, onInstrumentChange, onLearningInstrumentsChange, onUserUpdated, onAccountDeleted, onSaveAccordion, onDeleteAccordion, onSavePiano, onDeletePiano }: AccountPageProps) {
   const [displayName, setDisplayName] = useState(user.displayName);
   const [email, setEmail] = useState(user.email);
   const [avatarId, setAvatarId] = useState(user.avatarId ?? 'neutral');
@@ -40,11 +44,6 @@ export function AccountPage({ user, accordions, selectedAccordionId, instrumentT
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleteState, setDeleteState] = useState<'idle' | 'deleting'>('idle');
   const [deleteError, setDeleteError] = useState('');
-  const instruments = useMemo(() => {
-    const selected = accordions.find((accordion) => accordion.id === selectedAccordionId);
-    const personal = accordions.filter((accordion) => accordion.id.startsWith('custom-'));
-    return [selected, ...personal].filter((accordion, index, items): accordion is AccordionConfig => Boolean(accordion) && items.findIndex((item) => item?.id === accordion?.id) === index);
-  }, [accordions, selectedAccordionId]);
   const audioProfiles = useMemo(() => Object.values(readBellowsProfiles()), []);
 
   const saveProfile = async (event: React.FormEvent) => {
@@ -96,8 +95,8 @@ export function AccountPage({ user, accordions, selectedAccordionId, instrumentT
         <aside className="account-sidebar">
           <section className="account-card"><header><span><UserRound /></span><div><h2>Photo de profil</h2><p>Choisis la représentation qui te ressemble.</p></div></header><div className="avatar-picker">{['man-1', 'man-2', 'woman-1', 'woman-2', 'neutral'].map((avatar) => <button type="button" key={avatar} className={avatarId === avatar ? 'is-selected' : ''} onClick={() => setAvatarId(avatar)} aria-label={`Choisir l’avatar ${avatar}`}><img src={`/avatars/${avatar}.svg`} alt="" />{avatarId === avatar && <Check />}</button>)}</div><small>L’avatar est enregistré avec le bouton « Enregistrer le profil ».</small></section>
           <section className="account-card"><header><span><Music2 /></span><div><h2>Mes parcours</h2><p>Sélectionne les apprentissages à afficher.</p></div></header><div className="profile-instrument"><button type="button" className={learningInstruments.includes('accordion') ? 'is-selected' : ''} onClick={() => { const enabled = learningInstruments.includes('accordion'); if (enabled && learningInstruments.length === 1) return; const next = enabled ? learningInstruments.filter((item) => item !== 'accordion') : [...learningInstruments, 'accordion' as const]; onLearningInstrumentsChange(next, instrumentType === 'accordion' && enabled ? next[0] : instrumentType); }}>Accordéon {learningInstruments.includes('accordion') && '✓'}</button><button type="button" className={learningInstruments.includes('piano') ? 'is-selected' : ''} onClick={() => { const enabled = learningInstruments.includes('piano'); if (enabled && learningInstruments.length === 1) return; const next = enabled ? learningInstruments.filter((item) => item !== 'piano') : [...learningInstruments, 'piano' as const]; onLearningInstrumentsChange(next, instrumentType === 'piano' && enabled ? next[0] : instrumentType); }}>Piano {learningInstruments.includes('piano') && '✓'}</button></div>{learningInstruments.length === 2 && <div className="active-path"><span>Parcours affiché</span><button type="button" onClick={() => onInstrumentChange(instrumentType === 'accordion' ? 'piano' : 'accordion')}>{instrumentType === 'accordion' ? 'Accordéon' : 'Piano'}</button></div>}</section>
-          <section className="account-card equipment-card"><header><span><Music2 /></span><div><h2>Mon matériel</h2><p>Ajoute, modifie ou retire jusqu’à cinq instruments personnels.</p></div></header><div className="equipment-list">{instruments.map((accordion) => <article key={accordion.id}><i style={{ background: accordion.color }} /><div><small>{accordion.maker}</small><strong>{accordion.model}</strong><span>{accordion.tuning} · {accordion.rightRows.join('+')} + {accordion.bassCount}</span></div><div className="equipment-actions">{accordion.id === selectedAccordionId && <em>Actif</em>}<button type="button" onClick={onOpenSettings}>Modifier</button>{accordion.id.startsWith('custom-') && <button type="button" className="is-danger" onClick={() => void onDeleteInstrument(accordion.id)}>Supprimer</button>}</div></article>)}</div><button type="button" className="account-link" disabled={instruments.filter((item) => item.id.startsWith('custom-')).length >= 5} onClick={onOpenSettings}><span>{instruments.filter((item) => item.id.startsWith('custom-')).length >= 5 ? 'Limite de 5 instruments atteinte' : 'Ajouter ou configurer un instrument'}</span><ChevronRight /></button></section>
-          <section className="account-card audio-profile-card"><header><span><Mic2 /></span><div><h2>Profils audio</h2><p>Calibrations acoustiques conservées sur cet appareil.</p></div></header>{audioProfiles.length ? <div className="audio-profile-list">{audioProfiles.map((profile) => { const instrument = accordions.find((accordion) => accordion.id === profile.accordionId); return <article key={profile.accordionId}><span><MoveHorizontal /></span><div><strong>Soufflet pousser / tirer</strong><small>{instrument?.model ?? 'Accordéon personnalisé'} · bouton {instrument?.buttons.find((button) => button.id === profile.buttonId)?.index ?? '—'}</small></div><em>Calibré</em></article>; })}</div> : <div className="empty-account-state"><Mic2 /><strong>Aucun profil enregistré</strong><p>La calibration du mode soufflet apparaîtra ici après ton premier essai au micro.</p></div>}<button type="button" className="account-link" onClick={onOpenSettings}><span>Ouvrir Audio et latence</span><ChevronRight /></button></section>
+          <ProfileInstrumentManager accordions={accordions} pianos={pianos} selectedAccordionId={selectedAccordionId} onSaveAccordion={onSaveAccordion} onDeleteAccordion={onDeleteAccordion} onSavePiano={onSavePiano} onDeletePiano={onDeletePiano} />
+          <section className="account-card audio-profile-card"><header><span><Mic2 /></span><div><h2>Profils audio</h2><p>Calibrations acoustiques conservées sur cet appareil.</p></div></header>{audioProfiles.length ? <div className="audio-profile-list">{audioProfiles.map((profile) => { const instrument = accordions.find((accordion) => accordion.id === profile.accordionId); return <article key={profile.accordionId}><span><MoveHorizontal /></span><div><strong>Soufflet pousser / tirer</strong><small>{instrument?.model ?? 'Accordéon personnalisé'} · bouton {instrument?.buttons.find((button) => button.id === profile.buttonId)?.index ?? '—'}</small></div><em>Calibré</em></article>; })}</div> : <div className="empty-account-state"><Mic2 /><strong>Aucun profil enregistré</strong><p>La calibration du mode soufflet apparaîtra ici après ton premier essai au micro.</p></div>}</section>
         </aside>
       </div>
     </main>

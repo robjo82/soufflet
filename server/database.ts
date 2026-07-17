@@ -121,6 +121,17 @@ export class SouffletDatabase {
         ALTER TABLE user_preferences ADD COLUMN instrument_setup_done INTEGER NOT NULL DEFAULT 1;
       `,
       `ALTER TABLE users ADD COLUMN avatar_id TEXT NOT NULL DEFAULT 'neutral';`,
+      `
+        CREATE TABLE IF NOT EXISTS piano_configs (
+          id TEXT PRIMARY KEY,
+          owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS piano_configs_owner_idx ON piano_configs(owner_user_id);
+      `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -185,7 +196,7 @@ export class SouffletDatabase {
   }
 
   saveAccordion(config: { id: string; maker: string; model: string; tuning: string; [key: string]: unknown }, ownerUserId: string) {
-    const owned = this.db.prepare('SELECT COUNT(*) AS count FROM accordion_configs WHERE owner_user_id = ?').get(ownerUserId) as { count: number };
+    const owned = this.db.prepare('SELECT (SELECT COUNT(*) FROM accordion_configs WHERE owner_user_id = ?) + (SELECT COUNT(*) FROM piano_configs WHERE owner_user_id = ?) AS count').get(ownerUserId, ownerUserId) as { count: number };
     if (owned.count >= 5) throw new Error('Tu peux enregistrer au maximum 5 instruments personnels.');
     this.db.prepare(`
       INSERT INTO accordion_configs (id, maker, model, tuning, payload, is_builtin, owner_user_id)
@@ -209,6 +220,27 @@ export class SouffletDatabase {
 
   deleteAccordion(id: string, ownerUserId: string) {
     return Boolean(this.db.prepare('DELETE FROM accordion_configs WHERE id = ? AND owner_user_id = ? AND is_builtin = 0').run(id, ownerUserId).changes);
+  }
+
+  listPianos(ownerUserId: string) {
+    const rows = this.db.prepare('SELECT payload FROM piano_configs WHERE owner_user_id = ? ORDER BY created_at').all(ownerUserId) as Array<{ payload: string }>;
+    return rows.map((row) => JSON.parse(row.payload) as unknown);
+  }
+
+  savePiano(config: { id: string; name: string; [key: string]: unknown }, ownerUserId: string) {
+    const owned = this.db.prepare('SELECT (SELECT COUNT(*) FROM accordion_configs WHERE owner_user_id = ?) + (SELECT COUNT(*) FROM piano_configs WHERE owner_user_id = ?) AS count').get(ownerUserId, ownerUserId) as { count: number };
+    if (owned.count >= 5) throw new Error('Tu peux enregistrer au maximum 5 instruments personnels.');
+    this.db.prepare('INSERT INTO piano_configs (id, owner_user_id, name, payload) VALUES (?, ?, ?, ?)').run(config.id, ownerUserId, config.name, JSON.stringify(config));
+    return config;
+  }
+
+  updatePiano(id: string, config: { id: string; name: string; [key: string]: unknown }, ownerUserId: string) {
+    const result = this.db.prepare('UPDATE piano_configs SET name = ?, payload = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND owner_user_id = ?').run(config.name, JSON.stringify(config), id, ownerUserId);
+    return result.changes ? config : undefined;
+  }
+
+  deletePiano(id: string, ownerUserId: string) {
+    return Boolean(this.db.prepare('DELETE FROM piano_configs WHERE id = ? AND owner_user_id = ?').run(id, ownerUserId).changes);
   }
 
   listCommonSongs() {
