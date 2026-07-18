@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Check, Mic2, MoveHorizontal, Sparkles, Volume2 }
 import type { AccordionConfig, Notation } from '../types';
 import { AccordionView } from './AccordionView';
 import { usePitchDetector } from '../hooks/usePitchDetector';
+import { MicrophoneRecovery } from './MicrophoneRecovery';
 
 interface OnboardingProps {
   accordions: AccordionConfig[];
@@ -103,7 +104,16 @@ export function Onboarding({ accordions, initialAccordionId, initialNotation, on
                   {detector.reading && <strong>{detector.reading.note} <small>{Math.round(detector.reading.frequency)} Hz · confiance {Math.round(detector.reading.confidence * 100)} %</small></strong>}
                 </div>
               )}
-              {(detector.status === 'denied' || detector.status === 'error') && <div className="setup-note">{detector.error} Tu peux continuer et le configurer plus tard.</div>}
+              {(detector.status === 'denied' || detector.status === 'error') && (
+                <MicrophoneRecovery
+                  error={detector.error}
+                  canOpenSettings={detector.canOpenSettings}
+                  detail="Tu peux aussi continuer et le configurer plus tard."
+                  onOpenSettings={() => void detector.openSettings()}
+                  onRetry={() => void detector.start()}
+                  variant="setup"
+                />
+              )}
               <small className="privacy-note">Analyse locale · aucun audio envoyé</small>
             </div>
           )}

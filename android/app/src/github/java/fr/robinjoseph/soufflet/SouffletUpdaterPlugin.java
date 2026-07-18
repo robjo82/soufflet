@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -20,6 +22,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "SouffletUpdater")
 public class SouffletUpdaterPlugin extends Plugin {
+    private static final String PREFERENCES = "soufflet_updater";
+    private static final String PENDING_DOWNLOAD = "pending_download";
     private long pendingDownloadId = -1;
 
     private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
@@ -27,29 +31,64 @@ public class SouffletUpdaterPlugin extends Plugin {
         public void onReceive(Context context, Intent intent) {
             long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
             if (completedId != pendingDownloadId) return;
-            DownloadManager manager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-            Uri apk = manager.getUriForDownloadedFile(completedId);
-            if (apk == null) return;
-
-            Intent installer = new Intent(Intent.ACTION_VIEW);
-            installer.setDataAndType(apk, "application/vnd.android.package-archive");
-            installer.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            context.startActivity(installer);
-            JSObject result = new JSObject();
-            result.put("downloadId", completedId);
-            notifyListeners("installPromptOpened", result);
-            pendingDownloadId = -1;
+            openCompletedDownload(completedId);
         }
     };
 
     @Override
     public void load() {
+        pendingDownloadId = preferences().getLong(PENDING_DOWNLOAD, -1);
         ContextCompat.registerReceiver(
             getContext(),
             downloadReceiver,
             new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-            ContextCompat.RECEIVER_NOT_EXPORTED
+            ContextCompat.RECEIVER_EXPORTED
         );
+        if (pendingDownloadId != -1) openCompletedDownload(pendingDownloadId);
+    }
+
+    private SharedPreferences preferences() {
+        return getContext().getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
+    }
+
+    private void rememberPendingDownload(long downloadId) {
+        pendingDownloadId = downloadId;
+        preferences().edit().putLong(PENDING_DOWNLOAD, downloadId).apply();
+    }
+
+    private void forgetPendingDownload() {
+        pendingDownloadId = -1;
+        preferences().edit().remove(PENDING_DOWNLOAD).apply();
+    }
+
+    private void openCompletedDownload(long downloadId) {
+        DownloadManager manager = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
+        try (Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(downloadId))) {
+            if (cursor == null || !cursor.moveToFirst()) return;
+            int status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+            if (status == DownloadManager.STATUS_FAILED) {
+                forgetPendingDownload();
+                JSObject result = new JSObject();
+                result.put("downloadId", downloadId);
+                notifyListeners("updateFailed", result);
+                return;
+            }
+            if (status != DownloadManager.STATUS_SUCCESSFUL) return;
+        }
+
+        Uri apk = manager.getUriForDownloadedFile(downloadId);
+        if (apk == null) {
+            forgetPendingDownload();
+            return;
+        }
+        Intent installer = new Intent(Intent.ACTION_VIEW);
+        installer.setDataAndType(apk, "application/vnd.android.package-archive");
+        installer.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        getContext().startActivity(installer);
+        JSObject result = new JSObject();
+        result.put("downloadId", downloadId);
+        notifyListeners("installPromptOpened", result);
+        forgetPendingDownload();
     }
 
     @PluginMethod
@@ -103,7 +142,7 @@ public class SouffletUpdaterPlugin extends Plugin {
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(getContext(), Environment.DIRECTORY_DOWNLOADS, fileName);
         DownloadManager manager = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
-        pendingDownloadId = manager.enqueue(request);
+        rememberPendingDownload(manager.enqueue(request));
         JSObject result = new JSObject();
         result.put("downloadId", pendingDownloadId);
         call.resolve(result);
