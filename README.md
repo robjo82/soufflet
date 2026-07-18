@@ -11,6 +11,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - configurations SQLite préchargées : variante Hohner Club I C/F 10+9+2 (P1 = F♯5) avec Gleichton, G/C 21+8 et D/G 21+8 ;
 - lecteur animé au tempo avec partition interactive, synthèse locale, soufflet plissé synchronisé et boutons réellement enfoncés ;
 - profil visuel en volume dédié au Hohner Club I (bois, ferrures, plaques et implantation 10+9+2), avec rendu générique en volume pour les autres modèles ;
+- fondation 3D WebGL du Hohner Club I : asset GLB contractuel, soufflet continu, 29 boutons interactifs, repli HTML et laboratoire de validation isolé ;
 - décompte visuel et sonore d’une mesure avant un nouveau départ, désactivable dans les réglages ;
 - tablature centrée automatiquement sur la note active pendant la lecture et les modes guidés ;
 - modes démonstration, lecture guidée, attente de la bonne note, notes, rythme, soufflet, chaque main et performance ;
@@ -59,6 +60,7 @@ L’application est alors disponible sur [http://localhost:8787](http://localhos
 npm run typecheck
 npm run lint
 npm test
+npm run validate:model
 npm run build
 curl http://localhost:8787/api/health
 ```
@@ -93,6 +95,8 @@ Le build local requiert Java 21, le SDK Android 36 et `ANDROID_HOME`. Le build d
 - [Pédagogie et feuille de route](docs/PEDAGOGIE.md)
 - [État de production et limites](docs/PRODUCTION.md)
 - [Publication Google Play](docs/GOOGLE_PLAY.md)
+- [Pipeline, contrat et audit du modèle 3D](docs/ACCORDION_3D.md)
+- [Spécification complète de l’expérience 3D](docs/SOUFFLET_3D_SPECIFICATION.md)
 
 ## Licence et contenu
 

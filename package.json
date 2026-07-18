@@ -15,7 +15,8 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "validate:model": "node scripts/validate-accordion-model.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",
@@ -25,6 +26,8 @@
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/splash-screen": "^8.0.2",
     "@google/genai": "^2.1.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "compression": "^1.8.1",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
@@ -33,6 +36,7 @@
     "multer": "^2.0.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "three": "^0.185.1",
     "tsx": "^4.20.3",
     "zod": "^4.0.5"
   },
@@ -48,6 +52,7 @@
     "@types/node": "^24.0.14",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^4.6.0",
     "concurrently": "^9.2.0",
     "eslint": "^9.30.1",

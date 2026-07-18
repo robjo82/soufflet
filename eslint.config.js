@@ -24,4 +24,8 @@ export default tseslint.config(
     files: ['server/**/*.ts', 'vite.config.ts'],
     languageOptions: { ecmaVersion: 2022, globals: { process: 'readonly', Buffer: 'readonly' } },
   },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { ecmaVersion: 2022, globals: { process: 'readonly', console: 'readonly' } },
+  },
 );
