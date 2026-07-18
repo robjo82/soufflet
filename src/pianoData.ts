@@ -151,6 +151,11 @@ export function isPianoHit(expectedMidi: number, playedMidi: number, timingDelta
   return expectedMidi === playedMidi && Math.abs(timingDeltaMs) <= toleranceMs;
 }
 
+export function classifyPianoAttempt(expectedMidi: number, playedMidi: number, timingDeltaMs: number, correctToleranceMs = 300, timingToleranceMs = 900) {
+  if (expectedMidi !== playedMidi || Math.abs(timingDeltaMs) > timingToleranceMs) return 'wrong' as const;
+  return Math.abs(timingDeltaMs) <= correctToleranceMs ? 'correct' as const : 'timing' as const;
+}
+
 export function resumeTimeline(startTime: number, pausedAt: number, resumedAt: number) {
   return startTime + Math.max(0, resumedAt - pausedAt);
 }

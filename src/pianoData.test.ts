@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_EXERCISES, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoRange, pianoScore, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_EXERCISES, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoRange, pianoScore, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
@@ -65,6 +65,13 @@ describe('piano V1', () => {
     expect(isPianoHit(60, 60, 300)).toBe(true);
     expect(isPianoHit(60, 60, 301)).toBe(false);
     expect(isPianoHit(60, 62, 0)).toBe(false);
+  });
+  it('classifies correct, mistimed and wrong piano attempts', () => {
+    expect(classifyPianoAttempt(60, 60, -300)).toBe('correct');
+    expect(classifyPianoAttempt(60, 60, 301)).toBe('timing');
+    expect(classifyPianoAttempt(60, 60, -900)).toBe('timing');
+    expect(classifyPianoAttempt(60, 60, 901)).toBe('wrong');
+    expect(classifyPianoAttempt(60, 62, 0)).toBe('wrong');
   });
   it('shifts the timeline by the exact paused duration', () => {
     expect(resumeTimeline(1_000, 2_500, 4_000)).toBe(2_500);
