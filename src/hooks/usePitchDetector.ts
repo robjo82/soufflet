@@ -4,38 +4,55 @@ import type { AudioFeatureFrame, AudioOnset } from '../audioTraining';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 
-function autoCorrelate(buffer: Float32Array, sampleRate: number) {
+type PitchDetectorProfile = 'accordion' | 'piano';
+
+const DETECTION_PROFILES: Record<PitchDetectorProfile, { minimumFrequency: number; maximumFrequency: number; minimumRms: number; minimumClarity: number }> = {
+  accordion: { minimumFrequency: 55, maximumFrequency: 1200, minimumRms: .008, minimumClarity: .62 },
+  piano: { minimumFrequency: 27, maximumFrequency: 4300, minimumRms: .0035, minimumClarity: .5 },
+};
+
+export function detectPitchFrequency(buffer: Float32Array, sampleRate: number, profile: PitchDetectorProfile = 'accordion') {
+  const settings = DETECTION_PROFILES[profile];
   let rms = 0;
   for (const sample of buffer) rms += sample * sample;
   rms = Math.sqrt(rms / buffer.length);
-  if (rms < 0.008) return { frequency: -1, clarity: 0, volume: rms };
+  if (rms < settings.minimumRms) return { frequency: -1, clarity: 0, volume: rms };
 
-  const minLag = Math.floor(sampleRate / 1200);
-  const maxLag = Math.min(Math.floor(sampleRate / 55), buffer.length - 1);
+  const minLag = Math.max(2, Math.floor(sampleRate / settings.maximumFrequency));
+  const maxLag = Math.min(Math.ceil(sampleRate / settings.minimumFrequency), buffer.length - 2);
   let bestLag = -1;
   let bestCorrelation = 0;
-  let previous = 0;
   const correlations: number[] = [];
+  const sampleStep = profile === 'piano' ? 2 : 1;
 
   for (let lag = minLag; lag <= maxLag; lag += 1) {
     let correlation = 0;
     let energyA = 0;
     let energyB = 0;
-    for (let i = 0; i < buffer.length - lag; i += 1) {
+    for (let i = 0; i < buffer.length - lag; i += sampleStep) {
       correlation += buffer[i] * buffer[i + lag];
       energyA += buffer[i] * buffer[i];
       energyB += buffer[i + lag] * buffer[i + lag];
     }
     correlation /= Math.sqrt(energyA * energyB) || 1;
     correlations[lag] = correlation;
-    if (correlation > bestCorrelation && correlation > previous) {
+    if (correlation > bestCorrelation) {
       bestCorrelation = correlation;
       bestLag = lag;
     }
-    previous = correlation;
   }
 
-  if (bestLag < 0 || bestCorrelation < 0.62) return { frequency: -1, clarity: bestCorrelation, volume: rms };
+  if (bestLag < 0 || bestCorrelation < settings.minimumClarity) return { frequency: -1, clarity: bestCorrelation, volume: rms };
+
+  const strongPeakThreshold = Math.max(settings.minimumClarity, bestCorrelation * .9);
+  for (let lag = minLag + 1; lag < maxLag; lag += 1) {
+    const correlation = correlations[lag] ?? 0;
+    if (correlation >= strongPeakThreshold && correlation >= (correlations[lag - 1] ?? 0) && correlation > (correlations[lag + 1] ?? 0)) {
+      bestLag = lag;
+      bestCorrelation = correlation;
+      break;
+    }
+  }
 
   const left = correlations[bestLag - 1] ?? bestCorrelation;
   const right = correlations[bestLag + 1] ?? bestCorrelation;
@@ -61,7 +78,7 @@ export function rememberReliablePitch(previous: PitchReading | null, current: Pi
   return current && current.confidence > minimumConfidence ? current : previous;
 }
 
-export function usePitchDetector() {
+export function usePitchDetector({ profile = 'accordion' }: { profile?: PitchDetectorProfile } = {}) {
   const [reading, setReading] = useState<PitchReading | null>(null);
   const [audioFrame, setAudioFrame] = useState<AudioFeatureFrame | null>(null);
   const [onset, setOnset] = useState<AudioOnset | null>(null);
@@ -72,7 +89,7 @@ export function usePitchDetector() {
   const frameRef = useRef<number>(0);
   const lastUpdateRef = useRef(0);
   const envelopeRef = useRef(0);
-  const noiseFloorRef = useRef(.006);
+  const noiseFloorRef = useRef(profile === 'piano' ? .003 : .006);
   const lastOnsetRef = useRef(0);
   const onsetIdRef = useRef(0);
 
@@ -89,16 +106,22 @@ export function usePitchDetector() {
   }, []);
 
   const start = useCallback(async () => {
+    if (streamRef.current && contextRef.current) {
+      if (contextRef.current.state === 'suspended') await contextRef.current.resume();
+      setStatus('listening');
+      return true;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setError('Ce navigateur ne donne pas accès au microphone.');
       setStatus('error');
-      return;
+      return false;
     }
     setStatus('requesting');
     setError('');
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false },
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: profile === 'piano', noiseSuppression: false, autoGainControl: false, channelCount: 1 },
       });
       const context = new AudioContext({ latencyHint: 'interactive' });
       await context.resume();
@@ -109,15 +132,17 @@ export function usePitchDetector() {
       source.connect(analyser);
       const buffer = new Float32Array(analyser.fftSize);
       const frequencyData = new Float32Array(analyser.frequencyBinCount);
+      envelopeRef.current = 0;
+      noiseFloorRef.current = profile === 'piano' ? .003 : .006;
       streamRef.current = stream;
       contextRef.current = context;
       setStatus('listening');
 
       const analyze = (timestamp: number) => {
-        analyser.getFloatTimeDomainData(buffer);
-        const result = autoCorrelate(buffer, context.sampleRate);
         if (timestamp - lastUpdateRef.current > 70) {
           lastUpdateRef.current = timestamp;
+          analyser.getFloatTimeDomainData(buffer);
+          const result = detectPitchFrequency(buffer, context.sampleRate, profile);
           const pitch = result.frequency > 0 ? frequencyToPitch(result.frequency, result.clarity, result.volume) : null;
           analyser.getFloatFrequencyData(frequencyData);
           let spectralEnergy = 0;
@@ -159,12 +184,15 @@ export function usePitchDetector() {
         frameRef.current = requestAnimationFrame(analyze);
       };
       frameRef.current = requestAnimationFrame(analyze);
+      return true;
     } catch (reason) {
+      stream?.getTracks().forEach((track) => track.stop());
       const denied = reason instanceof DOMException && (reason.name === 'NotAllowedError' || reason.name === 'PermissionDeniedError');
       setStatus(denied ? 'denied' : 'error');
       setError(denied ? 'Autorise le microphone dans ton navigateur, puis réessaie.' : 'Le microphone n’a pas pu démarrer.');
+      return false;
     }
-  }, []);
+  }, [profile]);
 
   useEffect(() => stop, [stop]);
 

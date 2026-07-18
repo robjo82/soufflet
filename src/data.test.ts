@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { adaptSongToAccordion, DEMO_SONG, displayNote, FALLBACK_ACCORDIONS } from './data';
-import { frequencyToPitch, rememberReliablePitch } from './hooks/usePitchDetector';
+import { detectPitchFrequency, frequencyToPitch, rememberReliablePitch } from './hooks/usePitchDetector';
 import { getAccordionVisualVariant, getMelodyButtonSize } from './components/accordionLayout';
 import { PRACTICE_MODES } from './practiceModes';
 import { TUTORIAL_MODE_TRIALS } from './tutorialFlow';
@@ -40,6 +40,15 @@ describe('accordion configurations', () => {
 });
 
 describe('pitch and notation', () => {
+  const pianoTone = (frequency: number, amplitude = .08, sampleRate = 48000) => Float32Array.from(
+    { length: 4096 },
+    (_, index) => amplitude * (
+      Math.sin(2 * Math.PI * frequency * index / sampleRate)
+      + .3 * Math.sin(4 * Math.PI * frequency * index / sampleRate)
+      + .12 * Math.sin(6 * Math.PI * frequency * index / sampleRate)
+    ) / 1.42,
+  );
+
   it('converts concert A to A4', () => {
     expect(frequencyToPitch(440)).toMatchObject({ note: 'A4', midi: 69, cents: 0 });
   });
@@ -56,6 +65,16 @@ describe('pitch and notation', () => {
     expect(rememberReliablePitch(previous, null)).toBe(previous);
     expect(rememberReliablePitch(previous, ambiguous)).toBe(previous);
     expect(rememberReliablePitch(previous, next)).toBe(next);
+  });
+
+  it('detects quiet piano tones across the piano register', () => {
+    const quietMiddleC = detectPitchFrequency(pianoTone(261.63, .008), 48000, 'piano');
+    const lowA = detectPitchFrequency(pianoTone(27.5), 48000, 'piano');
+    const highC = detectPitchFrequency(pianoTone(2093), 48000, 'piano');
+    expect(quietMiddleC.frequency).toBeCloseTo(261.63, 0);
+    expect(lowA.frequency).toBeCloseTo(27.5, 0);
+    expect(highC.frequency).toBeCloseTo(2093, -1);
+    expect(detectPitchFrequency(pianoTone(261.63, .008), 48000, 'accordion').frequency).toBe(-1);
   });
 
   it('renders the supported beginner notations', () => {
