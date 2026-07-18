@@ -53,6 +53,9 @@ export function useSynth() {
     oscillator.stop(context.currentTime + 0.055);
   }, [getContext]);
 
+  const prepareAudio = useCallback(() => { getContext(); }, [getContext]);
+  const stopAll = useCallback(() => { activeRef.current.forEach((node) => { try { node.stop(); } catch { /* already stopped */ } }); activeRef.current.clear(); }, []);
+
   const playLeftHand = useCallback((midi: number, role: 'bass' | 'chord', chord = 'C', duration = .38) => {
     if (role === 'bass') {
       playMidi(midi, duration, .1);
@@ -67,5 +70,5 @@ export function useSynth() {
     void contextRef.current?.close();
   }, []);
 
-  return { playMidi, playLeftHand, click };
+  return { playMidi, playLeftHand, click, prepareAudio, stopAll };
 }

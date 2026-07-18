@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPianoHit, isPianoNoteAtHitLine, isPianoNotePastHitLine, PIANO_EXERCISES, pianoKeyGeometry, pianoNoteOffsetPx, pianoRange, pianoScore, resumeTimeline } from './pianoData';
+import { hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_EXERCISES, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoRange, pianoScore, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
@@ -27,8 +27,24 @@ describe('piano V1', () => {
     expect(isPianoNoteAtHitLine(0)).toBe(true);
     expect(isPianoNoteAtHitLine(1)).toBe(true);
     expect(isPianoNoteAtHitLine(1.01)).toBe(false);
-    expect(isPianoNotePastHitLine(-1)).toBe(false);
-    expect(isPianoNotePastHitLine(-1.01)).toBe(true);
+    expect(hasPianoNoteReachedHitLine(1.01)).toBe(false);
+    expect(hasPianoNoteReachedHitLine(1)).toBe(true);
+    expect(hasPianoNoteReachedHitLine(-72)).toBe(true);
+  });
+  it('converts varied rhythmic values to exact audio durations', () => {
+    expect(PIANO_EXERCISES[0].notes.map((note) => note.duration)).toEqual([.5, .5, 1, 1.5, .5, 2, 1, .5]);
+    expect(PIANO_EXERCISES[0].notes.map((note) => note.beat)).toEqual([0, .5, 1, 2, 3.5, 4, 6, 7]);
+    expect([.5, 1, 1.5, 2].map((duration) => pianoNoteDurationSeconds(duration, 1000))).toEqual([.5, 1, 1.5, 2]);
+    expect(PIANO_EXERCISES[0].notes.map((note) => pianoNotePlaybackTiming(note, 1250))).toEqual([
+      { startMs: 0, durationSeconds: .625 },
+      { startMs: 625, durationSeconds: .625 },
+      { startMs: 1250, durationSeconds: 1.25 },
+      { startMs: 2500, durationSeconds: 1.875 },
+      { startMs: 4375, durationSeconds: .625 },
+      { startMs: 5000, durationSeconds: 2.5 },
+      { startMs: 7500, durationSeconds: 1.25 },
+      { startMs: 8750, durationSeconds: .625 },
+    ]);
   });
   it('computes an actionable score', () => {
     expect(pianoScore(8, 2, [10, 100, 400])).toMatchObject({ correct: 8, missed: 2, averageDelay: 170, rhythmAccuracy: 67, global: 76 });

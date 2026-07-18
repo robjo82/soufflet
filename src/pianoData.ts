@@ -20,7 +20,7 @@ const phrase = (midis: number[], durations?: number[]) => {
 };
 
 export const PIANO_EXERCISES: PianoExercise[] = [
-  { id: 'piano-three-steps', title: 'Trois petits pas', level: 'Très simple', bpm: 60, hand: 'right', notes: phrase([60, 62, 64, 62, 60, 62, 64, 60]) },
+  { id: 'piano-three-steps', title: 'Trois petits pas', level: 'Très simple', bpm: 60, hand: 'right', notes: phrase([60, 62, 64, 62, 60, 62, 64, 60], [.5, .5, 1, 1.5, .5, 2, 1, .5]) },
   { id: 'piano-five-lights', title: 'Cinq lumières', level: 'Simple', bpm: 72, hand: 'right', notes: phrase([60, 62, 64, 65, 67, 65, 64, 62, 60, 62, 64, 65, 67, 60]) },
   { id: 'piano-morning-walk', title: 'Promenade du matin', level: 'Modéré', bpm: 80, hand: 'right', notes: phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2]) },
   { id: 'piano-two-hands', title: 'Dialogue des deux mains', level: 'Simple', bpm: 64, hand: 'both', notes: phrase([48, 60, 50, 62, 52, 64, 53, 65, 55, 67, 53, 65, 52, 64, 50, 62, 48, 60]) },
@@ -61,8 +61,19 @@ export function isPianoNoteAtHitLine(offsetPx: number, tolerancePx = 1) {
   return Math.abs(offsetPx) <= tolerancePx;
 }
 
-export function isPianoNotePastHitLine(offsetPx: number, tolerancePx = 1) {
-  return offsetPx < -tolerancePx;
+export function hasPianoNoteReachedHitLine(offsetPx: number, tolerancePx = 1) {
+  return offsetPx <= tolerancePx;
+}
+
+export function pianoNoteDurationSeconds(durationBeats: number, beatMs: number) {
+  return Math.max(.08, durationBeats * beatMs / 1000);
+}
+
+export function pianoNotePlaybackTiming(note: Pick<PianoExercise['notes'][number], 'beat' | 'duration'>, beatMs: number) {
+  return {
+    startMs: note.beat * beatMs,
+    durationSeconds: pianoNoteDurationSeconds(note.duration, beatMs),
+  };
 }
 
 export function pianoScore(correct: number, missed: number, timingErrors: number[]) {
