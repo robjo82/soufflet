@@ -111,7 +111,11 @@ export function pianoKeyGeometry(size: PianoKeyboardSize) {
   });
 }
 
-export function pianoNoteOffsetPx(noteBeat: number, elapsedBeat: number, pixelsPerBeat = 72) {
+export const PIANO_PIXELS_PER_BEAT = 72;
+export const PIANO_CORRECT_TOLERANCE_PX = 18;
+export const PIANO_TIMING_TOLERANCE_PX = 54;
+
+export function pianoNoteOffsetPx(noteBeat: number, elapsedBeat: number, pixelsPerBeat = PIANO_PIXELS_PER_BEAT) {
   return (noteBeat - elapsedBeat) * pixelsPerBeat;
 }
 
@@ -138,10 +142,10 @@ export function pianoExerciseEndBeat(notes: PianoExercise['notes']) {
   return notes.reduce((endBeat, note) => Math.max(endBeat, note.beat + note.duration), 0);
 }
 
-export function pianoScore(correct: number, missed: number, timingErrors: number[]) {
+export function pianoScore(correct: number, missed: number, timingErrors: number[], correctToleranceMs = 300) {
   const total = correct + missed;
   const averageDelay = timingErrors.length ? Math.round(timingErrors.reduce((sum, value) => sum + value, 0) / timingErrors.length) : 0;
-  const rhythmAccuracy = timingErrors.length ? Math.round(timingErrors.filter((value) => Math.abs(value) <= 300).length / timingErrors.length * 100) : 0;
+  const rhythmAccuracy = timingErrors.length ? Math.round(timingErrors.filter((value) => Math.abs(value) <= correctToleranceMs).length / timingErrors.length * 100) : 0;
   const global = total ? Math.round((correct / total * .7 + rhythmAccuracy / 100 * .3) * 100) : 0;
   const advice = missed > correct / 2 ? 'Ralentis et repère les positions des touches.' : averageDelay > 180 ? 'Anticipe légèrement l’arrivée des notes.' : rhythmAccuracy < 75 ? 'Refais le morceau plus lentement.' : 'Très bien : tu peux essayer le niveau suivant.';
   return { correct, missed, averageDelay, rhythmAccuracy, global, advice };
@@ -151,9 +155,9 @@ export function isPianoHit(expectedMidi: number, playedMidi: number, timingDelta
   return expectedMidi === playedMidi && Math.abs(timingDeltaMs) <= toleranceMs;
 }
 
-export function classifyPianoAttempt(expectedMidi: number, playedMidi: number, timingDeltaMs: number, correctToleranceMs = 300, timingToleranceMs = 900) {
-  if (expectedMidi !== playedMidi || Math.abs(timingDeltaMs) > timingToleranceMs) return 'wrong' as const;
-  return Math.abs(timingDeltaMs) <= correctToleranceMs ? 'correct' as const : 'timing' as const;
+export function classifyPianoAttempt(expectedMidi: number, playedMidi: number, noteOffsetPx: number, correctTolerancePx = PIANO_CORRECT_TOLERANCE_PX, timingTolerancePx = PIANO_TIMING_TOLERANCE_PX) {
+  if (expectedMidi !== playedMidi || Math.abs(noteOffsetPx) > timingTolerancePx) return 'wrong' as const;
+  return Math.abs(noteOffsetPx) <= correctTolerancePx ? 'correct' as const : 'timing' as const;
 }
 
 export function resumeTimeline(startTime: number, pausedAt: number, resumedAt: number) {

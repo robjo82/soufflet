@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPianoAttempt, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_EXERCISES, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoRange, pianoScore, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoRange, pianoScore, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
@@ -59,6 +59,7 @@ describe('piano V1', () => {
   });
   it('computes an actionable score', () => {
     expect(pianoScore(8, 2, [10, 100, 400])).toMatchObject({ correct: 8, missed: 2, averageDelay: 170, rhythmAccuracy: 67, global: 76 });
+    expect(pianoScore(1, 0, [250], 200).rhythmAccuracy).toBe(0);
   });
   it('accepts a note only when its pitch and yellow-line timing match', () => {
     expect(isPianoHit(60, 60, -300)).toBe(true);
@@ -67,10 +68,10 @@ describe('piano V1', () => {
     expect(isPianoHit(60, 62, 0)).toBe(false);
   });
   it('classifies correct, mistimed and wrong piano attempts', () => {
-    expect(classifyPianoAttempt(60, 60, -300)).toBe('correct');
-    expect(classifyPianoAttempt(60, 60, 301)).toBe('timing');
-    expect(classifyPianoAttempt(60, 60, -900)).toBe('timing');
-    expect(classifyPianoAttempt(60, 60, 901)).toBe('wrong');
+    expect(classifyPianoAttempt(60, 60, -PIANO_CORRECT_TOLERANCE_PX)).toBe('correct');
+    expect(classifyPianoAttempt(60, 60, PIANO_CORRECT_TOLERANCE_PX + .01)).toBe('timing');
+    expect(classifyPianoAttempt(60, 60, -PIANO_TIMING_TOLERANCE_PX)).toBe('timing');
+    expect(classifyPianoAttempt(60, 60, PIANO_TIMING_TOLERANCE_PX + .01)).toBe('wrong');
     expect(classifyPianoAttempt(60, 62, 0)).toBe('wrong');
   });
   it('shifts the timeline by the exact paused duration', () => {
