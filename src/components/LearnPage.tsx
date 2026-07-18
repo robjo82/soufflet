@@ -1,13 +1,18 @@
-import { BookOpen, Check, ChevronRight, Clock3, LockKeyhole, Play, Repeat2, Sparkles, Target, Trophy } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Clock3, Gamepad2, LockKeyhole, Play, Repeat2, Sparkles, Target, Trophy } from 'lucide-react';
 import type { SkillProgress, Song } from '../types';
 
-interface LearnPageProps { skills: SkillProgress[]; song: Song; onPractice: (song: Song) => void; }
+interface LearnPageProps { skills: SkillProgress[]; song: Song; onPractice: (song: Song) => void; onStartButtonGame: () => void; }
 
-export function LearnPage({ skills, song, onPractice }: LearnPageProps) {
+export function LearnPage({ skills, song, onPractice, onStartButtonGame }: LearnPageProps) {
   return (
     <main className="page-content learn-page">
       <header className="page-heading split-heading"><div><span className="eyebrow">Parcours débutant · Niveau 1</span><h1>Apprendre sans se perdre</h1><p>Chaque leçon n’ajoute qu’une nouveauté. Les révisions arrivent au bon moment.</p></div><div className="level-badge"><span><Trophy /></span><div><small>PROCHAIN PALIER</small><strong>Explorateur du soufflet</strong><i><b style={{ width: '68%' }} /></i><em>340 / 500 XP</em></div></div></header>
       <section className="current-lesson-card"><div className="current-copy"><span className="eyebrow"><Sparkles /> À continuer</span><h2>Le changement de souffle</h2><p>Tu sais déjà trouver les bons boutons. Maintenant, apprends à changer de direction sans couper le son.</p><div className="lesson-objective"><Target /><span><small>OBJECTIF MESURABLE</small><strong>Réussir 4 changements sur 5 à 72 BPM</strong></span></div><button type="button" className="primary-button" onClick={() => onPractice(song)}><Play fill="currentColor" /> Continuer · 5 min</button></div><div className="current-visual"><div className="breath-illustration"><span>←</span><i>{Array.from({ length: 8 }).map((_, i) => <b key={i} />)}</i><span>→</span></div><div className="micro-goals"><span><Check /> Identifier pousser / tirer</span><span className="is-current"><Repeat2 /> Changer sans couper</span><span>○ Enchaîner trois notes</span></div></div></section>
+
+      <section className="button-game-promo">
+        <div className="button-game-promo-copy"><span className="eyebrow"><Gamepad2 /> Nouveau jeu d’apprentissage</span><h2>Mémorise les touches<br />en gardant le rythme.</h2><p>Des notes arrivent sur une ligne de jeu. Réponds avec ton véritable accordéon grâce au micro, ou entraîne d’abord tes repères au toucher.</p><ul><li><Check /> Trois boutons pour commencer</li><li><Check /> Pousser et tirer toujours explicites</li><li><Check /> Retour précis : trop tôt, juste ou trop tard</li></ul><button type="button" className="primary-button" onClick={onStartButtonGame}><Play fill="currentColor" /> Jouer · 2 min</button></div>
+        <div className="button-game-promo-visual" aria-hidden="true"><span className="promo-direction"><ArrowLeft /> TIRER</span><div className="promo-lanes"><i /><i /><i /><span className="promo-tile tile-one"><small><ArrowRight /> P</small><strong>4P</strong></span><span className="promo-tile tile-two"><small><ArrowLeft /> T</small><strong>5T</strong></span><span className="promo-tile tile-three"><small><ArrowRight /> P</small><strong>6P</strong></span><b><ArrowDown /> JOUE ICI</b></div></div>
+      </section>
 
       <div className="section-title"><div><span className="eyebrow">Carte des compétences</span><h2>Les fondations de ton jeu</h2></div><p>Les compétences s’ouvrent quand les précédentes sont assez solides.</p></div>
       <section className="skill-grid">{skills.map((skill, index) => <article key={skill.id} className={`skill-card ${skill.locked ? 'is-locked' : ''} ${skill.due ? 'is-due' : ''}`}><div className="skill-top"><span>{skill.locked ? <LockKeyhole /> : index + 1}</span>{skill.due && <b>À pratiquer</b>}</div><h3>{skill.title}</h3><p>{skill.description}</p><div className="skill-progress"><i><b style={{ width: `${skill.progress}%` }} /></i><span>{skill.progress}%</span></div><footer><span><BookOpen /> {skill.lessons} leçons</span><button type="button" disabled={skill.locked} onClick={() => onPractice(song)}>{skill.locked ? 'Bientôt' : skill.progress === 100 ? 'Réviser' : 'Continuer'} <ChevronRight /></button></footer></article>)}</section>

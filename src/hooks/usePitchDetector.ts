@@ -90,10 +90,11 @@ export function usePitchDetector() {
   }, []);
 
   const start = useCallback(async () => {
+    if (streamRef.current && contextRef.current) return true;
     if (!navigator.mediaDevices?.getUserMedia) {
       setError('Ce navigateur ne donne pas accès au microphone.');
       setStatus('error');
-      return;
+      return false;
     }
     setStatus('requesting');
     setError('');
@@ -102,7 +103,7 @@ export function usePitchDetector() {
       if (nativePermission !== 'unavailable' && nativePermission !== 'granted') {
         setStatus('denied');
         setError('Le microphone est désactivé pour Soufflet. Autorise-le dans les réglages Android, puis réessaie.');
-        return;
+        return false;
       }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false },
@@ -166,6 +167,7 @@ export function usePitchDetector() {
         frameRef.current = requestAnimationFrame(analyze);
       };
       frameRef.current = requestAnimationFrame(analyze);
+      return true;
     } catch (reason) {
       const denied = reason instanceof DOMException && (reason.name === 'NotAllowedError' || reason.name === 'PermissionDeniedError');
       setStatus(denied ? 'denied' : 'error');
@@ -174,6 +176,7 @@ export function usePitchDetector() {
           ? 'Le microphone est désactivé pour Soufflet. Autorise-le dans les réglages Android, puis réessaie.'
           : 'Autorise le microphone dans ton navigateur, puis réessaie.'
         : 'Le microphone n’a pas pu démarrer.');
+      return false;
     }
   }, []);
 
