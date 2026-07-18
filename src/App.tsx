@@ -172,11 +172,9 @@ export function App() {
   }, []);
 
   const navigate = useCallback((next: Page) => {
-    if (pianoSessionActive && next !== page && !window.confirm('Quitter le morceau en cours ? Ta tentative non terminée ne sera pas enregistrée.')) return;
-    setPianoSessionActive(false);
     setPage(next);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [page, pianoSessionActive]);
+  }, []);
 
   const logout = useCallback(() => {
     void fetch('/api/auth/logout', { method: 'POST' });
@@ -235,7 +233,7 @@ export function App() {
   }
 
   return (
-    <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={logout} instrumentType={preferences.instrumentType} learningInstruments={preferences.learningInstruments} onInstrumentChange={(instrumentType) => { if (pianoSessionActive && !window.confirm('Quitter le morceau en cours pour changer d’instrument ?')) return; setPianoSessionActive(false); savePreferences({ ...preferences, instrumentType }); setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+    <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={logout} instrumentType={preferences.instrumentType} learningInstruments={preferences.learningInstruments} immersive={pianoSessionActive} onInstrumentChange={(instrumentType) => { setPianoSessionActive(false); savePreferences({ ...preferences, instrumentType }); setPage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
       {(page === 'home' || page === 'piano-songs' || page === 'piano-exercises') && preferences.instrumentType === 'piano' && <PianoMode keyboardSize={preferences.pianoKeyboardSize} input={preferences.pianoInput} view={page === 'piano-songs' ? 'songs' : page === 'piano-exercises' ? 'exercises' : 'home'} stats={practiceStats} onNavigate={navigate} onSessionUpdate={recordPracticeSession} onSessionActiveChange={setPianoSessionActive} />}
       {page === 'home' && preferences.instrumentType === 'accordion' && <><HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} stats={practiceStats} onPractice={startPractice} onNavigateLearn={() => document.getElementById('learning-path')?.scrollIntoView({ behavior: 'smooth' })} displayName={user.displayName} /><div id="learning-path"><LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} /></div></>}
       {page === 'library' && preferences.instrumentType === 'accordion' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}

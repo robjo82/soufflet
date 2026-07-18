@@ -12,6 +12,7 @@ interface AppShellProps {
   instrumentType: InstrumentType;
   learningInstruments: InstrumentType[];
   onInstrumentChange: (instrument: InstrumentType) => void;
+  immersive?: boolean;
 }
 
 const ACCORDION_NAV: Array<{ id: Page; label: string; icon: typeof Home }> = [
@@ -26,7 +27,7 @@ const PIANO_NAV: Array<{ id: Page; label: string; icon: typeof Home }> = [
   { id: 'piano-exercises', label: 'Exercices', icon: Gauge },
 ];
 
-export function AppShell({ page, children, onNavigate, user, practiceStats, onLogout, instrumentType, learningInstruments, onInstrumentChange }: AppShellProps) {
+export function AppShell({ page, children, onNavigate, user, practiceStats, onLogout, instrumentType, learningInstruments, onInstrumentChange, immersive = false }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountMenu = useRef<HTMLDivElement>(null);
@@ -43,8 +44,8 @@ export function AppShell({ page, children, onNavigate, user, practiceStats, onLo
   }, [accountOpen]);
   const visibleNav = instrumentType === 'piano' ? PIANO_NAV : ACCORDION_NAV;
   return (
-    <div className={`app-shell instrument-${instrumentType}`}>
-      <header className="topbar">
+    <div className={`app-shell instrument-${instrumentType} ${immersive ? 'is-immersive' : ''}`}>
+      {!immersive && <header className="topbar">
         <button type="button" className="mobile-menu" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X /> : <Menu />}</button>
         <button type="button" className="brand-lockup" onClick={() => navigate('home')}><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong></button>
         <nav className={mobileOpen ? 'is-open' : ''}>
@@ -58,9 +59,9 @@ export function AppShell({ page, children, onNavigate, user, practiceStats, onLo
             {accountOpen && <div className="account-popover" role="menu"><header><span><img src={`/avatars/${user.avatarId ?? 'neutral'}.svg`} alt="" /></span><div><strong>{user.displayName}</strong><small>{user.email}</small></div></header><button type="button" role="menuitem" onClick={() => navigate('account')}><UserRound /><span><strong>Mon profil</strong><small>Identité, sécurité et matériel</small></span></button><button type="button" role="menuitem" onClick={() => navigate('settings')}><Settings /><span><strong>Réglages</strong><small>Instrument, affichage et audio</small></span></button><button type="button" className="logout-menu-item" role="menuitem" onClick={() => { setAccountOpen(false); onLogout(); }}><LogOut /><span><strong>Se déconnecter</strong><small>Fermer cette session</small></span></button></div>}
           </div>
         </div>
-      </header>
+      </header>}
       {children}
-      <footer className="site-footer"><span className="brand-lockup"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong></span><p>Conçu pour apprendre lentement, jouer longtemps.</p><nav><button type="button" onClick={() => navigate('settings')}><Wrench /> Instrument</button><span><Mic2 /> Audio analysé localement</span></nav></footer>
+      {!immersive && <footer className="site-footer"><span className="brand-lockup"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong></span><p>Conçu pour apprendre lentement, jouer longtemps.</p><nav><button type="button" onClick={() => navigate('settings')}><Wrench /> Instrument</button><span><Mic2 /> Audio analysé localement</span></nav></footer>}
     </div>
   );
 }

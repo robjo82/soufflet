@@ -39,6 +39,24 @@ export const pianoRange = (size: PianoKeyboardSize) => Array.from({ length: size
 export const isBlackKey = (midi: number) => [1, 3, 6, 8, 10].includes(midi % 12);
 export const frenchNote = (midi: number) => `${['Do', 'Do♯', 'Ré', 'Ré♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'][midi % 12]}${Math.floor(midi / 12) - 1}`;
 
+export function pianoKeyGeometry(size: PianoKeyboardSize) {
+  const keys = pianoRange(size);
+  const whiteCount = keys.filter((midi) => !isBlackKey(midi)).length;
+  const whiteWidth = 100 / whiteCount;
+  let whitesBefore = 0;
+  return keys.map((midi) => {
+    const black = isBlackKey(midi);
+    const width = black ? whiteWidth * .62 : whiteWidth;
+    const left = black ? whitesBefore * whiteWidth - width / 2 : whitesBefore * whiteWidth;
+    if (!black) whitesBefore += 1;
+    return { midi, black, left, width };
+  });
+}
+
+export function pianoNoteOffsetPx(noteBeat: number, elapsedBeat: number, pixelsPerBeat = 72) {
+  return (noteBeat - elapsedBeat) * pixelsPerBeat;
+}
+
 export function pianoScore(correct: number, missed: number, timingErrors: number[]) {
   const total = correct + missed;
   const averageDelay = timingErrors.length ? Math.round(timingErrors.reduce((sum, value) => sum + value, 0) / timingErrors.length) : 0;

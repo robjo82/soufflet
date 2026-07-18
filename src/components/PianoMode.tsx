@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Clock3, Keyboard, Mic2, Pause, Piano, Play, Repeat2, RotateCcw, Target, Usb, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Clock3, Mic2, Pause, Piano, Play, Repeat2, RotateCcw, Target, X } from 'lucide-react';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import { frenchNote, isBlackKey, isPianoHit, PIANO_CHORDS, PIANO_EXERCISES, pianoRange, pianoScore, resumeTimeline, type PianoExercise } from '../pianoData';
+import { frenchNote, isPianoHit, PIANO_CHORDS, PIANO_EXERCISES, pianoKeyGeometry, pianoNoteOffsetPx, pianoScore, resumeTimeline, type PianoExercise } from '../pianoData';
 import type { Page, PianoInput, PianoKeyboardSize, PracticeSessionInput, PracticeStats } from '../types';
 
 interface PianoModeProps {
@@ -23,9 +23,9 @@ type Result = ReturnType<typeof pianoScore>;
 const PC_KEYS: Record<string, number> = { a: 60, z: 62, e: 64, r: 65, t: 67, y: 69, u: 71, i: 72 };
 
 function PianoKeyboard({ size, expected = [], played, error, onPlay }: { size: PianoKeyboardSize; expected?: number[]; played?: number | null; error?: number | null; onPlay: (midi: number) => void }) {
-  const keys = pianoRange(size);
+  const keys = pianoKeyGeometry(size);
   return <div className={`piano-keyboard keys-${size}`} aria-label={`Clavier piano ${size} touches`}>
-    {keys.map((midi) => <button type="button" key={midi} className={`${isBlackKey(midi) ? 'black-key' : 'white-key'} ${expected.includes(midi) ? 'is-expected' : ''} ${played === midi ? 'is-played' : ''} ${error === midi ? 'is-error' : ''}`} onPointerDown={() => onPlay(midi)} aria-label={frenchNote(midi)}><span>{midi % 12 === 0 ? frenchNote(midi) : ''}</span></button>)}
+    {keys.map((key) => <button type="button" key={key.midi} className={`${key.black ? 'black-key' : 'white-key'} ${expected.includes(key.midi) ? 'is-expected' : ''} ${played === key.midi ? 'is-played' : ''} ${error === key.midi ? 'is-error' : ''}`} style={{ left: `${key.left}%`, width: `${key.width}%` }} onPointerDown={() => onPlay(key.midi)} aria-label={frenchNote(key.midi)}><span>{key.midi % 12 === 0 ? frenchNote(key.midi) : ''}</span></button>)}
   </div>;
 }
 
@@ -49,6 +49,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   const [songFilter, setSongFilter] = useState<'all' | 'right' | 'both'>('all');
   const startRef = useRef(0);
   const pauseStartedRef = useRef(0);
+  const playedTimerRef = useRef<number | null>(null);
   const judgedRef = useRef(new Set<number>());
   const lastMicroRef = useRef({ midi: -1, at: 0 });
   const { playMidi } = useSynth();
@@ -56,7 +57,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   const beatMs = 60000 / (exercise.bpm * tempoPercent / 100);
 
   useEffect(() => {
-    onSessionActiveChange(screen === 'exercise' && !result);
+    onSessionActiveChange(screen === 'exercise');
     return () => onSessionActiveChange(false);
   }, [onSessionActiveChange, result, screen]);
 
@@ -69,7 +70,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   }, [beatMs, correct, exercise, missed, onSessionUpdate, playMode, tempoPercent, timings]);
 
   const judge = useCallback((midi: number) => {
-    setPlayed(midi); playMidi(midi, .7, .12, 'piano');
+    setPlayed(midi); if (playedTimerRef.current !== null) window.clearTimeout(playedTimerRef.current); playedTimerRef.current = window.setTimeout(() => setPlayed(null), 220); playMidi(midi, .7, .12, 'piano');
     if (!playing || result) return;
     if (playMode === 'learning') {
       const expectedMidi = exercise.notes[activeIndex].midi;
@@ -84,6 +85,8 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
     if (closest < 0 || !isPianoHit(exercise.notes[closest].midi, midi, distance)) { setErrorKey(midi); window.setTimeout(() => setErrorKey(null), 350); return; }
     judgedRef.current.add(closest); setCorrect((value) => value + 1); setTimings((values) => [...values, distance]); setActiveIndex(Math.min(closest + 1, exercise.notes.length - 1));
   }, [activeIndex, beatMs, correct, exercise.notes, finish, missed, playMidi, playMode, playing, result, timings]);
+
+  useEffect(() => () => { if (playedTimerRef.current !== null) window.clearTimeout(playedTimerRef.current); }, []);
 
   useEffect(() => {
     if (!playing || playMode === 'learning') return;
@@ -128,6 +131,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
     if (paused) { startRef.current = resumeTimeline(startRef.current, pauseStartedRef.current, performance.now()); setPaused(false); setPlaying(true); }
   };
   const expected = screen === 'chords' ? PIANO_CHORDS[chordIndex].midis : screen === 'exercise' ? [exercise.notes[activeIndex].midi] : [];
+  const keyGeometry = pianoKeyGeometry(keyboardSize);
   const inputMessage = input === 'midi' && midiStatus !== 'connected' ? 'Aucun clavier MIDI détecté : utilise le clavier PC ou le micro.' : input === 'microphone' && detector.status !== 'listening' ? 'Teste et autorise le micro avant de jouer.' : 'Entrée prête.';
 
   if (screen === 'home' && view === 'home') return <main className="page-content piano-page piano-dashboard">
@@ -154,11 +158,10 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   if (screen === 'chords') return <main className="page-content piano-page"><button className="piano-back" type="button" onClick={() => setScreen('home')}><ChevronLeft /> Retour</button><section className="chord-trainer"><small>ACCORDS · GUIDE VISUEL</small><h1>{PIANO_CHORDS[chordIndex].name}</h1><p>Joue ensemble les touches colorées, puis passe manuellement à l’accord suivant.</p><PianoKeyboard size={keyboardSize} expected={expected} onPlay={judge} /><footer><button type="button" disabled={chordIndex === 0} onClick={() => setChordIndex(chordIndex - 1)}><ChevronLeft /> Précédent</button><span>{chordIndex + 1} / {PIANO_CHORDS.length}</span><button type="button" disabled={chordIndex === PIANO_CHORDS.length - 1} onClick={() => setChordIndex(chordIndex + 1)}>Suivant <ChevronRight /></button></footer></section></main>;
 
   return <main className="piano-player">
-    <header><button type="button" onClick={() => { setPlaying(false); setScreen('home'); }}><X /> Quitter</button><div><small>{exercise.level}</small><strong>{exercise.title}</strong></div><span>{correct} juste{correct > 1 ? 's' : ''} · {missed} ratée{missed > 1 ? 's' : ''}</span></header>
+    <header><button type="button" className="piano-player-close" aria-label="Quitter le morceau" title="Quitter" onClick={() => { setPlaying(false); setScreen('home'); }}><X /></button><div className="piano-player-title"><small>{exercise.level}</small><strong>{exercise.title}</strong></div><div className="piano-player-controls">{!result && <button type="button" className="piano-player-pause" onClick={togglePause}>{playing ? <><Pause /> Pause</> : <><Play /> Reprendre</>}</button>}<span>{correct} juste{correct > 1 ? 's' : ''} · {missed} ratée{missed > 1 ? 's' : ''}</span><progress value={activeIndex + 1} max={exercise.notes.length} /></div></header>
     {result ? <section className="piano-results"><Check /><h1>Exercice terminé</h1><div><article><strong>{result.correct}</strong><span>correctes</span></article><article><strong>{result.missed}</strong><span>ratées</span></article><article><strong>{result.averageDelay} ms</strong><span>retard moyen</span></article><article><strong>{result.rhythmAccuracy} %</strong><span>précision rythme</span></article></div><b>{result.global} / 100</b><p>{result.advice}</p><button type="button" className="primary-button" onClick={start}><RotateCcw /> Recommencer</button></section> : <>
-      <section className="piano-roll"><div className="hit-line" />{exercise.notes.map((note, index) => { const elapsed = playMode === 'learning' ? exercise.notes[activeIndex].beat : playing ? (performance.now() - startRef.current) / beatMs : paused ? (pauseStartedRef.current - startRef.current) / beatMs : 0; return <i key={index} className={`${index === activeIndex ? 'is-active' : ''} ${judgedRef.current.has(index) ? 'is-judged' : ''}`} style={{ '--lane': note.midi - 60, '--duration': note.duration, top: 299 - 35 * note.duration, transform: `translateY(${(elapsed - note.beat) * 72}px)` } as React.CSSProperties}><span>{frenchNote(note.midi).replace(/\d$/, '')}</span></i>; })}</section>
-      <PianoKeyboard size={keyboardSize} expected={expected} played={played} error={errorKey} onPlay={judge} />
-      <footer><span>{input === 'midi' ? <Usb /> : input === 'microphone' ? <Mic2 /> : <Keyboard />} {paused ? 'Lecture en pause' : inputMessage}</span><button type="button" className="primary-button piano-pause" onClick={togglePause}>{playing ? <><Pause /> Pause</> : <><Play /> Reprendre</>}</button><progress value={activeIndex + 1} max={exercise.notes.length} /></footer>
+      <section className="piano-roll"><div className="piano-roll-lanes">{keyGeometry.filter((key) => !key.black).map((key) => <span key={key.midi} style={{ left: `${key.left}%`, width: `${key.width}%` }} />)}</div><div className="hit-line" />{exercise.notes.map((note, index) => { const elapsed = playMode === 'learning' ? exercise.notes[activeIndex].beat : playing ? (performance.now() - startRef.current) / beatMs : paused ? (pauseStartedRef.current - startRef.current) / beatMs : 0; const key = keyGeometry.find((item) => item.midi === note.midi); if (!key) return null; return <i key={index} className={`${index === activeIndex ? 'is-active' : ''} ${judgedRef.current.has(index) ? 'is-judged' : ''}`} style={{ '--duration': note.duration, '--note-left': `${key.left}%`, '--note-width': `${key.width}%`, '--note-offset': `${pianoNoteOffsetPx(note.beat, elapsed)}px` } as React.CSSProperties}><span>{frenchNote(note.midi).replace(/\d$/, '')}</span></i>; })}</section>
+      <PianoKeyboard size={keyboardSize} played={played} error={errorKey} onPlay={judge} />
     </>}
   </main>;
 }
