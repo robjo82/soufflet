@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPianoAttempt, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoRange, pianoScore, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
@@ -29,6 +29,12 @@ describe('piano V1', () => {
     expect(pianoNotesForHand(arrangements[2].notes, 'right')).toHaveLength(23);
     expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(24);
   });
+  it('groups arrangements by song before the level choice', () => {
+    expect(PIANO_SONGS).toHaveLength(6);
+    expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-beginner', 'my-way-intermediate', 'my-way-advanced']);
+    expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(3);
+    expect(groupPianoExercises([PIANO_EXERCISES[0], { ...PIANO_EXERCISES[0], id: 'same-title-other-artist', artist: 'Autre artiste' }])).toHaveLength(2);
+  });
   it('separates both-hand arrangements into playable left and right parts', () => {
     const dialogue = PIANO_EXERCISES.find((item) => item.id === 'piano-two-hands')!;
     const myWay = PIANO_EXERCISES.find((item) => item.id === 'my-way-advanced')!;
@@ -38,6 +44,16 @@ describe('piano V1', () => {
     expect(pianoNotesForHand(myWay.notes, 'right').length).toBeGreaterThan(0);
     expect(pianoNotesForHand(myWay.notes, 'left').length + pianoNotesForHand(myWay.notes, 'right').length).toBe(myWay.notes.length);
     expect(pianoNotesForHand(myWay.notes, 'both')).toHaveLength(myWay.notes.length);
+  });
+  it('runs practice in real time with one hand and never counts its score', () => {
+    const myWay = PIANO_EXERCISES.find((item) => item.id === 'my-way-advanced')!;
+    expect(pianoNotesForMode(myWay, 'practice', 'right')).toEqual(pianoNotesForHand(myWay.notes, 'right'));
+    expect(pianoNotesForMode(myWay, 'practice', 'left')).toEqual(pianoNotesForHand(myWay.notes, 'left'));
+    expect(pianoNotesForMode(myWay, 'game', 'right')).toHaveLength(myWay.notes.length);
+    expect(isPianoSessionCounted('practice')).toBe(false);
+    expect(isPianoSessionCounted('learning')).toBe(true);
+    expect(isPianoSessionCounted('game')).toBe(true);
+    expect(pianoSessionCounts(5, [-301, -300, 0, 300, 301], 300)).toEqual({ correctCount: 3, earlyCount: 1, lateCount: 1 });
   });
   it('centers compact keyboards around middle C', () => {
     expect(pianoRange(25)).toContain(60);

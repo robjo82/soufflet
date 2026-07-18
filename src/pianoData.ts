@@ -11,8 +11,16 @@ export interface PianoExercise {
   notes: Array<{ midi: number; beat: number; duration: number; hand?: 'right' | 'left' }>;
 }
 
+export interface PianoSong {
+  id: string;
+  title: string;
+  artist?: string;
+  levels: PianoExercise[];
+}
+
 type PianoNote = PianoExercise['notes'][number];
 export type PianoPracticeHand = 'right' | 'left' | 'both';
+export type PianoPlayMode = 'learning' | 'practice' | 'game';
 
 const phrase = (midis: number[], durations?: number[]) => {
   let beat = 0;
@@ -133,9 +141,36 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'se-canta-advanced', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: SE_CANTA_TWO_HANDS },
 ];
 
+export function groupPianoExercises(exercises: PianoExercise[]) {
+  const songs = new Map<string, PianoSong>();
+  for (const exercise of exercises) {
+    const key = `${exercise.title}\u0000${exercise.artist ?? ''}`;
+    const song = songs.get(key) ?? { id: exercise.id, title: exercise.title, artist: exercise.artist, levels: [] };
+    song.levels.push(exercise);
+    songs.set(key, song);
+  }
+  return [...songs.values()];
+}
+
+export const PIANO_SONGS = groupPianoExercises(PIANO_EXERCISES);
+
 export function pianoNotesForHand(notes: PianoExercise['notes'], hand: PianoPracticeHand) {
   if (hand === 'both') return notes;
   return notes.filter((note) => (note.hand ?? 'right') === hand);
+}
+
+export function pianoNotesForMode(exercise: PianoExercise, mode: PianoPlayMode, hand: PianoPracticeHand) {
+  return exercise.hand === 'both' && mode !== 'game' ? pianoNotesForHand(exercise.notes, hand) : exercise.notes;
+}
+
+export function isPianoSessionCounted(mode: PianoPlayMode) {
+  return mode !== 'practice';
+}
+
+export function pianoSessionCounts(correct: number, timings: number[], correctToleranceMs: number) {
+  const earlyCount = timings.filter((value) => value < -correctToleranceMs).length;
+  const lateCount = timings.filter((value) => value > correctToleranceMs).length;
+  return { correctCount: Math.max(0, correct - earlyCount - lateCount), earlyCount, lateCount };
 }
 
 export const PIANO_CHORDS = [

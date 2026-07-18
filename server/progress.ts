@@ -48,6 +48,14 @@ function sessionAccuracy(session: StoredPracticeSession) {
   return { correctPitch, assessed: correctPitch + session.wrongCount };
 }
 
+function sessionScore(session: StoredPracticeSession) {
+  const accuracy = sessionAccuracy(session);
+  if (!accuracy.assessed) return null;
+  const pitch = accuracy.correctPitch / accuracy.assessed;
+  const timing = accuracy.correctPitch ? session.correctCount / accuracy.correctPitch : 0;
+  return Math.round((pitch * .7 + timing * .3) * 100);
+}
+
 export function summarizePractice(sessions: StoredPracticeSession[], timezoneOffset = 0, now = new Date()) {
   const safeOffset = Math.max(-840, Math.min(840, timezoneOffset));
   const usable = sessions.filter((session) => session.activeSeconds > 0);
@@ -110,12 +118,18 @@ export function summarizePractice(sessions: StoredPracticeSession[], timezoneOff
     return result;
   }, { activeSeconds: 0, correctPitch: 0, assessed: 0, onTime: 0, timedNotes: 0, tempoTotal: 0, flagged: 0 });
 
-  const songs = new Map<string, { songId: string; title: string; activeSeconds: number; sessions: number }>();
+  const songs = new Map<string, { songId: string; title: string; activeSeconds: number; sessions: number; correctPitch: number; assessed: number; bestScore: number | null; lastPracticedAt: string }>();
   const modes = new Map<string, { mode: string; activeSeconds: number; sessions: number }>();
   for (const session of usable) {
-    const song = songs.get(session.songId) ?? { songId: session.songId, title: session.songTitle, activeSeconds: 0, sessions: 0 };
+    const accuracy = sessionAccuracy(session);
+    const score = sessionScore(session);
+    const song = songs.get(session.songId) ?? { songId: session.songId, title: session.songTitle, activeSeconds: 0, sessions: 0, correctPitch: 0, assessed: 0, bestScore: null, lastPracticedAt: session.endedAt };
     song.activeSeconds += session.activeSeconds;
     song.sessions += 1;
+    song.correctPitch += accuracy.correctPitch;
+    song.assessed += accuracy.assessed;
+    song.bestScore = score === null ? song.bestScore : Math.max(song.bestScore ?? 0, score);
+    song.lastPracticedAt = session.endedAt > song.lastPracticedAt ? session.endedAt : song.lastPracticedAt;
     songs.set(session.songId, song);
     const mode = modes.get(session.mode) ?? { mode: session.mode, activeSeconds: 0, sessions: 0 };
     mode.activeSeconds += session.activeSeconds;
@@ -136,6 +150,7 @@ export function summarizePractice(sessions: StoredPracticeSession[], timezoneOff
 
   const last28Start = moveDate(today, -27);
   const activeDays28 = activeDates.filter((date) => date >= last28Start && date <= today).length;
+  const songStats = [...songs.values()].map(({ correctPitch, assessed, ...song }) => ({ ...song, accuracy: roundedPercent(correctPitch, assessed) }));
   return {
     generatedAt: now.toISOString(),
     hasData: usable.length > 0,
@@ -160,7 +175,8 @@ export function summarizePractice(sessions: StoredPracticeSession[], timezoneOff
       regularity: { value: activeDays28, sampleSize: 28 },
     },
     recentSessions: [...usable].sort((a, b) => b.endedAt.localeCompare(a.endedAt)).slice(0, 5),
-    favoriteSongs: [...songs.values()].sort((a, b) => b.activeSeconds - a.activeSeconds).slice(0, 4),
+    favoriteSongs: songStats.map(({ songId, title, activeSeconds, sessions }) => ({ songId, title, activeSeconds, sessions })).sort((a, b) => b.activeSeconds - a.activeSeconds).slice(0, 4),
+    songStats: songStats.sort((a, b) => b.lastPracticedAt.localeCompare(a.lastPracticedAt)),
     modeBreakdown: [...modes.values()].sort((a, b) => b.activeSeconds - a.activeSeconds),
     insights,
   };

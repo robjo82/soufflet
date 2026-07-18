@@ -176,6 +176,7 @@ export interface PracticeStats {
   };
   recentSessions: Array<PracticeSessionInput>;
   favoriteSongs: Array<{ songId: string; title: string; activeSeconds: number; sessions: number }>;
+  songStats: Array<{ songId: string; title: string; activeSeconds: number; sessions: number; bestScore: number | null; accuracy: number | null; lastPracticedAt: string }>;
   modeBreakdown: Array<{ mode: PracticeMode; activeSeconds: number; sessions: number }>;
   insights: Array<{ kind: 'encouragement' | 'focus' | 'observation'; title: string; detail: string }>;
 }

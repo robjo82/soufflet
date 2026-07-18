@@ -140,6 +140,7 @@ describe('production data migrations', () => {
       skills: { notes: { value: 88, sampleSize: 16 }, rhythm: { value: 86, sampleSize: 14 }, tempo: { value: 80, sampleSize: 3 } },
     });
     expect(stats.week.map((day) => day.activeSeconds)).toEqual([600, 300, 120, 0, 0, 0, 0]);
+    expect(stats.songStats).toEqual([expect.objectContaining({ songId: 'first-breath', title: 'Premier souffle', activeSeconds: 1020, sessions: 3, bestScore: 100, accuracy: 88, lastPracticedAt: '2026-07-15T18:02:00.000Z' })]);
   });
 
   it('upserts session snapshots without double counting or stale overwrites', () => {
