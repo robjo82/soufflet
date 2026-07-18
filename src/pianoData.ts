@@ -18,7 +18,22 @@ export interface PianoSong {
   levels: PianoExercise[];
 }
 
+export interface PianoChordStep {
+  beat: number;
+  name: string;
+  midis: number[];
+  fingers: number[];
+}
+
+export interface PianoChordExercise {
+  id: string;
+  songTitle: string;
+  artist?: string;
+  progression: PianoChordStep[];
+}
+
 type PianoNote = PianoExercise['notes'][number];
+type PianoHarmonyStep = { beat: number; name: string; root: number; intervals: number[]; fingers: number[] };
 export type PianoPracticeHand = 'right' | 'left' | 'both';
 export type PianoPlayMode = 'learning' | 'practice' | 'game';
 
@@ -67,17 +82,29 @@ const MY_WAY_MELODY = timedNotes([
   [65, 65, 4],
 ]);
 
-const MY_WAY_HARMONY: Array<[beat: number, root: number, intervals: number[]]> = [
-  [1, 41, [0, 4, 7]], [5, 45, [0, 3, 7]], [9, 48, [0, 3, 7]], [13, 50, [0, 4, 10]],
-  [17, 43, [0, 3, 7]], [21, 43, [0, 3, 7, 10]], [25, 48, [0, 4, 10]], [29, 41, [0, 4, 7]],
-  [33, 41, [0, 4, 10]], [37, 46, [0, 4, 7]], [41, 46, [0, 3, 7]], [45, 41, [0, 4, 7]],
-  [49, 48, [0, 4, 10]], [53, 46, [0, 3, 7]], [57, 41, [0, 4, 7]], [61, 41, [0, 4, 10]],
-  [65, 41, [0, 4, 7]],
+const MY_WAY_HARMONY: PianoHarmonyStep[] = [
+  { beat: 1, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 5, name: 'La mineur', root: 45, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  { beat: 9, name: 'Do mineur', root: 48, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  { beat: 13, name: 'Ré 7', root: 50, intervals: [0, 4, 10], fingers: [5, 2, 1] },
+  { beat: 17, name: 'Sol mineur', root: 43, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  { beat: 21, name: 'Sol mineur 7', root: 43, intervals: [0, 3, 7, 10], fingers: [5, 3, 2, 1] },
+  { beat: 25, name: 'Do 7', root: 48, intervals: [0, 4, 10], fingers: [5, 2, 1] },
+  { beat: 29, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 33, name: 'Fa 7', root: 41, intervals: [0, 4, 10], fingers: [5, 2, 1] },
+  { beat: 37, name: 'Si♭ majeur', root: 46, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 41, name: 'Si♭ mineur', root: 46, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  { beat: 45, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 49, name: 'Do 7', root: 48, intervals: [0, 4, 10], fingers: [5, 2, 1] },
+  { beat: 53, name: 'Si♭ mineur', root: 46, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  { beat: 57, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 61, name: 'Fa 7', root: 41, intervals: [0, 4, 10], fingers: [5, 2, 1] },
+  { beat: 65, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
 ];
 
 const MY_WAY_TWO_HANDS = [
   ...MY_WAY_MELODY.map((note) => ({ ...note, hand: 'right' as const })),
-  ...MY_WAY_HARMONY.flatMap(([beat, root, intervals]) => [
+  ...MY_WAY_HARMONY.flatMap(({ beat, root, intervals }) => [
     { midi: root, beat, duration: 1.5, hand: 'left' as const },
     ...intervals.map((interval) => ({ midi: root + interval, beat: beat + 2, duration: 1.5, hand: 'left' as const })),
   ]),
@@ -109,24 +136,35 @@ const SE_CANTA_MELODY = timedNotes([
   [72, 22, 2],
 ]);
 
-const SE_CANTA_HARMONY: Array<[beat: number, root: number, intervals: number[]]> = [
-  [1, 48, [0, 4, 7]],
-  [4, 48, [0, 4, 7]],
-  [7, 48, [0, 4, 7]],
-  [10, 43, [0, 4, 7]],
-  [13, 41, [0, 4, 7]],
-  [16, 48, [0, 4, 7]],
-  [19, 43, [0, 4, 7]],
-  [22, 48, [0, 4, 7]],
+const SE_CANTA_HARMONY: PianoHarmonyStep[] = [
+  { beat: 1, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 4, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 7, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 10, name: 'Sol majeur', root: 43, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 13, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 16, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 19, name: 'Sol majeur', root: 43, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 22, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
 ];
 
 const SE_CANTA_TWO_HANDS = [
   ...SE_CANTA_MELODY.map((note) => ({ ...note, hand: 'right' as const })),
-  ...SE_CANTA_HARMONY.flatMap(([beat, root, intervals]) => [
+  ...SE_CANTA_HARMONY.flatMap(({ beat, root, intervals }) => [
     { midi: root, beat, duration: 1, hand: 'left' as const },
     ...intervals.map((interval) => ({ midi: root + interval, beat: beat + 1, duration: beat === 22 ? 1 : 2, hand: 'left' as const })),
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
+
+const harmonyToChordProgression = (steps: PianoHarmonyStep[]): PianoChordStep[] => steps.map(({ beat, name, root, intervals, fingers }) => ({ beat, name, midis: intervals.map((interval) => root + interval), fingers }));
+
+export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
+  { id: 'my-way-chords', songTitle: 'My Way', artist: 'Frank Sinatra', progression: harmonyToChordProgression(MY_WAY_HARMONY) },
+  { id: 'se-canta-chords', songTitle: 'Se Canta', artist: 'Traditionnel occitan', progression: harmonyToChordProgression(SE_CANTA_HARMONY) },
+];
+
+export function pianoChordExerciseForSong(title: string, artist?: string) {
+  return PIANO_CHORD_EXERCISES.find((exercise) => exercise.songTitle === title && exercise.artist === artist);
+}
 
 export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'piano-three-steps', title: 'Trois petits pas', level: 'Très simple', bpm: 60, hand: 'right', notes: phrase([60, 62, 64, 62, 60, 62, 64, 60], [.5, .5, 1, 1.5, .5, 2, 1, .5]) },

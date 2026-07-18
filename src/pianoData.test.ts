@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
@@ -34,6 +34,27 @@ describe('piano V1', () => {
     expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-beginner', 'my-way-intermediate', 'my-way-advanced']);
     expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(3);
     expect(groupPianoExercises([PIANO_EXERCISES[0], { ...PIANO_EXERCISES[0], id: 'same-title-other-artist', artist: 'Autre artiste' }])).toHaveLength(2);
+  });
+  it('provides complete left-hand chord exercises with beginner fingerings', () => {
+    const myWay = pianoChordExerciseForSong('My Way', 'Frank Sinatra')!;
+    const seCanta = pianoChordExerciseForSong('Se Canta', 'Traditionnel occitan')!;
+    expect(PIANO_CHORD_EXERCISES).toHaveLength(2);
+    expect(myWay.progression).toHaveLength(17);
+    expect(new Set(myWay.progression.map((step) => step.name))).toHaveLength(10);
+    expect(seCanta.progression).toHaveLength(8);
+    expect(new Set(seCanta.progression.map((step) => step.name))).toEqual(new Set(['Do majeur', 'Sol majeur', 'Fa majeur']));
+    for (const exercise of PIANO_CHORD_EXERCISES) for (const step of exercise.progression) {
+      expect(step.fingers).toHaveLength(step.midis.length);
+      expect(step.fingers.every((finger) => finger >= 1 && finger <= 5)).toBe(true);
+    }
+    const songsWithChords = PIANO_EXERCISES.filter((exercise) => exercise.hand === 'both' && [...new Set(exercise.notes.filter((note) => note.hand === 'left').map((note) => note.beat))].some((beat) => exercise.notes.filter((note) => note.hand === 'left' && note.beat === beat).length > 1));
+    expect(songsWithChords.map((exercise) => `${exercise.title}\u0000${exercise.artist ?? ''}`)).toEqual(PIANO_CHORD_EXERCISES.map((exercise) => `${exercise.songTitle}\u0000${exercise.artist ?? ''}`));
+    for (const chordExercise of PIANO_CHORD_EXERCISES) {
+      const arrangement = songsWithChords.find((exercise) => exercise.title === chordExercise.songTitle && exercise.artist === chordExercise.artist)!;
+      const leftHandMidis = new Set(arrangement.notes.filter((note) => note.hand === 'left').map((note) => note.midi));
+      expect(chordExercise.progression.every((step) => step.midis.every((midi) => leftHandMidis.has(midi)))).toBe(true);
+    }
+    expect(pianoChordExerciseForSong('Dialogue des deux mains')).toBeUndefined();
   });
   it('separates both-hand arrangements into playable left and right parts', () => {
     const dialogue = PIANO_EXERCISES.find((item) => item.id === 'piano-two-hands')!;
