@@ -13,3 +13,5 @@ coverage
 .playwright-cli
 output
 .android-signing/
+*.blend1
+__pycache__/

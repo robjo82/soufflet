@@ -1,0 +1,189 @@
+{
+  "assetId": "hohner-club-i-cf-10-9-2",
+  "contractVersion": "1.0.0",
+  "model": "/models/hohner-club-i.glb",
+  "source": "blender/accordion-club-i.blend",
+  "rootNode": "AccordionRoot",
+  "bodyNodes": {
+    "left": "Body_Left",
+    "right": "Body_Right"
+  },
+  "bellows": {
+    "root": "BellowsRoot",
+    "folds": [
+      "BellowsFold_01",
+      "BellowsFold_02",
+      "BellowsFold_03",
+      "BellowsFold_04",
+      "BellowsFold_05",
+      "BellowsFold_06",
+      "BellowsFold_07",
+      "BellowsFold_08",
+      "BellowsFold_09",
+      "BellowsFold_10",
+      "BellowsFold_11",
+      "BellowsFold_12",
+      "BellowsFold_13",
+      "BellowsFold_14",
+      "BellowsFold_15",
+      "BellowsFold_16",
+      "BellowsFold_17",
+      "BellowsFold_18"
+    ],
+    "minimum": 0,
+    "maximum": 1
+  },
+  "melodyButtons": [
+    {
+      "id": "c1-out-1",
+      "node": "MelodyButton_R1_01",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-2",
+      "node": "MelodyButton_R1_02",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-3",
+      "node": "MelodyButton_R1_03",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-4",
+      "node": "MelodyButton_R1_04",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-5",
+      "node": "MelodyButton_R1_05",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-6",
+      "node": "MelodyButton_R1_06",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-7",
+      "node": "MelodyButton_R1_07",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-8",
+      "node": "MelodyButton_R1_08",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-9",
+      "node": "MelodyButton_R1_09",
+      "role": "melody"
+    },
+    {
+      "id": "c1-out-10",
+      "node": "MelodyButton_R1_10",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-1",
+      "node": "MelodyButton_R2_01",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-2",
+      "node": "MelodyButton_R2_02",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-3",
+      "node": "MelodyButton_R2_03",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-4",
+      "node": "MelodyButton_R2_04",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-5",
+      "node": "MelodyButton_R2_05",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-6",
+      "node": "MelodyButton_R2_06",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-7",
+      "node": "MelodyButton_R2_07",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-8",
+      "node": "MelodyButton_R2_08",
+      "role": "melody"
+    },
+    {
+      "id": "c1-in-9",
+      "node": "MelodyButton_R2_09",
+      "role": "melody"
+    },
+    {
+      "id": "c1-help-1",
+      "node": "MelodyButton_R3_01",
+      "role": "accidental"
+    },
+    {
+      "id": "c1-help-2",
+      "node": "MelodyButton_R3_02",
+      "role": "accidental"
+    }
+  ],
+  "bassButtons": [
+    {
+      "id": "bass-1",
+      "node": "BassButton_B1",
+      "role": "bass"
+    },
+    {
+      "id": "chord-1",
+      "node": "BassButton_C1",
+      "role": "chord"
+    },
+    {
+      "id": "bass-2",
+      "node": "BassButton_B2",
+      "role": "bass"
+    },
+    {
+      "id": "chord-2",
+      "node": "BassButton_C2",
+      "role": "chord"
+    },
+    {
+      "id": "bass-3",
+      "node": "BassButton_B3",
+      "role": "bass"
+    },
+    {
+      "id": "chord-3",
+      "node": "BassButton_C3",
+      "role": "chord"
+    },
+    {
+      "id": "bass-4",
+      "node": "BassButton_B4",
+      "role": "bass"
+    },
+    {
+      "id": "chord-4",
+      "node": "BassButton_C4",
+      "role": "chord"
+    }
+  ],
+  "performanceBudget": {
+    "maximumBytes": 5000000,
+    "maximumTriangles": 150000
+  }
+}

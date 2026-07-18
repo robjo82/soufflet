@@ -28,6 +28,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run validate:model
       - run: npm run build
       - name: Validate production image
         run: docker build --build-arg APP_VERSION=pr-${GITHUB_SHA::7} -t soufflet:test .
