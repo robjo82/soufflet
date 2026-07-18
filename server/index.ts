@@ -199,7 +199,7 @@ const practiceSessionSchema = z.object({
   id: z.string().uuid(),
   songId: z.string().min(1).max(120),
   songTitle: z.string().trim().min(1).max(160),
-  mode: z.enum(['demo', 'guided', 'wait', 'notes', 'rhythm', 'bellows', 'right', 'left', 'combined', 'performance']),
+  mode: z.enum(['demo', 'guided', 'wait', 'notes', 'rhythm', 'bellows', 'right', 'left', 'combined', 'game', 'performance']),
   startedAt: z.string().datetime(),
   endedAt: z.string().datetime(),
   activeSeconds: z.number().int().min(0).max(43_200),

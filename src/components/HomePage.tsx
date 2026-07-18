@@ -16,7 +16,7 @@ interface HomePageProps {
 
 const MODE_LABELS: Record<PracticeMode, string> = {
   demo: 'Démonstration', guided: 'Lecture guidée', wait: 'Attendre la note', notes: 'Notes', rhythm: 'Rythme',
-  bellows: 'Soufflet', right: 'Main droite', left: 'Main gauche', combined: 'Deux mains', performance: 'Performance',
+  bellows: 'Soufflet', right: 'Main droite', left: 'Main gauche', combined: 'Deux mains', game: 'Défi des touches', performance: 'Performance',
 };
 
 function formatDuration(seconds: number) {

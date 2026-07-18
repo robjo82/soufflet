@@ -11,6 +11,7 @@ export type PracticeMode =
   | 'right'
   | 'left'
   | 'combined'
+  | 'game'
   | 'performance';
 
 export interface AccordionButton {
