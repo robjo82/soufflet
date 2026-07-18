@@ -15,6 +15,7 @@ import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
 import { AccordionView } from './AccordionView';
 import { ScoreStrip } from './ScoreStrip';
+import { MicrophoneRecovery } from './MicrophoneRecovery';
 
 interface FirstLessonTutorialProps {
   accordion: AccordionConfig;
@@ -467,7 +468,15 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
             {stage === 2 && detector.status === 'idle' && <button type="button" className="secondary-button" onClick={() => void detector.start()}><Mic2 /> Activer l’écoute</button>}
             {stage === 2 && detector.status === 'requesting' && <span className="tutorial-mic-state"><Mic2 /> Autorise le microphone…</span>}
             {stage === 2 && detector.status === 'listening' && <span className="tutorial-mic-state is-live"><i /> Micro en écoute {detector.reading && `· ${detector.reading.note}`}</span>}
-            {stage === 2 && (detector.status === 'denied' || detector.status === 'error') && <div className="tutorial-limitation">{detector.error} Utilise les boutons à l’écran pour terminer cet essai.</div>}
+            {stage === 2 && (detector.status === 'denied' || detector.status === 'error') && (
+              <MicrophoneRecovery
+                error={detector.error}
+                canOpenSettings={detector.canOpenSettings}
+                detail="Une fois l’autorisation accordée, Soufflet avancera à nouveau tout seul."
+                onOpenSettings={() => void detector.openSettings()}
+                onRetry={() => void detector.start()}
+              />
+            )}
           </section>
           <section className="tutorial-instrument-card">
             <AccordionView config={accordion} activeEvent={activeEvent} direction={activeEvent?.direction} notation={notation} detectedMidi={detector.reading?.midi} depressActive={stage === 1 && demoPlaying} onButtonPress={handleButtonPress} />
@@ -499,7 +508,15 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
             {detector.status === 'idle' && currentTrial.task !== 'already-done' && <button type="button" className="primary-button tutorial-start-mic" onClick={() => void detector.start()}><Mic2 /> Activer le micro pour jouer ce mode</button>}
             {detector.status === 'requesting' && <span className="tutorial-mic-state"><Mic2 /> Autorise le microphone…</span>}
             {detector.status === 'listening' && currentTrial.task !== 'already-done' && <span className="tutorial-mic-state is-live"><i /> Ton accordéon est écouté {detector.reading && `· ${detector.reading.note}`}</span>}
-            {(detector.status === 'denied' || detector.status === 'error') && <div className="tutorial-limitation">{detector.error} Le dessin peut exceptionnellement valider l’essai pour dépanner, sans évaluation acoustique.</div>}
+            {(detector.status === 'denied' || detector.status === 'error') && (
+              <MicrophoneRecovery
+                error={detector.error}
+                canOpenSettings={detector.canOpenSettings}
+                detail="Réactive-le pour obtenir la validation acoustique de l’exercice."
+                onOpenSettings={() => void detector.openSettings()}
+                onRetry={() => void detector.start()}
+              />
+            )}
             <section className={`tutorial-feedback ${feedback.good ? 'is-good' : ''}`} aria-live="polite"><AudioLines /><span><small>VALIDATION AUTOMATIQUE</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></span></section>
             <footer><button type="button" className="primary-button" disabled={!modeFinished} onClick={advanceMode}>{modeIndex === TUTORIAL_MODE_TRIALS.length - 1 ? 'Visiter l’interface' : 'Mode suivant'} <ArrowRight /></button></footer>
           </section>

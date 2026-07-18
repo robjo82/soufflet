@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PitchReading } from '../types';
 import type { AudioFeatureFrame, AudioOnset } from '../audioTraining';
+import { canManageNativeMicrophone, openNativeMicrophoneSettings, requestNativeMicrophonePermission } from '../nativeMicrophone';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 
@@ -97,6 +98,12 @@ export function usePitchDetector() {
     setStatus('requesting');
     setError('');
     try {
+      const nativePermission = await requestNativeMicrophonePermission();
+      if (nativePermission !== 'unavailable' && nativePermission !== 'granted') {
+        setStatus('denied');
+        setError('Le microphone est désactivé pour Soufflet. Autorise-le dans les réglages Android, puis réessaie.');
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false },
       });
@@ -162,11 +169,27 @@ export function usePitchDetector() {
     } catch (reason) {
       const denied = reason instanceof DOMException && (reason.name === 'NotAllowedError' || reason.name === 'PermissionDeniedError');
       setStatus(denied ? 'denied' : 'error');
-      setError(denied ? 'Autorise le microphone dans ton navigateur, puis réessaie.' : 'Le microphone n’a pas pu démarrer.');
+      setError(denied
+        ? canManageNativeMicrophone()
+          ? 'Le microphone est désactivé pour Soufflet. Autorise-le dans les réglages Android, puis réessaie.'
+          : 'Autorise le microphone dans ton navigateur, puis réessaie.'
+        : 'Le microphone n’a pas pu démarrer.');
     }
   }, []);
 
+  const openSettings = useCallback(() => openNativeMicrophoneSettings(), []);
+
   useEffect(() => stop, [stop]);
 
-  return { reading, audioFrame, onset, status, error, start, stop };
+  return {
+    reading,
+    audioFrame,
+    onset,
+    status,
+    error,
+    start,
+    stop,
+    canOpenSettings: canManageNativeMicrophone(),
+    openSettings,
+  };
 }
