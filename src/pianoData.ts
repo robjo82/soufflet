@@ -8,10 +8,11 @@ export interface PianoExercise {
   level: 'Très simple' | 'Simple' | 'Modéré';
   bpm: number;
   hand: 'right' | 'both';
-  notes: Array<{ midi: number; beat: number; duration: number }>;
+  notes: Array<{ midi: number; beat: number; duration: number; hand?: 'right' | 'left' }>;
 }
 
 type PianoNote = PianoExercise['notes'][number];
+export type PianoPracticeHand = 'right' | 'left' | 'both';
 
 const phrase = (midis: number[], durations?: number[]) => {
   let beat = 0;
@@ -67,10 +68,10 @@ const MY_WAY_HARMONY: Array<[beat: number, root: number, intervals: number[]]> =
 ];
 
 const MY_WAY_TWO_HANDS = [
-  ...MY_WAY_MELODY,
+  ...MY_WAY_MELODY.map((note) => ({ ...note, hand: 'right' as const })),
   ...MY_WAY_HARMONY.flatMap(([beat, root, intervals]) => [
-    { midi: root, beat, duration: 1.5 },
-    ...intervals.map((interval) => ({ midi: root + interval, beat: beat + 2, duration: 1.5 })),
+    { midi: root, beat, duration: 1.5, hand: 'left' as const },
+    ...intervals.map((interval) => ({ midi: root + interval, beat: beat + 2, duration: 1.5, hand: 'left' as const })),
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
@@ -78,11 +79,16 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'piano-three-steps', title: 'Trois petits pas', level: 'Très simple', bpm: 60, hand: 'right', notes: phrase([60, 62, 64, 62, 60, 62, 64, 60], [.5, .5, 1, 1.5, .5, 2, 1, .5]) },
   { id: 'piano-five-lights', title: 'Cinq lumières', level: 'Simple', bpm: 72, hand: 'right', notes: phrase([60, 62, 64, 65, 67, 65, 64, 62, 60, 62, 64, 65, 67, 60]) },
   { id: 'piano-morning-walk', title: 'Promenade du matin', level: 'Modéré', bpm: 80, hand: 'right', notes: phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2]) },
-  { id: 'piano-two-hands', title: 'Dialogue des deux mains', level: 'Simple', bpm: 64, hand: 'both', notes: phrase([48, 60, 50, 62, 52, 64, 53, 65, 55, 67, 53, 65, 52, 64, 50, 62, 48, 60]) },
+  { id: 'piano-two-hands', title: 'Dialogue des deux mains', level: 'Simple', bpm: 64, hand: 'both', notes: phrase([48, 60, 50, 62, 52, 64, 53, 65, 55, 67, 53, 65, 52, 64, 50, 62, 48, 60]).map((note) => ({ ...note, hand: note.midi < 60 ? 'left' as const : 'right' as const })) },
   { id: 'my-way-beginner', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', notes: MY_WAY_EASY },
   { id: 'my-way-intermediate', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: MY_WAY_MELODY },
   { id: 'my-way-advanced', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: MY_WAY_TWO_HANDS },
 ];
+
+export function pianoNotesForHand(notes: PianoExercise['notes'], hand: PianoPracticeHand) {
+  if (hand === 'both') return notes;
+  return notes.filter((note) => (note.hand ?? 'right') === hand);
+}
 
 export const PIANO_CHORDS = [
   { name: 'Do majeur', midis: [60, 64, 67] },

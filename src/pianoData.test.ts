@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPianoAttempt, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoRange, pianoScore, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoRange, pianoScore, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
@@ -17,6 +17,16 @@ describe('piano V1', () => {
     expect(arrangements[2].notes.some((note) => note.midi < 60)).toBe(true);
     expect(new Set(arrangements[2].notes.map((note) => note.beat)).size).toBeLessThan(arrangements[2].notes.length);
     expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(69);
+  });
+  it('separates both-hand arrangements into playable left and right parts', () => {
+    const dialogue = PIANO_EXERCISES.find((item) => item.id === 'piano-two-hands')!;
+    const myWay = PIANO_EXERCISES.find((item) => item.id === 'my-way-advanced')!;
+    expect(pianoNotesForHand(dialogue.notes, 'left')).toHaveLength(9);
+    expect(pianoNotesForHand(dialogue.notes, 'right')).toHaveLength(9);
+    expect(pianoNotesForHand(myWay.notes, 'left').length).toBeGreaterThan(0);
+    expect(pianoNotesForHand(myWay.notes, 'right').length).toBeGreaterThan(0);
+    expect(pianoNotesForHand(myWay.notes, 'left').length + pianoNotesForHand(myWay.notes, 'right').length).toBe(myWay.notes.length);
+    expect(pianoNotesForHand(myWay.notes, 'both')).toHaveLength(myWay.notes.length);
   });
   it('centers compact keyboards around middle C', () => {
     expect(pianoRange(25)).toContain(60);
