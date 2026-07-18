@@ -509,6 +509,7 @@ svg { stroke-width: 1.8; }
 .tutorial-header li.is-done { color: var(--green); }
 .tutorial-header li.is-done i { color: white; border-color: var(--green); background: var(--green); }
 .tutorial-header li.is-done::after { background: var(--green); }
+.tutorial-header-actions { display: flex; align-items: center; justify-content: end; gap: 10px; }.tutorial-header-actions button { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; gap: 6px; color: var(--green); background: white; font-size: 10px; font-weight: 800; white-space: nowrap; cursor: pointer; }.tutorial-header-actions button:hover { border-color: var(--green); background: var(--green-soft); }.tutorial-header-actions button svg { width: 15px; height: 15px; }
 .tutorial-counter { justify-self: end; color: var(--muted); font-size: 10px; font-weight: 800; }
 .tutorial-intro { width: min(1440px, calc(100% - 64px)); min-height: calc(100vh - 78px); margin: 0 auto; display: grid; grid-template-columns: .85fr 1.15fr; align-items: center; gap: 70px; }
 .tutorial-intro > section { padding: 55px 0; }
@@ -661,6 +662,7 @@ svg { stroke-width: 1.8; }
   .tutorial-header > ol { grid-column: 2; }
   .tutorial-header li::after { width: 10px; margin-inline: 4px; }
   .tutorial-header li i { width: 23px; height: 23px; margin: 0; }
+  .tutorial-header-actions { grid-column: 1 / -1; position: fixed; left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom)); z-index: 110; pointer-events: none; }.tutorial-header-actions .tutorial-counter { display: none; }.tutorial-header-actions button { margin-left: auto; padding: 11px 14px; box-shadow: 0 8px 24px #1f392f2e; pointer-events: auto; }
   .tutorial-counter { display: none; }
   .tutorial-intro { width: calc(100% - 28px); min-height: calc(100vh - 66px); grid-template-columns: 1fr; gap: 0; }
   .tutorial-intro > section { padding: 35px 5px 10px; }

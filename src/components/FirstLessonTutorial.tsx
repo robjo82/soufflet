@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight, AudioLines, Check, ChevronDown, CircleGauge, Gauge, Headphones,
-  Mic2, MoveHorizontal, Play, Repeat2, RotateCcw, Sparkles, TimerReset,
+  Mic2, MoveHorizontal, Play, Repeat2, RotateCcw, SkipForward, Sparkles, TimerReset,
 } from 'lucide-react';
 import type { AccordionConfig, Direction, Notation, PracticeMode, Song, SongEvent } from '../types';
 import {
@@ -440,7 +440,7 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
         <ol aria-label="Progression du tutoriel">
           {CHAPTERS.map((chapter, index) => <li key={chapter} className={index < stage ? 'is-done' : index === stage ? 'is-current' : ''}><i>{index < stage ? <Check /> : index + 1}</i><span>{chapter}</span></li>)}
         </ol>
-        <span className="tutorial-counter">Première leçon · {Math.min(stage + 1, CHAPTERS.length)}/{CHAPTERS.length}</span>
+        <div className="tutorial-header-actions"><span className="tutorial-counter">Première leçon · {Math.min(stage + 1, CHAPTERS.length)}/{CHAPTERS.length}</span><button type="button" onClick={finishTutorial}><SkipForward /> Passer l’introduction</button></div>
       </header>
 
       {stage === 0 && (
