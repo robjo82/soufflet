@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPianoHit, isPianoNoteAtHitLine, PIANO_EXERCISES, pianoKeyGeometry, pianoNoteOffsetPx, pianoRange, pianoScore, resumeTimeline } from './pianoData';
+import { isPianoHit, isPianoNoteAtHitLine, isPianoNotePastHitLine, PIANO_EXERCISES, pianoKeyGeometry, pianoNoteOffsetPx, pianoRange, pianoScore, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
@@ -27,6 +27,8 @@ describe('piano V1', () => {
     expect(isPianoNoteAtHitLine(0)).toBe(true);
     expect(isPianoNoteAtHitLine(1)).toBe(true);
     expect(isPianoNoteAtHitLine(1.01)).toBe(false);
+    expect(isPianoNotePastHitLine(-1)).toBe(false);
+    expect(isPianoNotePastHitLine(-1.01)).toBe(true);
   });
   it('computes an actionable score', () => {
     expect(pianoScore(8, 2, [10, 100, 400])).toMatchObject({ correct: 8, missed: 2, averageDelay: 170, rhythmAccuracy: 67, global: 76 });

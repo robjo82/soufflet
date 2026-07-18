@@ -61,6 +61,10 @@ export function isPianoNoteAtHitLine(offsetPx: number, tolerancePx = 1) {
   return Math.abs(offsetPx) <= tolerancePx;
 }
 
+export function isPianoNotePastHitLine(offsetPx: number, tolerancePx = 1) {
+  return offsetPx < -tolerancePx;
+}
+
 export function pianoScore(correct: number, missed: number, timingErrors: number[]) {
   const total = correct + missed;
   const averageDelay = timingErrors.length ? Math.round(timingErrors.reduce((sum, value) => sum + value, 0) / timingErrors.length) : 0;
