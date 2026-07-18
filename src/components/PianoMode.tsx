@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Clock3, Mic2, Pause, Piano, Play, Repeat2, RotateCcw, Target, X } from 'lucide-react';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import { frenchNote, hasPianoNoteReachedHitLine, isPianoHit, PIANO_CHORDS, PIANO_EXERCISES, pianoKeyGeometry, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoScore, resumeTimeline, type PianoExercise } from '../pianoData';
+import { frenchNote, hasPianoNoteReachedHitLine, isPianoHit, PIANO_CHORDS, PIANO_EXERCISES, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoScore, resumeTimeline, type PianoExercise } from '../pianoData';
 import type { Page, PianoInput, PianoKeyboardSize, PracticeSessionInput, PracticeStats } from '../types';
 
 interface PianoModeProps {
@@ -58,6 +58,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   const { playMidi, prepareAudio, stopAll } = useSynth();
   const detector = usePitchDetector({ profile: 'piano' });
   const beatMs = 60000 / (exercise.bpm * tempoPercent / 100);
+  const exerciseEndBeat = pianoExerciseEndBeat(exercise.notes);
 
   useEffect(() => {
     onSessionActiveChange(screen === 'exercise');
@@ -69,17 +70,19 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
     const score = pianoScore(nextCorrect, nextMissed, nextTimings);
     setResult(score);
     const now = new Date();
-    void onSessionUpdate({ id: crypto.randomUUID(), songId: exercise.id, songTitle: exercise.title, mode: playMode === 'learning' ? 'wait' : 'guided', startedAt: new Date(now.getTime() - exercise.notes.at(-1)!.beat * beatMs).toISOString(), endedAt: now.toISOString(), activeSeconds: Math.max(1, Math.round(exercise.notes.at(-1)!.beat * beatMs / 1000)), correctCount: score.correct, earlyCount: nextTimings.filter((value) => value < -300).length, lateCount: nextTimings.filter((value) => value > 300).length, wrongCount: score.missed, completionPercent: 100, tempoPercent, flagged: false, instrumentType: 'piano' });
-  }, [beatMs, correct, exercise, missed, onSessionUpdate, playMode, tempoPercent, timings]);
+    void onSessionUpdate({ id: crypto.randomUUID(), songId: exercise.id, songTitle: exercise.title, mode: playMode === 'learning' ? 'wait' : 'guided', startedAt: new Date(now.getTime() - exerciseEndBeat * beatMs).toISOString(), endedAt: now.toISOString(), activeSeconds: Math.max(1, Math.round(exerciseEndBeat * beatMs / 1000)), correctCount: score.correct, earlyCount: nextTimings.filter((value) => value < -300).length, lateCount: nextTimings.filter((value) => value > 300).length, wrongCount: score.missed, completionPercent: 100, tempoPercent, flagged: false, instrumentType: 'piano' });
+  }, [beatMs, correct, exercise, exerciseEndBeat, missed, onSessionUpdate, playMode, tempoPercent, timings]);
 
   const judge = useCallback((midi: number, audition = true) => {
     setPlayed(midi); if (playedTimerRef.current !== null) window.clearTimeout(playedTimerRef.current); playedTimerRef.current = window.setTimeout(() => setPlayed(null), 220); if (audition) playMidi(midi, .7, .12, 'piano');
     if (!playing || result) return;
     if (playMode === 'learning') {
-      const expectedMidi = exercise.notes[activeIndex].midi;
-      if (midi !== expectedMidi) { setErrorKey(midi); window.setTimeout(() => setErrorKey(null), 350); return; }
-      judgedRef.current.add(activeIndex); setCorrect((value) => value + 1); setTimings((values) => [...values, 0]);
-      if (activeIndex === exercise.notes.length - 1) finish(correct + 1, missed, [...timings, 0]); else setActiveIndex(activeIndex + 1);
+      const activeBeat = exercise.notes[activeIndex].beat;
+      const matchedIndex = exercise.notes.findIndex((note, index) => note.beat === activeBeat && note.midi === midi && !judgedRef.current.has(index));
+      if (matchedIndex < 0) { setErrorKey(midi); window.setTimeout(() => setErrorKey(null), 350); return; }
+      judgedRef.current.add(matchedIndex); setCorrect((value) => value + 1); setTimings((values) => [...values, 0]);
+      const nextIndex = exercise.notes.findIndex((_, index) => !judgedRef.current.has(index));
+      if (nextIndex < 0) finish(correct + 1, missed, [...timings, 0]); else setActiveIndex(nextIndex);
       return;
     }
     const elapsed = performance.now() - startRef.current;
@@ -92,11 +95,14 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   useEffect(() => () => { if (playedTimerRef.current !== null) window.clearTimeout(playedTimerRef.current); }, []);
 
   useEffect(() => {
-    if (!playing || playMode !== 'learning' || screen !== 'exercise' || autoPlayedRef.current.has(activeIndex)) return;
-    const note = exercise.notes[activeIndex];
-    const timing = pianoNotePlaybackTiming(note, beatMs);
-    autoPlayedRef.current.add(activeIndex);
-    playMidi(note.midi, timing.durationSeconds, PIANO_PLAYBACK_VOLUME, 'piano');
+    if (!playing || playMode !== 'learning' || screen !== 'exercise') return;
+    const activeBeat = exercise.notes[activeIndex].beat;
+    exercise.notes.forEach((note, index) => {
+      if (note.beat !== activeBeat || autoPlayedRef.current.has(index)) return;
+      const timing = pianoNotePlaybackTiming(note, beatMs);
+      autoPlayedRef.current.add(index);
+      playMidi(note.midi, timing.durationSeconds, PIANO_PLAYBACK_VOLUME, 'piano');
+    });
   }, [activeIndex, beatMs, exercise.notes, playMidi, playMode, playing, screen]);
 
   useEffect(() => {
@@ -111,12 +117,12 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
         if (!judgedRef.current.has(index) && elapsed > note.beat * beatMs + 300) { judgedRef.current.add(index); newlyMissed += 1; }
       });
       if (newlyMissed) setMissed((value) => value + newlyMissed);
-      const end = (exercise.notes.at(-1)!.beat + exercise.notes.at(-1)!.duration) * beatMs + 350;
+      const end = exerciseEndBeat * beatMs + 350;
       if (elapsed >= end) finish(correct, missed + newlyMissed, timings);
       else setActiveIndex(Math.min(exercise.notes.findIndex((note) => note.beat * beatMs + 300 >= elapsed) < 0 ? exercise.notes.length - 1 : exercise.notes.findIndex((note) => note.beat * beatMs + 300 >= elapsed), exercise.notes.length - 1));
     }, 16);
     return () => window.clearInterval(timer);
-  }, [beatMs, correct, exercise.notes, finish, missed, playMidi, playMode, playing, timings]);
+  }, [beatMs, correct, exercise.notes, exerciseEndBeat, finish, missed, playMidi, playMode, playing, timings]);
 
   useEffect(() => {
     if (input !== 'computer-keyboard' || screen !== 'exercise') return;
@@ -162,7 +168,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
     <section className="piano-worked"><header><h2>Morceaux les plus travaillés</h2><button type="button" onClick={() => onNavigate('piano-songs')}>Tous les morceaux</button></header>{stats?.favoriteSongs.length ? stats.favoriteSongs.slice(0, 3).map((song) => <article key={song.songId}><strong>{song.title}</strong><span>{song.sessions} séance{song.sessions > 1 ? 's' : ''}</span><em>{Math.round(song.activeSeconds / 60)} min</em></article>) : <p>Les morceaux que tu pratiques apparaîtront ici.</p>}</section>
   </main>;
 
-  if (screen === 'home' && view === 'songs') return <main className="page-content piano-page"><header className="page-heading"><span className="eyebrow">Plaisir de jouer</span><h1>Morceaux</h1><p>Choisis un morceau adapté à la main que tu souhaites travailler.</p></header><div className="piano-song-filters" role="group" aria-label="Filtrer les morceaux"><button type="button" className={songFilter === 'all' ? 'is-active' : ''} onClick={() => setSongFilter('all')}>Tous les morceaux</button><button type="button" className={songFilter === 'right' ? 'is-active' : ''} onClick={() => setSongFilter('right')}>Main droite</button><button type="button" className={songFilter === 'both' ? 'is-active' : ''} onClick={() => setSongFilter('both')}>Deux mains</button></div><section className="piano-exercise-grid piano-song-list">{PIANO_EXERCISES.filter((item) => songFilter === 'all' || item.hand === songFilter).map((item) => <button type="button" key={item.id} onClick={() => { setExercise(item); setScreen('prepare'); }}><small>{item.level}</small><strong>{item.title}</strong><span>{item.notes.length} notes · {item.bpm} BPM · {item.hand === 'both' ? 'Deux mains' : 'Main droite'}</span><Play /></button>)}</section></main>;
+  if (screen === 'home' && view === 'songs') return <main className="page-content piano-page"><header className="page-heading"><span className="eyebrow">Plaisir de jouer</span><h1>Morceaux</h1><p>Choisis un morceau adapté à la main que tu souhaites travailler.</p></header><div className="piano-song-filters" role="group" aria-label="Filtrer les morceaux"><button type="button" className={songFilter === 'all' ? 'is-active' : ''} onClick={() => setSongFilter('all')}>Tous les morceaux</button><button type="button" className={songFilter === 'right' ? 'is-active' : ''} onClick={() => setSongFilter('right')}>Main droite</button><button type="button" className={songFilter === 'both' ? 'is-active' : ''} onClick={() => setSongFilter('both')}>Deux mains</button></div><section className="piano-exercise-grid piano-song-list">{PIANO_EXERCISES.filter((item) => songFilter === 'all' || item.hand === songFilter).map((item) => <button type="button" key={item.id} onClick={() => { setExercise(item); setScreen('prepare'); }}><small>{item.level}{item.artist ? ` · ${item.artist}` : ''}</small><strong>{item.title}</strong><span>{item.arrangement ? `${item.arrangement} · ` : ''}{item.notes.length} notes · {item.bpm} BPM · {item.hand === 'both' ? 'Deux mains' : 'Main droite'}</span><Play /></button>)}</section></main>;
 
   if (screen === 'home' && view === 'exercises') return <main className="page-content piano-page"><header className="page-heading"><span className="eyebrow">Technique</span><h1>Exercices</h1><p>Travaille une difficulté à la fois, sans portée musicale.</p></header><section className="piano-technique-grid">{[['Trouver la bonne note', 'Reconnais une touche éclairée.'], ['Jouer une suite de notes', 'Enchaîne Do, Ré, Mi sans perdre ta position.'], ['Travail du rythme', 'Joue régulièrement dans une fenêtre de ±300 ms.'], ['Intervalles simples', 'Repère les distances entre deux touches.'], ['Main droite', 'Travail mélodique corrigé.'], ['Main gauche', 'Repérage visuel, correction bientôt.'], ['Deux mains', 'Coordination visuelle, détection bientôt.']].map(([title, detail], index) => <button type="button" key={title} onClick={() => { setExercise(PIANO_EXERCISES[Math.min(index, 2)]); setScreen('prepare'); }}><span>{index + 1}</span><strong>{title}</strong><p>{detail}</p><ChevronRight /></button>)}</section></main>;
 
@@ -170,7 +176,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
     const previous = stats?.recentSessions.filter((session) => session.songId === exercise.id).sort((left, right) => right.completionPercent - left.completionPercent)[0];
     const assessed = previous ? previous.correctCount + previous.earlyCount + previous.lateCount + previous.wrongCount : 0;
     const bestScore = previous && assessed ? Math.round((previous.correctCount + previous.earlyCount + previous.lateCount) / assessed * 100) : null;
-    return <main className="page-content piano-page piano-preparation"><button className="piano-back" type="button" onClick={() => setScreen('home')}><ChevronLeft /> Retour</button><section><header><span><Piano /></span><div><small>{exercise.level} · {exercise.notes.length} notes</small><h1>{exercise.title}</h1><p>Prépare ta séance avant d’ouvrir le lecteur.</p></div></header><div className="preparation-score"><small>MEILLEUR SCORE</small><strong>{bestScore === null ? 'Premier essai' : `${bestScore} / 100`}</strong><span>{previous ? `${previous.tempoPercent} % du tempo · ${previous.mode === 'wait' ? 'Apprentissage' : 'Jeu'}` : 'Aucune séance enregistrée'}</span></div><div className="preparation-modes"><button type="button" className={playMode === 'learning' ? 'is-selected' : ''} onClick={() => setPlayMode('learning')}><Target /><span><strong>Apprentissage</strong><small>Le défilement attend chaque bonne note.</small></span>{playMode === 'learning' && <Check />}</button><button type="button" className={playMode === 'game' ? 'is-selected' : ''} onClick={() => setPlayMode('game')}><Play /><span><strong>Jeu</strong><small>Tempo continu, timing et score final.</small></span>{playMode === 'game' && <Check />}</button></div><label className="preparation-tempo"><span>Vitesse du morceau</span><strong>{tempoPercent} % · {Math.round(exercise.bpm * tempoPercent / 100)} BPM</strong><input type="range" min="50" max="100" step="10" value={tempoPercent} onChange={(event) => setTempoPercent(Number(event.target.value))} /></label>{input === 'microphone' && (detector.status === 'denied' || detector.status === 'error') && <div className="account-message is-error"><AlertTriangle /><span>{detector.error}</span></div>}<button type="button" className="primary-button preparation-start" disabled={detector.status === 'requesting'} onClick={() => void beginExercise()}>{detector.status === 'requesting' ? <><Mic2 /> Autorisation du microphone…</> : <><Play /> Lancer {playMode === 'learning' ? 'l’apprentissage' : 'le morceau'}</>}</button></section></main>;
+    return <main className="page-content piano-page piano-preparation"><button className="piano-back" type="button" onClick={() => setScreen('home')}><ChevronLeft /> Retour</button><section><header><span><Piano /></span><div><small>{exercise.artist ? `${exercise.artist} · ` : ''}{exercise.level} · {exercise.notes.length} notes</small><h1>{exercise.title}</h1><p>{exercise.arrangement ?? 'Prépare ta séance avant d’ouvrir le lecteur.'}</p></div></header><div className="preparation-score"><small>MEILLEUR SCORE</small><strong>{bestScore === null ? 'Premier essai' : `${bestScore} / 100`}</strong><span>{previous ? `${previous.tempoPercent} % du tempo · ${previous.mode === 'wait' ? 'Apprentissage' : 'Jeu'}` : 'Aucune séance enregistrée'}</span></div><div className="preparation-modes"><button type="button" className={playMode === 'learning' ? 'is-selected' : ''} onClick={() => setPlayMode('learning')}><Target /><span><strong>Apprentissage</strong><small>Le défilement attend chaque bonne note.</small></span>{playMode === 'learning' && <Check />}</button><button type="button" className={playMode === 'game' ? 'is-selected' : ''} onClick={() => setPlayMode('game')}><Play /><span><strong>Jeu</strong><small>Tempo continu, timing et score final.</small></span>{playMode === 'game' && <Check />}</button></div><label className="preparation-tempo"><span>Vitesse du morceau</span><strong>{tempoPercent} % · {Math.round(exercise.bpm * tempoPercent / 100)} BPM</strong><input type="range" min="50" max="100" step="10" value={tempoPercent} onChange={(event) => setTempoPercent(Number(event.target.value))} /></label>{input === 'microphone' && (detector.status === 'denied' || detector.status === 'error') && <div className="account-message is-error"><AlertTriangle /><span>{detector.error}</span></div>}<button type="button" className="primary-button preparation-start" disabled={detector.status === 'requesting'} onClick={() => void beginExercise()}>{detector.status === 'requesting' ? <><Mic2 /> Autorisation du microphone…</> : <><Play /> Lancer {playMode === 'learning' ? 'l’apprentissage' : 'le morceau'}</>}</button></section></main>;
   }
 
   if (screen === 'calibration') return <main className="page-content piano-page"><button className="piano-back" type="button" onClick={() => { detector.stop(); setScreen('home'); }}><ChevronLeft /> Retour</button><section className="piano-calibration"><Mic2 /><small>TEST DE L’ENTRÉE</small><h1>Joue quelques notes</h1><p>{inputMessage}</p><strong>{input === 'microphone' ? detector.reading ? frenchNote(detector.reading.midi) : 'En attente…' : played !== null ? frenchNote(played) : 'En attente…'}</strong>{input === 'microphone' && detector.status !== 'listening' && <button type="button" className="primary-button" onClick={() => void detector.start()}><Mic2 /> Démarrer le micro</button>}<PianoKeyboard size={keyboardSize} played={played} onPlay={judge} /><p className="piano-limit">Le micro V1 reconnaît une seule note à la fois. Si le résultat oscille, choisis MIDI ou clavier PC.</p></section></main>;
@@ -178,7 +184,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   if (screen === 'chords') return <main className="page-content piano-page"><button className="piano-back" type="button" onClick={() => setScreen('home')}><ChevronLeft /> Retour</button><section className="chord-trainer"><small>ACCORDS · GUIDE VISUEL</small><h1>{PIANO_CHORDS[chordIndex].name}</h1><p>Joue ensemble les touches colorées, puis passe manuellement à l’accord suivant.</p><PianoKeyboard size={keyboardSize} expected={expected} onPlay={judge} /><footer><button type="button" disabled={chordIndex === 0} onClick={() => setChordIndex(chordIndex - 1)}><ChevronLeft /> Précédent</button><span>{chordIndex + 1} / {PIANO_CHORDS.length}</span><button type="button" disabled={chordIndex === PIANO_CHORDS.length - 1} onClick={() => setChordIndex(chordIndex + 1)}>Suivant <ChevronRight /></button></footer></section></main>;
 
   return <main className="piano-player">
-    <header><button type="button" className="piano-player-close" aria-label="Quitter le morceau" title="Quitter" onClick={() => { detector.stop(); stopAll(); setPlaying(false); setScreen('home'); }}><X /></button><div className="piano-player-title"><small>{exercise.level}</small><strong>{exercise.title}</strong></div><div className="piano-player-controls">{!result && <button type="button" className="piano-player-pause" onClick={togglePause}>{playing ? <><Pause /> Pause</> : <><Play /> Reprendre</>}</button>}<span>{correct} juste{correct > 1 ? 's' : ''} · {missed} ratée{missed > 1 ? 's' : ''}</span><progress value={activeIndex + 1} max={exercise.notes.length} /></div></header>
+    <header><button type="button" className="piano-player-close" aria-label="Quitter le morceau" title="Quitter" onClick={() => { detector.stop(); stopAll(); setPlaying(false); setScreen('home'); }}><X /></button><div className="piano-player-title"><small>{exercise.artist ? `${exercise.artist} · ` : ''}{exercise.level}</small><strong>{exercise.title}</strong></div><div className="piano-player-controls">{!result && <button type="button" className="piano-player-pause" onClick={togglePause}>{playing ? <><Pause /> Pause</> : <><Play /> Reprendre</>}</button>}<span>{correct} juste{correct > 1 ? 's' : ''} · {missed} ratée{missed > 1 ? 's' : ''}</span><progress value={activeIndex + 1} max={exercise.notes.length} /></div></header>
     {result ? <section className="piano-results"><Check /><h1>Exercice terminé</h1><div><article><strong>{result.correct}</strong><span>correctes</span></article><article><strong>{result.missed}</strong><span>ratées</span></article><article><strong>{result.averageDelay} ms</strong><span>retard moyen</span></article><article><strong>{result.rhythmAccuracy} %</strong><span>précision rythme</span></article></div><b>{result.global} / 100</b><p>{result.advice}</p><button type="button" className="primary-button" onClick={start}><RotateCcw /> Recommencer</button></section> : <>
       <section className="piano-roll"><div className="piano-roll-lanes">{keyGeometry.filter((key) => !key.black).map((key) => <span key={key.midi} style={{ left: `${key.left}%`, width: `${key.width}%` }} />)}</div><div className="hit-line" />{exercise.notes.map((note, index) => { const elapsed = playMode === 'learning' ? exercise.notes[activeIndex].beat : elapsedBeats; const offset = pianoNoteOffsetPx(note.beat, elapsed); const key = keyGeometry.find((item) => item.midi === note.midi); if (!key) return null; return <i key={index} className={hasPianoNoteReachedHitLine(offset) ? 'has-reached-hit-line' : ''} style={{ '--duration': note.duration, '--note-left': `${key.left}%`, '--note-width': `${key.width}%`, '--note-offset': `${offset}px` } as React.CSSProperties}><span>{frenchNote(note.midi).replace(/\d$/, '')}</span></i>; })}</section>
       <PianoKeyboard size={keyboardSize} played={played} error={errorKey} onPlay={judge} />

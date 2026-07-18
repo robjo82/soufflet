@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_EXERCISES, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoRange, pianoScore, resumeTimeline } from './pianoData';
+import { hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, PIANO_EXERCISES, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoRange, pianoScore, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
-    expect(PIANO_EXERCISES.map((item) => item.notes.length)).toEqual([8, 14, 24, 18]);
-    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(1);
-    expect(PIANO_EXERCISES.every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
+    expect(PIANO_EXERCISES.slice(0, 4).map((item) => item.notes.length)).toEqual([8, 14, 24, 18]);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(2);
+    expect(PIANO_EXERCISES.filter((item) => item.id !== 'my-way-advanced').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
+  });
+  it('offers the supplied My Way score at three progressive levels', () => {
+    const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'My Way');
+    expect(arrangements).toHaveLength(3);
+    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Simple', 'Modéré']);
+    expect(arrangements.map((item) => item.artist)).toEqual(['Frank Sinatra', 'Frank Sinatra', 'Frank Sinatra']);
+    expect(arrangements.map((item) => item.notes.length)).toEqual([27, 62, 131]);
+    expect(arrangements[2]).toMatchObject({ hand: 'both', bpm: 72 });
+    expect(arrangements[2].notes.some((note) => note.midi < 60)).toBe(true);
+    expect(new Set(arrangements[2].notes.map((note) => note.beat)).size).toBeLessThan(arrangements[2].notes.length);
+    expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(69);
   });
   it('centers compact keyboards around middle C', () => {
     expect(pianoRange(25)).toContain(60);
