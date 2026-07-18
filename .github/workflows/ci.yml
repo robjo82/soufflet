@@ -32,6 +32,8 @@ jobs:
       - run: npm run build
       - name: Validate production image
         run: docker build --build-arg APP_VERSION=pr-${GITHUB_SHA::7} -t soufflet:test .
+      - name: Validate 3D asset in production image
+        run: docker run --rm --entrypoint sh soufflet:test -c 'test -s /app/dist/models/hohner-club-i.glb'
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
