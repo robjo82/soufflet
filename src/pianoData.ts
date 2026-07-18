@@ -75,6 +75,51 @@ const MY_WAY_TWO_HANDS = [
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
+// Traditional melody transcribed in C major from the public-domain ABC source.
+// The opening G is an anacrusis; the following notes preserve the original 3/4 pulse.
+const SE_CANTA_EASY = timedNotes([
+  [67, 0, 1],
+  [72, 1, 2], [76, 3, 1],
+  [72, 4, 2], [74, 6, 1],
+  [76, 7, 3],
+  [74, 10, 2], [76, 12, 1],
+  [77, 13, 3],
+  [76, 16, 2], [72, 18, 1],
+  [74, 19, 2], [67, 21, 1],
+  [72, 22, 2],
+]);
+
+const SE_CANTA_MELODY = timedNotes([
+  [67, 0, 1],
+  [72, 1, 1], [72, 2, 1], [76, 3, .5], [74, 3.5, .5],
+  [72, 4, 1], [72, 5, 1], [72, 6, .5], [74, 6.5, .5],
+  [76, 7, 2], [76, 9, 1],
+  [74, 10, 2], [74, 12, .5], [76, 12.5, .5],
+  [77, 13, 2], [77, 15, 1],
+  [76, 16, 1], [76, 17, 1], [72, 18, .5], [76, 18.5, .5],
+  [74, 19, 2], [67, 21, 1],
+  [72, 22, 2],
+]);
+
+const SE_CANTA_HARMONY: Array<[beat: number, root: number, intervals: number[]]> = [
+  [1, 48, [0, 4, 7]],
+  [4, 48, [0, 4, 7]],
+  [7, 48, [0, 4, 7]],
+  [10, 43, [0, 4, 7]],
+  [13, 41, [0, 4, 7]],
+  [16, 48, [0, 4, 7]],
+  [19, 43, [0, 4, 7]],
+  [22, 48, [0, 4, 7]],
+];
+
+const SE_CANTA_TWO_HANDS = [
+  ...SE_CANTA_MELODY.map((note) => ({ ...note, hand: 'right' as const })),
+  ...SE_CANTA_HARMONY.flatMap(([beat, root, intervals]) => [
+    { midi: root, beat, duration: 1, hand: 'left' as const },
+    ...intervals.map((interval) => ({ midi: root + interval, beat: beat + 1, duration: beat === 22 ? 1 : 2, hand: 'left' as const })),
+  ]),
+].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
+
 export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'piano-three-steps', title: 'Trois petits pas', level: 'Très simple', bpm: 60, hand: 'right', notes: phrase([60, 62, 64, 62, 60, 62, 64, 60], [.5, .5, 1, 1.5, .5, 2, 1, .5]) },
   { id: 'piano-five-lights', title: 'Cinq lumières', level: 'Simple', bpm: 72, hand: 'right', notes: phrase([60, 62, 64, 65, 67, 65, 64, 62, 60, 62, 64, 65, 67, 60]) },
@@ -83,6 +128,9 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'my-way-beginner', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', notes: MY_WAY_EASY },
   { id: 'my-way-intermediate', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: MY_WAY_MELODY },
   { id: 'my-way-advanced', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: MY_WAY_TWO_HANDS },
+  { id: 'se-canta-beginner', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', notes: SE_CANTA_EASY },
+  { id: 'se-canta-intermediate', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: SE_CANTA_MELODY },
+  { id: 'se-canta-advanced', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: SE_CANTA_TWO_HANDS },
 ];
 
 export function pianoNotesForHand(notes: PianoExercise['notes'], hand: PianoPracticeHand) {

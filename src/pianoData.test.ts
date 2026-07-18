@@ -4,8 +4,8 @@ import { classifyPianoAttempt, hasPianoNoteReachedHitLine, isPianoHit, isPianoNo
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
     expect(PIANO_EXERCISES.slice(0, 4).map((item) => item.notes.length)).toEqual([8, 14, 24, 18]);
-    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(2);
-    expect(PIANO_EXERCISES.filter((item) => item.id !== 'my-way-advanced').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(3);
+    expect(PIANO_EXERCISES.filter((item) => item.hand !== 'both').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
   });
   it('offers the supplied My Way score at three progressive levels', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'My Way');
@@ -17,6 +17,17 @@ describe('piano V1', () => {
     expect(arrangements[2].notes.some((note) => note.midi < 60)).toBe(true);
     expect(new Set(arrangements[2].notes.map((note) => note.beat)).size).toBeLessThan(arrangements[2].notes.length);
     expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(69);
+  });
+  it('offers Se Canta at three progressive levels', () => {
+    const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Se Canta');
+    expect(arrangements).toHaveLength(3);
+    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Simple', 'Modéré']);
+    expect(arrangements.map((item) => item.artist)).toEqual(['Traditionnel occitan', 'Traditionnel occitan', 'Traditionnel occitan']);
+    expect(arrangements.map((item) => item.notes.length)).toEqual([14, 23, 55]);
+    expect(arrangements[2]).toMatchObject({ hand: 'both', bpm: 72 });
+    expect(pianoNotesForHand(arrangements[2].notes, 'left')).toHaveLength(32);
+    expect(pianoNotesForHand(arrangements[2].notes, 'right')).toHaveLength(23);
+    expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(24);
   });
   it('separates both-hand arrangements into playable left and right parts', () => {
     const dialogue = PIANO_EXERCISES.find((item) => item.id === 'piano-two-hands')!;
