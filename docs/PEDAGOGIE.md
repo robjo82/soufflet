@@ -8,7 +8,7 @@
 4. **Pratique distribuée** : les gestes fragiles reviennent tôt ; les gestes maîtrisés sont espacés. Une séance courte alterne rappel, nouveauté, application et mini-performance.
 5. **Démonstration puis retrait de l’aide** : démonstration, guidage, attente de la bonne note, boucle ralentie, puis performance sans repères.
 
-Chaque nouveau départ peut être précédé d’une mesure de décompte adaptée à la signature rythmique. Une reprise après pause repart immédiatement. La tablature recentre progressivement la note active pour rester lisible à distance sans demander d’action manuelle.
+Chaque nouveau départ peut être précédé d’une mesure de décompte adaptée à la signature rythmique. Une reprise après pause repart immédiatement. Après validation de la dernière note, toute la phrase passe à l’état accompli et le microphone s’arrête ; `Commencer` ou `Espace` relance ensuite le morceau depuis le début en une seule action. La tablature recentre progressivement la note active pour rester lisible à distance sans demander d’action manuelle.
 
 L’interface expose quatre modes principaux seulement : démonstration, lecture guidée, attente de la bonne note et performance. La partie de l’instrument est un réglage orthogonal — mélodie, basses ou deux mains — qui reconstruit la frise à partir des événements réellement disponibles. Les exercices de rythme et de soufflet restent des ateliers ciblés, accessibles sans être imposés pendant la découverte. Le jeu des touches est un accès principal au même titre que le parcours et la bibliothèque.
 

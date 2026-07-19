@@ -8,10 +8,11 @@ interface ScoreStripProps {
   activeIndex: number;
   notation: Notation;
   hand?: Hand;
+  completed?: boolean;
   onSelect: (event: SongEvent, index: number) => void;
 }
 
-export function ScoreStrip({ song, activeIndex, notation, hand = 'right', onSelect }: ScoreStripProps) {
+export function ScoreStrip({ song, activeIndex, notation, hand = 'right', completed = false, onSelect }: ScoreStripProps) {
   const stripRef = useRef<HTMLDivElement>(null);
   const eventRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -50,7 +51,7 @@ export function ScoreStrip({ song, activeIndex, notation, hand = 'right', onSele
             <button
               type="button"
               ref={(element) => { eventRefs.current[index] = element; }}
-              className={`score-event ${index === activeIndex ? 'is-active' : ''} ${index < activeIndex ? 'is-past' : ''}`}
+              className={`score-event ${!completed && index === activeIndex ? 'is-active' : ''} ${completed || index < activeIndex ? 'is-past' : ''}`}
               style={{ '--duration': Math.max(.65, event.duration) } as React.CSSProperties}
               key={event.id}
               onClick={() => onSelect(event, index)}
@@ -63,7 +64,7 @@ export function ScoreStrip({ song, activeIndex, notation, hand = 'right', onSele
               <strong>{displayNote(event.note, notation, event.buttonId, event.direction)}</strong>
               <small>{rhythmSymbol(event.duration)}</small>
               {uncertain && <AlertTriangle className="confidence-warning" size={13} />}
-              {index === activeIndex && <ChevronRight className="playhead-mark" size={16} />}
+              {!completed && index === activeIndex && <ChevronRight className="playhead-mark" size={16} />}
             </button>
           );
         })}

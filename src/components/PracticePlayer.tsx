@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AudioLines, ChevronDown, CircleGauge, Expand, Flag, Gauge,
-  Hand, Minimize, Music2, Pause, Play, Redo2, Repeat2, Settings2, SlidersHorizontal, TimerReset, Volume2,
+  Hand, Keyboard, Minimize, Music2, Pause, Play, Redo2, Repeat2, Settings2, SlidersHorizontal, TimerReset, Volume2, X,
 } from 'lucide-react';
 import { AccordionView } from './AccordionView';
 import { ScoreStrip } from './ScoreStrip';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import type { AccordionConfig, Hand as HandFocus, Notation, PracticeSessionInput, PracticeSettings, Song } from '../types';
+import type {
+  AccordionConfig, Hand as HandFocus, Notation, PracticeSessionInput, PracticeSettings,
+  PrimaryPracticeMode, Song, SupplementalPracticeMode,
+} from '../types';
 import { HAND_FOCUS_OPTIONS, PRACTICE_MODES, PRIMARY_PRACTICE_MODES, SUPPLEMENTAL_PRACTICE_MODES } from '../practiceModes';
-import { getCountInSequence, getWaitAdvance } from '../practiceProgress';
+import { getCountInSequence, getPlaybackStartIndex, getWaitAdvance } from '../practiceProgress';
 import { midiMatches } from '../audioTraining';
 import { createPracticeTimeline } from '../practiceTimeline';
 
@@ -46,6 +49,8 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [flagged, setFlagged] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+  const [sessionFinished, setSessionFinished] = useState(false);
+  const [shortcutsVisible, setShortcutsVisible] = useState(false);
   const [results, setResults] = useState({ correct: 0, early: 0, late: 0, wrong: 0 });
   const [feedback, setFeedback] = useState<{ kind: 'good' | 'hint' | 'neutral'; title: string; detail: string }>({
     kind: 'neutral', title: 'Prêt quand tu l’es', detail: 'Regarde la direction du soufflet, puis appuie sur Lecture.',
@@ -101,6 +106,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
     activeSegmentStartedAtRef.current = null;
     accumulatedActiveMsRef.current = 0;
     sessionCompletedRef.current = false;
+    setSessionFinished(false);
     maxIndexRef.current = 0;
     resultsRef.current = { correct: 0, early: 0, late: 0, wrong: 0 };
   }, []);
@@ -259,12 +265,28 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
     });
   }, [resetResults, resetSessionTracking, song, stop]);
 
-  const startPlayback = useCallback(() => {
+  const selectMode = useCallback((mode: PrimaryPracticeMode | SupplementalPracticeMode) => {
+    stop();
+    resetSessionTracking();
+    resetResults();
+    setModeOpen(false);
+    setSettings((value) => ({ ...value, mode }));
+    lastCorrectIndexRef.current = -1;
+    waitForReleaseRef.current = null;
+    ignoreMicrophoneUntilRef.current = 0;
+    if (mode === 'wait') {
+      setFeedback({ kind: 'neutral', title: 'La lecture t’attend', detail: 'Appuie sur Commencer, puis joue le geste éclairé. Chaque réussite affiche immédiatement le suivant.' });
+    }
+  }, [resetResults, resetSessionTracking, stop]);
+
+  const startPlayback = useCallback((startIndex = activeIndex) => {
     clearCountIn();
+    setActiveIndex(startIndex);
+    setActiveAccompanimentIndex(accompanimentIndexAt(song, practiceEvents[startIndex]?.beat ?? 0));
     if (!sessionStartedAtRef.current) sessionStartedAtRef.current = new Date().toISOString();
     activeSegmentStartedAtRef.current = performance.now();
     startedAtRef.current = performance.now();
-    startBeatRef.current = practiceEvents[activeIndex]?.beat ?? 0;
+    startBeatRef.current = practiceEvents[startIndex]?.beat ?? 0;
     lastPlayedRef.current = -1;
     lastCorrectIndexRef.current = -1;
     lastAccompanimentIndexRef.current = -1;
@@ -272,14 +294,20 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
     waitForReleaseRef.current = null;
     ignoreMicrophoneUntilRef.current = 0;
     setPlaying(true);
-    if (practiceWithMic && detectorStatus === 'idle') void startDetector();
-  }, [activeIndex, clearCountIn, detectorStatus, practiceEvents, practiceWithMic, startDetector]);
+  }, [activeIndex, clearCountIn, practiceEvents, song]);
 
   const begin = useCallback(() => {
     if (playing || countInBeat !== null) { stop(); return; }
-    if (sessionCompletedRef.current) resetSessionTracking();
+    const startIndex = getPlaybackStartIndex(activeIndex, sessionCompletedRef.current, settings.loop, settings.loopStart);
+    if (sessionCompletedRef.current) {
+      resetSessionTracking();
+      resetResults();
+      setActiveIndex(startIndex);
+      setActiveAccompanimentIndex(accompanimentIndexAt(song, practiceEvents[startIndex]?.beat ?? 0));
+      setFeedback({ kind: 'neutral', title: 'Nouveau départ', detail: 'Le morceau repart du début avec les mêmes réglages.' });
+    }
     if (!settings.countIn || sessionStartedAtRef.current) {
-      startPlayback();
+      startPlayback(startIndex);
       return;
     }
     setCountInBeat(countInSequence[0]);
@@ -290,12 +318,20 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
         if (soundEnabled) click(false);
       }, (index + 1) * beatMs));
     });
-    countInTimersRef.current.push(window.setTimeout(startPlayback, countInSequence.length * beatMs));
-  }, [beatMs, click, countInBeat, countInSequence, playing, resetSessionTracking, settings.countIn, soundEnabled, startPlayback, stop]);
+    countInTimersRef.current.push(window.setTimeout(() => startPlayback(startIndex), countInSequence.length * beatMs));
+  }, [activeIndex, beatMs, click, countInBeat, countInSequence, playing, practiceEvents, resetResults, resetSessionTracking, settings.countIn, settings.loop, settings.loopStart, song, soundEnabled, startPlayback, stop]);
 
   useEffect(() => {
     if (!practiceWithMic && detectorStatus !== 'idle') stopDetector();
   }, [detectorStatus, practiceWithMic, stopDetector]);
+
+  useEffect(() => {
+    if (playing && practiceWithMic && detectorStatus === 'idle') void startDetector();
+  }, [detectorStatus, playing, practiceWithMic, startDetector]);
+
+  useEffect(() => {
+    if (sessionFinished && detectorStatus !== 'idle') stopDetector();
+  }, [detectorStatus, sessionFinished, stopDetector]);
 
   useEffect(() => {
     if (!playing) return;
@@ -341,6 +377,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
         } else {
           finishActiveSegment();
           sessionCompletedRef.current = true;
+          setSessionFinished(true);
           void persistSession(true);
           setPlaying(false);
           setFeedback({ kind: 'good', title: 'Bravo, passage terminé !', detail: 'Tu as gardé le fil jusqu’au bout. Rejoue à 90 % quand tu te sens prêt.' });
@@ -386,6 +423,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
         if (advance.finished) {
           finishActiveSegment();
           sessionCompletedRef.current = true;
+          setSessionFinished(true);
           void persistSession(true);
           setPlaying(false);
           setFeedback({ kind: 'good', title: 'Exercice terminé !', detail: 'Tu as trouvé toutes les notes sans limite de temps.' });
@@ -434,14 +472,50 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
   }, [assessPitch, detectedReading, settings.mode]);
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Control') {
+        setShortcutsVisible(true);
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const isEditable = target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '');
+      if (isEditable || event.ctrlKey || event.metaKey || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (shortcutsVisible) {
+        if (event.key === 'Escape' || key === '?') setShortcutsVisible(false);
+        return;
+      }
       if (event.code === 'Space') { event.preventDefault(); begin(); }
-      if (event.key.toLowerCase() === 'r') restart();
-      if (event.key.toLowerCase() === 'l') setSettings((value) => ({ ...value, loop: !value.loop }));
+      else if (key === 'r') restart();
+      else if (key === 'l') setSettings((value) => ({ ...value, loop: !value.loop }));
+      else if (key === 'm') setSettings((value) => ({ ...value, metronome: !value.metronome }));
+      else if (key === 's') setSoundEnabled((value) => !value);
+      else if (key === 'p') setShowScore((value) => !value);
+      else if (key === 'f') void toggleFullscreen();
+      else if (key === '?') setShortcutsVisible((value) => !value);
+      else if (!playing && countInBeat === null && event.key === 'ArrowLeft') {
+        event.preventDefault();
+        selectIndex(Math.max(0, activeIndex - 1));
+      } else if (!playing && countInBeat === null && event.key === 'ArrowRight') {
+        event.preventDefault();
+        selectIndex(Math.min(practiceEvents.length - 1, activeIndex + 1));
+      } else if (['1', '2', '3', '4'].includes(event.key)) {
+        selectMode(PRIMARY_PRACTICE_MODES[Number(event.key) - 1].id);
+      }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [begin, restart]);
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Control') setShortcutsVisible(false);
+    };
+    const onBlur = () => setShortcutsVisible(false);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [activeIndex, begin, countInBeat, playing, practiceEvents.length, restart, selectIndex, selectMode, shortcutsVisible, toggleFullscreen]);
 
   const closePractice = useCallback(() => {
     finishActiveSegment();
@@ -464,6 +538,9 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
         <div className="practice-meta">
           <span><CircleGauge size={15} /> {Math.round(actualBpm)} BPM</span>
           <span>{song.key}</span>
+          <button type="button" className="shortcut-hint" onClick={() => setShortcutsVisible(true)} title="Afficher les raccourcis clavier">
+            <Keyboard size={15} /><kbd>Ctrl</kbd><span>Raccourcis</span>
+          </button>
           <button
             type="button"
             className="icon-button"
@@ -489,21 +566,13 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
               <div className="mode-menu">
                 <small className="mode-group-label">MODES PRINCIPAUX</small>
                 {PRIMARY_PRACTICE_MODES.map((mode) => (
-                  <button type="button" key={mode.id} className={settings.mode === mode.id ? 'is-selected' : ''} onClick={() => {
-                    setSettings((value) => ({ ...value, mode: mode.id })); setModeOpen(false); stop(); resetSessionTracking(); resetResults();
-                    lastCorrectIndexRef.current = -1;
-                    waitForReleaseRef.current = null;
-                    ignoreMicrophoneUntilRef.current = 0;
-                    if (mode.id === 'wait') setFeedback({ kind: 'neutral', title: 'La lecture t’attend', detail: 'Appuie sur Commencer, puis joue le geste éclairé. Chaque réussite affiche immédiatement le suivant.' });
-                  }}>
+                  <button type="button" key={mode.id} className={settings.mode === mode.id ? 'is-selected' : ''} onClick={() => selectMode(mode.id)}>
                     <span>{mode.label}</span><small>{mode.short}</small>
                   </button>
                 ))}
                 <small className="mode-group-label is-supplemental">ATELIERS CIBLÉS</small>
                 {SUPPLEMENTAL_PRACTICE_MODES.map((mode) => (
-                  <button type="button" key={mode.id} className={settings.mode === mode.id ? 'is-selected' : ''} onClick={() => {
-                    setSettings((value) => ({ ...value, mode: mode.id })); setModeOpen(false); stop(); resetSessionTracking(); resetResults();
-                  }}>
+                  <button type="button" key={mode.id} className={settings.mode === mode.id ? 'is-selected' : ''} onClick={() => selectMode(mode.id)}>
                     <span>{mode.label}</span><small>{mode.short}</small>
                   </button>
                 ))}
@@ -537,11 +606,11 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
           {settings.mode !== 'performance' && (
             <AccordionView
               config={accordion}
-              activeEvent={displayedEvent}
+              activeEvent={sessionFinished ? undefined : displayedEvent}
               direction={currentEvent?.direction}
               notation={notation}
               detectedMidi={detectedReading?.midi}
-              depressActive={playing && countInBeat === null}
+              depressActive={playing && countInBeat === null && !sessionFinished}
               onButtonPress={(buttonId, direction) => {
                 if (direction !== currentEvent?.direction) {
                   setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${currentEvent?.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
@@ -560,7 +629,34 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
         </section>
 
         {settings.mode !== 'performance' && showScore && (
-          <ScoreStrip song={scoreSong} activeIndex={activeIndex} notation={notation} hand={settings.hand} onSelect={(_, index) => selectIndex(index)} />
+          <ScoreStrip song={scoreSong} activeIndex={activeIndex} notation={notation} hand={settings.hand} completed={sessionFinished} onSelect={(_, index) => selectIndex(index)} />
+        )}
+
+        {shortcutsVisible && (
+          <div className="shortcut-overlay" role="dialog" aria-modal="true" aria-labelledby="shortcut-title" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShortcutsVisible(false);
+          }}>
+            <section className="shortcut-card">
+              <header>
+                <span><Keyboard size={22} /></span>
+                <div><small>JOUER SANS LÂCHER L’ACCORDÉON</small><h2 id="shortcut-title">Raccourcis clavier</h2></div>
+                <button type="button" className="icon-button" onClick={() => setShortcutsVisible(false)} aria-label="Fermer les raccourcis"><X /></button>
+              </header>
+              <div className="shortcut-grid">
+                <span><kbd>Espace</kbd><b>Lecture / pause</b></span>
+                <span><kbd>R</kbd><b>Recommencer</b></span>
+                <span><kbd>L</kbd><b>Boucle</b></span>
+                <span><kbd>M</kbd><b>Métronome</b></span>
+                <span><kbd>S</kbd><b>Son de l’app</b></span>
+                <span><kbd>P</kbd><b>Partition</b></span>
+                <span><kbd>F</kbd><b>Plein écran</b></span>
+                <span><kbd>← →</kbd><b>Parcourir les notes</b></span>
+                <span><kbd>1—4</kbd><b>Choisir un mode</b></span>
+                <span><kbd>?</kbd><b>Afficher ce rappel</b></span>
+              </div>
+              <p>Maintiens <kbd>Ctrl</kbd> à tout moment pour retrouver ce rappel.</p>
+            </section>
+          </div>
         )}
 
         <section className={`coach-feedback feedback-${feedback.kind}`} aria-live="polite">

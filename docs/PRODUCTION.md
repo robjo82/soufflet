@@ -7,7 +7,7 @@
 - bibliothèque commune avec licence et provenance ;
 - représentation bisonore en volume, soufflet plissé synchronisé et touches animées ;
 - profil visuel procédural dédié au Hohner Club I, sans réutilisation des photographies de référence ;
-- lecture/synthèse au tempo, boucle et raccourcis ;
+- lecture/synthèse au tempo, boucle, reprise en une action et raccourcis découvrables avec `Ctrl` ;
 - accordeur monophonique navigateur ;
 - tutoriel microphone-first : notes, attaques rythmiques, basses monophoniques et profil acoustique pousser/tirer local ;
 - SQLite, API, validation d’entrée, limite d’upload et conteneur non-root ;

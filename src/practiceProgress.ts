@@ -9,6 +9,15 @@ export function getCountInSequence(beatsPerMeasure: number) {
   return Array.from({ length: beats }, (_, index) => beats - index);
 }
 
+export function getPlaybackStartIndex(
+  activeIndex: number,
+  completed: boolean,
+  loop: boolean,
+  loopStart: number,
+) {
+  return completed ? (loop ? Math.max(0, loopStart) : 0) : Math.max(0, activeIndex);
+}
+
 export function getWaitAdvance(
   currentIndex: number,
   eventCount: number,

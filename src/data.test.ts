@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { adaptSongToAccordion, DEMO_SONG, displayNote, FALLBACK_ACCORDIONS } from './data';
-import { frequencyToPitch, rememberReliablePitch } from './hooks/usePitchDetector';
+import { EMPTY_PITCH_STABILITY, frequencyToPitch, rememberReliablePitch, stabilizePitchReading } from './hooks/usePitchDetector';
 import { getAccordionVisualVariant, getMelodyButtonSize } from './components/accordionLayout';
 import { HAND_FOCUS_OPTIONS, PRACTICE_MODES, PRIMARY_PRACTICE_MODES } from './practiceModes';
 import { TUTORIAL_MODE_TRIALS } from './tutorialFlow';
-import { getCountInSequence, getWaitAdvance } from './practiceProgress';
+import { getCountInSequence, getPlaybackStartIndex, getWaitAdvance } from './practiceProgress';
 import { createPracticeTimeline } from './practiceTimeline';
 import { classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, type AudioFeatureFrame, type BellowsProfile } from './audioTraining';
 
@@ -57,6 +57,27 @@ describe('pitch and notation', () => {
     expect(rememberReliablePitch(previous, null)).toBe(previous);
     expect(rememberReliablePitch(previous, ambiguous)).toBe(previous);
     expect(rememberReliablePitch(previous, next)).toBe(next);
+  });
+
+  it('ignores a brief harmonic and requires a stable note change', () => {
+    const c = frequencyToPitch(261.63, .91, .08);
+    const g = frequencyToPitch(392, .93, .08);
+    let state = stabilizePitchReading(EMPTY_PITCH_STABILITY, c);
+    expect(state.reading).toBeNull();
+    state = stabilizePitchReading(state.state, c);
+    expect(state.reading?.midi).toBe(60);
+
+    const transient = stabilizePitchReading(state.state, g);
+    expect(transient.reading).toBeNull();
+    const recovered = stabilizePitchReading(transient.state, c);
+    expect(recovered.reading?.midi).toBe(60);
+
+    const switchOne = stabilizePitchReading(recovered.state, g);
+    const switchTwo = stabilizePitchReading(switchOne.state, g);
+    const switchThree = stabilizePitchReading(switchTwo.state, g);
+    expect(switchOne.reading).toBeNull();
+    expect(switchTwo.reading).toBeNull();
+    expect(switchThree.reading?.midi).toBe(67);
   });
 
   it('renders the supported beginner notations', () => {
@@ -130,6 +151,12 @@ describe('practice progression', () => {
 
   it('returns to the loop start after the selected final note', () => {
     expect(getWaitAdvance(4, 8, true, 2, 4)).toEqual({ nextIndex: 2, finished: false, looped: true });
+  });
+
+  it('restarts a completed session from the beginning in one action', () => {
+    expect(getPlaybackStartIndex(11, true, false, 0)).toBe(0);
+    expect(getPlaybackStartIndex(11, true, true, 3)).toBe(3);
+    expect(getPlaybackStartIndex(6, false, false, 0)).toBe(6);
   });
 });
 
