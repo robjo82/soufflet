@@ -5,43 +5,70 @@ import { canManageNativeMicrophone, openNativeMicrophoneSettings, requestNativeM
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 
-function autoCorrelate(buffer: Float32Array, sampleRate: number) {
+const MIN_PITCH_HZ = 55;
+const MAX_PITCH_HZ = 2500;
+const YIN_THRESHOLD = 0.15;
+const MIN_PITCH_CLARITY = 0.62;
+
+export function detectPitchFrequency(buffer: Float32Array, sampleRate: number) {
   let rms = 0;
   for (const sample of buffer) rms += sample * sample;
   rms = Math.sqrt(rms / buffer.length);
   if (rms < 0.008) return { frequency: -1, clarity: 0, volume: rms };
 
-  const minLag = Math.floor(sampleRate / 1200);
-  const maxLag = Math.min(Math.floor(sampleRate / 55), buffer.length - 1);
-  let bestLag = -1;
-  let bestCorrelation = 0;
-  let previous = 0;
-  const correlations: number[] = [];
+  const minLag = Math.max(2, Math.floor(sampleRate / MAX_PITCH_HZ));
+  const maxLag = Math.min(Math.ceil(sampleRate / MIN_PITCH_HZ), Math.floor(buffer.length / 2));
+  const comparisonLength = buffer.length - maxLag;
+  const difference = new Float32Array(maxLag + 1);
+  const normalizedDifference = new Float32Array(maxLag + 1);
 
-  for (let lag = minLag; lag <= maxLag; lag += 1) {
-    let correlation = 0;
-    let energyA = 0;
-    let energyB = 0;
-    for (let i = 0; i < buffer.length - lag; i += 1) {
-      correlation += buffer[i] * buffer[i + lag];
-      energyA += buffer[i] * buffer[i];
-      energyB += buffer[i + lag] * buffer[i + lag];
+  for (let lag = 1; lag <= maxLag; lag += 1) {
+    let sum = 0;
+    for (let index = 0; index < comparisonLength; index += 1) {
+      const delta = buffer[index] - buffer[index + lag];
+      sum += delta * delta;
     }
-    correlation /= Math.sqrt(energyA * energyB) || 1;
-    correlations[lag] = correlation;
-    if (correlation > bestCorrelation && correlation > previous) {
-      bestCorrelation = correlation;
-      bestLag = lag;
-    }
-    previous = correlation;
+    difference[lag] = sum;
   }
 
-  if (bestLag < 0 || bestCorrelation < 0.62) return { frequency: -1, clarity: bestCorrelation, volume: rms };
+  normalizedDifference[0] = 1;
+  let runningSum = 0;
+  for (let lag = 1; lag <= maxLag; lag += 1) {
+    runningSum += difference[lag];
+    normalizedDifference[lag] = runningSum > 0 ? difference[lag] * lag / runningSum : 1;
+  }
 
-  const left = correlations[bestLag - 1] ?? bestCorrelation;
-  const right = correlations[bestLag + 1] ?? bestCorrelation;
-  const shift = (right - left) / (2 * (2 * bestCorrelation - left - right) || 1);
-  return { frequency: sampleRate / (bestLag + shift), clarity: bestCorrelation, volume: rms };
+  // YIN deliberately selects the first convincing valley. A global maximum of
+  // autocorrelation can instead select two or four periods and report G4 for G5.
+  let selectedLag = -1;
+  for (let lag = minLag; lag <= maxLag; lag += 1) {
+    if (normalizedDifference[lag] >= YIN_THRESHOLD) continue;
+    selectedLag = lag;
+    while (selectedLag < maxLag && normalizedDifference[selectedLag + 1] < normalizedDifference[selectedLag]) {
+      selectedLag += 1;
+    }
+    break;
+  }
+
+  if (selectedLag < 0) {
+    let bestValue = Number.POSITIVE_INFINITY;
+    for (let lag = minLag; lag <= maxLag; lag += 1) {
+      if (normalizedDifference[lag] < bestValue) {
+        bestValue = normalizedDifference[lag];
+        selectedLag = lag;
+      }
+    }
+  }
+
+  const clarity = selectedLag > 0 ? 1 - normalizedDifference[selectedLag] : 0;
+  if (selectedLag < 0 || clarity < MIN_PITCH_CLARITY) return { frequency: -1, clarity, volume: rms };
+
+  const left = normalizedDifference[selectedLag - 1] ?? normalizedDifference[selectedLag];
+  const center = normalizedDifference[selectedLag];
+  const right = normalizedDifference[selectedLag + 1] ?? center;
+  const denominator = left - 2 * center + right;
+  const shift = denominator === 0 ? 0 : Math.max(-1, Math.min(1, (left - right) / (2 * denominator)));
+  return { frequency: sampleRate / (selectedLag + shift), clarity, volume: rms };
 }
 
 export function frequencyToPitch(frequency: number, confidence = 1, volume = 1, concertA = 440): PitchReading {
@@ -134,7 +161,7 @@ export function usePitchDetector() {
         return false;
       }
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false },
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
       });
       const context = new AudioContext({ latencyHint: 'interactive' });
       await context.resume();
@@ -151,10 +178,10 @@ export function usePitchDetector() {
       setStatus('listening');
 
       const analyze = (timestamp: number) => {
-        analyser.getFloatTimeDomainData(buffer);
-        const result = autoCorrelate(buffer, context.sampleRate);
         if (timestamp - lastUpdateRef.current > 70) {
           lastUpdateRef.current = timestamp;
+          analyser.getFloatTimeDomainData(buffer);
+          const result = detectPitchFrequency(buffer, context.sampleRate);
           const pitch = result.frequency > 0 ? frequencyToPitch(result.frequency, result.clarity, result.volume) : null;
           analyser.getFloatFrequencyData(frequencyData);
           let spectralEnergy = 0;
