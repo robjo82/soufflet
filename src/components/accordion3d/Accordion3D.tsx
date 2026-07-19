@@ -15,6 +15,12 @@ interface MotionNode {
   openPosition: Vector3;
   closedRotation: Euler;
   openRotation: Euler;
+  foldPhase?: number;
+}
+
+interface MorphNode {
+  influences: number[];
+  targetIndex: number;
 }
 
 interface ButtonVisual {
@@ -32,7 +38,9 @@ interface ButtonNode {
   visuals: ButtonVisual[];
 }
 
-const MODEL_URL = '/models/hohner-club-i.glb';
+// Public models keep a stable filename, so the revision must change whenever
+// their binary content changes. This also invalidates useGLTF's in-memory cache.
+const MODEL_URL = '/models/hohner-club-i.glb?revision=organic-wave-2';
 const ACTIVE_BUTTON_COLOR = new Color('#ff5738');
 
 function blenderVector(values: unknown, fallback: Vector3) {
@@ -53,10 +61,12 @@ function Model({ activeButtonIds = [], bellowsAmount, onButtonPress }: Accordion
   const gltf = useGLTF(MODEL_URL);
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
   const buttonProgress = useRef(new Map<string, number>());
+  const smoothedBellowsAmount = useRef(bellowsAmount);
 
   const contract = useMemo(() => {
     const buttons = new Map<string, ButtonNode>();
     const motion: MotionNode[] = [];
+    const morphs: MorphNode[] = [];
     scene.traverse((node) => {
       const buttonId = typeof node.userData.buttonId === 'string' ? node.userData.buttonId : undefined;
       if (buttonId) {
@@ -91,10 +101,21 @@ function Model({ activeButtonIds = [], bellowsAmount, onButtonPress }: Accordion
           openPosition: blenderVector(node.userData.openPosition, node.position),
           closedRotation: blenderEuler(node.userData.closedRotation, node.rotation),
           openRotation: blenderEuler(node.userData.openRotation, node.rotation),
+          foldPhase: node.userData.bellowsRole === 'fold' && typeof node.userData.normalized_position === 'number'
+            ? node.userData.normalized_position
+            : undefined,
+        });
+      }
+      const morphTarget = typeof node.userData.morphTarget === 'string' ? node.userData.morphTarget : undefined;
+      if (morphTarget) {
+        node.traverse((morphNode) => {
+          if (!(morphNode instanceof Mesh) || !morphNode.morphTargetDictionary || !morphNode.morphTargetInfluences) return;
+          const targetIndex = morphNode.morphTargetDictionary[morphTarget];
+          if (typeof targetIndex === 'number') morphs.push({ influences: morphNode.morphTargetInfluences, targetIndex });
         });
       }
     });
-    return { buttons, motion };
+    return { buttons, motion, morphs };
   }, [scene]);
 
   useEffect(() => () => {
@@ -115,14 +136,26 @@ function Model({ activeButtonIds = [], bellowsAmount, onButtonPress }: Accordion
         material.emissiveIntensity = restEmissiveIntensity + progress * 1.35;
       });
     });
-    const amount = MathUtils.clamp(bellowsAmount, 0, 1);
-    contract.motion.forEach(({ node, closedPosition, openPosition, closedRotation, openRotation }) => {
+    const targetAmount = MathUtils.clamp(bellowsAmount, 0, 1);
+    const amount = MathUtils.damp(smoothedBellowsAmount.current, targetAmount, 6.5, delta);
+    const inertia = MathUtils.clamp(targetAmount - amount, -0.16, 0.16);
+    smoothedBellowsAmount.current = amount;
+    contract.morphs.forEach(({ influences, targetIndex }) => {
+      influences[targetIndex] = amount;
+    });
+    contract.motion.forEach(({ node, closedPosition, openPosition, closedRotation, openRotation, foldPhase }) => {
       node.position.lerpVectors(closedPosition, openPosition, amount);
       node.rotation.set(
         MathUtils.lerp(closedRotation.x, openRotation.x, amount),
         MathUtils.lerp(closedRotation.y, openRotation.y, amount),
         MathUtils.lerp(closedRotation.z, openRotation.z, amount),
       );
+      if (foldPhase !== undefined) {
+        const centerWeight = 1 - foldPhase * foldPhase;
+        node.position.y += Math.sin(Math.PI * foldPhase) * inertia * 0.035;
+        node.position.z += centerWeight * inertia * 0.018;
+        node.rotation.z += Math.cos(Math.PI * foldPhase) * inertia * 0.12;
+      }
     });
   });
 
@@ -150,13 +183,19 @@ function LoadingModel() {
   );
 }
 
-function ResponsiveCamera() {
+function ResponsiveCamera({ bellowsAmount }: Pick<Accordion3DProps, 'bellowsAmount'>) {
   const { camera, size } = useThree();
   useEffect(() => {
-    camera.position.set(0, 0.02, size.width < 600 ? 1.04 : 0.66);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(0, 0.2, size.width < 600 ? 1.6 : 1.25);
+    camera.lookAt(0, 0.2, 0);
     camera.updateProjectionMatrix();
   }, [camera, size.width]);
+  useFrame((_, delta) => {
+    const opening = MathUtils.clamp(bellowsAmount, 0, 1);
+    const targetDistance = size.width < 600 ? 1.6 + opening * 0.15 : 1.25 + opening * 0.12;
+    camera.position.z = MathUtils.damp(camera.position.z, targetDistance, 7, delta);
+    camera.position.y = MathUtils.damp(camera.position.y, 0.2 - opening * 0.008, 7, delta);
+  });
   return null;
 }
 
@@ -179,8 +218,8 @@ export function Accordion3D(props: Accordion3DProps) {
   if (!supportsWebGL()) return null;
   return (
     <div className="accordion-3d-canvas" role="img" aria-label="Accordéon Hohner Club I interactif en trois dimensions">
-      <Canvas camera={{ position: [0, 0.02, 0.66], fov: 32, near: 0.01, far: 10 }} dpr={[1, 1.75]} gl={{ antialias: true, alpha: true }}>
-        <ResponsiveCamera />
+      <Canvas camera={{ position: [0, 0.2, 1.25], fov: 32, near: 0.01, far: 10 }} dpr={[1, 1.75]} gl={{ antialias: true, alpha: true }}>
+        <ResponsiveCamera bellowsAmount={props.bellowsAmount} />
         <color attach="background" args={['#f3efe7']} />
         <ambientLight intensity={1.7} />
         <directionalLight position={[0.4, 0.7, 0.8]} intensity={3.2} />
@@ -189,7 +228,7 @@ export function Accordion3D(props: Accordion3DProps) {
           <Model {...props} />
         </Suspense>
         <ContactShadows position={[0, -0.18, 0]} opacity={0.28} scale={1.1} blur={2.5} far={1} />
-        <OrbitControls target={[0, 0, 0]} minDistance={0.48} maxDistance={1.35} enablePan={false} />
+        <OrbitControls target={[0, 0.2, 0]} minDistance={0.65} maxDistance={2.4} enablePan={false} />
       </Canvas>
     </div>
   );

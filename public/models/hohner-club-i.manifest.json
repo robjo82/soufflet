@@ -1,6 +1,6 @@
 {
   "assetId": "hohner-club-i-cf-10-9-2",
-  "contractVersion": "1.0.0",
+  "contractVersion": "1.1.0",
   "model": "/models/hohner-club-i.glb",
   "source": "blender/accordion-club-i.blend",
   "rootNode": "AccordionRoot",
@@ -32,7 +32,12 @@
     ],
     "minimum": 0,
     "maximum": 1,
-    "motionStyle": "book-fan"
+    "motionStyle": "organic-wave",
+    "modelRevision": "organic-wave-2",
+    "skin": {
+      "node": "Closed_Bellows_Pleated_Skin",
+      "morphTarget": "SK_Bellows_Extension"
+    }
   },
   "melodyButtons": [
     {

@@ -73,8 +73,41 @@ def smart_uv(obj: bpy.types.Object) -> None:
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
-def configure_book_motion(root: bpy.types.Object, closed_frame: int, open_frame: int) -> None:
-    """Give the historical instrument a restrained, symmetric book-like opening."""
+def set_driver(
+    obj: bpy.types.Object,
+    driver_source: bpy.types.Object,
+    data_path: str,
+    index: int,
+    expression: str,
+    variables: list[tuple[str, str]],
+) -> None:
+    animation = obj.animation_data
+    curve = next((candidate for candidate in animation.drivers
+                  if candidate.data_path == data_path and candidate.array_index == index), None) if animation else None
+    if curve is None:
+        curve = obj.driver_add(data_path, index)
+    driver = curve.driver
+    driver.type = "SCRIPTED"
+    while driver.variables:
+        driver.variables.remove(driver.variables[0])
+    for name, property_path in variables:
+        variable = driver.variables.new()
+        variable.name = name
+        variable.type = "SINGLE_PROP"
+        variable.targets[0].id = driver_source
+        variable.targets[0].data_path = property_path
+    driver.expression = expression
+
+
+def configure_book_motion(
+    root: bpy.types.Object,
+    folds: list[bpy.types.Object],
+    body_left: bpy.types.Object,
+    body_right: bpy.types.Object,
+    closed_frame: int,
+    open_frame: int,
+) -> None:
+    """Create an asymmetric wave with sag and distinct hand-side inertia."""
     values = {
         "bellows_yaw": (0.0, 0.82),
         "bellows_pitch": (0.0, 0.14),
@@ -85,7 +118,81 @@ def configure_book_motion(root: bpy.types.Object, closed_frame: int, open_frame:
         root.keyframe_insert(data_path=f'["{property_name}"]', frame=closed_frame)
         root[property_name] = open_value
         root.keyframe_insert(data_path=f'["{property_name}"]', frame=open_frame)
-    root["bellows_motion_style"] = "book-fan: symmetric yaw with restrained pitch and twist"
+    sag = 0.014
+    counter_wave = 0.008
+    depth = 0.006
+    open_half_width = 0.169
+    rotation_blend = 0.72
+    root["bellows_motion_style"] = "organic-wave: asymmetric sag, counter-curve and inertial runtime"
+    root["model_revision"] = "organic-wave-2"
+    root["wave_sag_m"] = sag
+    root["wave_counter_m"] = counter_wave
+    root["wave_depth_m"] = depth
+
+    for fold in folds:
+        position = float(fold["normalized_position"])
+        z_open = -sag * (1.0 - position * position) + counter_wave * math.sin(math.pi * position)
+        y_open = depth * (1.0 - position * position)
+        dz_dp = 2.0 * sag * position + counter_wave * math.pi * math.cos(math.pi * position)
+        curve_rotation_y = -math.atan(dz_dp / open_half_width) * rotation_blend
+        base_pitch = position * math.radians(9.0)
+        set_driver(fold, root, "location", 1, f"{y_open:.8f}*open", [("open", '["bellows_open"]')])
+        set_driver(fold, root, "location", 2, f"{z_open:.8f}*open", [("open", '["bellows_open"]')])
+        set_driver(
+            fold,
+            root,
+            "rotation_euler",
+            1,
+            f"{base_pitch:.8f}*pitch+{curve_rotation_y:.8f}*open",
+            [("pitch", '["bellows_pitch"]'), ("open", '["bellows_open"]')],
+        )
+        set_vector_property(fold, "wavePosition", (y_open, z_open))
+        fold["waveRotationY"] = round(curve_rotation_y, 7)
+
+    for body, position, base_pitch in (
+        (body_right, -1.0, -math.radians(9.0)),
+        (body_left, 1.0, math.radians(9.0)),
+    ):
+        dz_dp = 2.0 * sag * position + counter_wave * math.pi * math.cos(math.pi * position)
+        curve_rotation_y = -math.atan(dz_dp / open_half_width) * rotation_blend
+        set_driver(
+            body,
+            root,
+            "rotation_euler",
+            1,
+            f"{base_pitch:.8f}*pitch+{curve_rotation_y:.8f}*open",
+            [("pitch", '["bellows_pitch"]'), ("open", '["bellows_open"]')],
+        )
+        body["waveRotationY"] = round(curve_rotation_y, 7)
+
+
+def configure_bellows_skin() -> bpy.types.Object:
+    """Turn the existing pleated shell into a continuous organic morph target."""
+    skin = bpy.data.objects.get("Closed_Bellows_Pleated_Skin")
+    if skin is None or skin.type != "MESH" or skin.data.shape_keys is None:
+        raise RuntimeError("Missing continuous pleated bellows skin.")
+    keys = skin.data.shape_keys.key_blocks
+    basis = keys.get("Basis")
+    extension = keys.get("SK_Bellows_Extension")
+    if basis is None or extension is None:
+        raise RuntimeError("Missing bellows extension shape key.")
+
+    closed_half_width = max(abs(vertex.co.x) for vertex in basis.data)
+    extension_distance = 0.105
+    sag = 0.014
+    counter_wave = 0.008
+    depth = 0.006
+    for index, vertex in enumerate(basis.data):
+        position = max(-1.0, min(1.0, vertex.co.x / closed_half_width))
+        target = extension.data[index].co
+        target.x = vertex.co.x + position * extension_distance
+        target.y = vertex.co.y + depth * (1.0 - position * position)
+        target.z = vertex.co.z - sag * (1.0 - position * position) + counter_wave * math.sin(math.pi * position)
+
+    skin["bellowsRole"] = "continuous-skin"
+    skin["morphTarget"] = extension.name
+    skin["motionStyle"] = "organic-wave"
+    return skin
 
 
 def configure_web_materials() -> None:
@@ -107,12 +214,12 @@ def configure_web_materials() -> None:
                 + math.sin(horizontal * 41 - vertical * 37) * 0.14
             )
             knot = math.exp(-(((horizontal - 0.32) / 0.10) ** 2 + ((vertical - 0.63) / 0.18) ** 2))
-            streak = 0.62 + grain * 0.16 - knot * 0.19
+            streak = max(0.0, min(1.0, 0.62 + grain * 0.19 - knot * 0.25))
             index = (y * width + x) * 4
             pixels[index:index + 4] = (
-                max(0.055, streak * 0.48),
-                max(0.018, streak * 0.20),
-                max(0.010, streak * 0.095),
+                0.17 + streak * 0.56,
+                0.04 + streak * 0.24,
+                0.015 + streak * 0.105,
                 1.0,
             )
     image.pixels.foreach_set(pixels)
@@ -184,10 +291,11 @@ def normalize() -> dict:
         raise RuntimeError("The source root disappeared while cleaning the scene.")
     root.name = "AccordionRoot"
     root["assetId"] = "hohner-club-i-cf-10-9-2"
-    root["contractVersion"] = "1.0.0"
+    root["contractVersion"] = "1.1.0"
     root["coordinateSystem"] = "Blender Z-up, glTF Y-up"
     root["unit"] = "meter"
     configure_web_materials()
+    configure_bellows_skin()
 
     body_left = bpy.data.objects.get("CTRL_Bass_End")
     body_right = bpy.data.objects.get("CTRL_Treble_End")
@@ -197,6 +305,15 @@ def normalize() -> dict:
     body_right.name = "Body_Right"
     body_left["hand"] = "left"
     body_right["hand"] = "right"
+
+    # Small corner guards and rivets must travel with their casing. In the
+    # source file a few of them are rooted globally and otherwise appear to
+    # float above the bellows once the instrument opens.
+    for obj in asset_objects:
+        if obj.name.startswith("Guard_Bass_") and obj.parent == root:
+            preserve_parent(obj, body_left)
+        elif obj.name.startswith("Guard_Treble_") and obj.parent == root:
+            preserve_parent(obj, body_right)
 
     bellows_root = bpy.data.objects.new("BellowsRoot", None)
     source_collection.objects.link(bellows_root)
@@ -271,7 +388,7 @@ def normalize() -> dict:
         bellows_frames.append((float(root["bellows_open"]), frame))
     closed_frame = min(bellows_frames)[1]
     open_frame = max(bellows_frames)[1]
-    configure_book_motion(root, closed_frame, open_frame)
+    configure_book_motion(root, folds, body_left, body_right, closed_frame, open_frame)
     scene.frame_set(closed_frame)
     for obj in motion_nodes:
         set_vector_property(obj, "closedPosition", obj.location)
@@ -298,7 +415,7 @@ def normalize() -> dict:
 
     manifest = {
         "assetId": "hohner-club-i-cf-10-9-2",
-        "contractVersion": "1.0.0",
+        "contractVersion": "1.1.0",
         "model": "/models/hohner-club-i.glb",
         "source": "blender/accordion-club-i.blend",
         "rootNode": "AccordionRoot",
@@ -308,7 +425,12 @@ def normalize() -> dict:
             "folds": [fold.name for fold in folds],
             "minimum": 0,
             "maximum": 1,
-            "motionStyle": "book-fan",
+            "motionStyle": "organic-wave",
+            "modelRevision": "organic-wave-2",
+            "skin": {
+                "node": "Closed_Bellows_Pleated_Skin",
+                "morphTarget": "SK_Bellows_Extension",
+            },
         },
         "melodyButtons": melody,
         "bassButtons": bass,
@@ -332,7 +454,7 @@ def normalize() -> dict:
         use_selection=True,
         export_extras=True,
         export_animations=False,
-        export_apply=True,
+        export_apply=False,
         export_yup=True,
     )
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)

@@ -36,7 +36,10 @@ bpy.ops.export_scene.gltf(
     use_selection=True,
     export_extras=True,
     export_animations=False,
-    export_apply=True,
+    # Applying modifiers strips the shape keys used by the continuous bellows
+    # skin. Keep them as glTF morph targets so the web renderer can animate the
+    # cloth between the moving ribs instead of exposing empty gaps.
+    export_apply=False,
     export_yup=True,
 )
 print(f"Exported {OUTPUT}")

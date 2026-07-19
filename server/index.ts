@@ -11,6 +11,7 @@ import { SouffletDatabase } from './database.js';
 import { createTranscriber } from './transcription.js';
 import { clearSession, createUserId, hashPassword, readSessionToken, sessionHash, setSession, verifyPassword } from './auth.js';
 import { inferSessionHand } from './progress.js';
+import { staticAssetCacheControl } from './staticAssets.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv({ path: resolve(root, '.env.local'), quiet: true });
@@ -294,7 +295,15 @@ app.post('/api/transcriptions/youtube', requireUser, async (request, response) =
 if (process.env.NODE_ENV === 'production') {
   const dist = resolve(root, 'dist');
   if (!existsSync(dist)) throw new Error('Le dossier dist est absent. Exécute `npm run build` avant de démarrer en production.');
-  app.use(express.static(dist, { maxAge: '1y', immutable: true, index: false }));
+  app.use(express.static(dist, {
+    maxAge: '1y',
+    immutable: true,
+    index: false,
+    setHeaders: (response, filePath) => {
+      const cacheControl = staticAssetCacheControl(filePath);
+      if (cacheControl) response.setHeader('Cache-Control', cacheControl);
+    },
+  }));
   app.get('*splat', (_request, response) => response.sendFile(resolve(dist, 'index.html')));
 }
 

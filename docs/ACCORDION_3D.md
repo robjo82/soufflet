@@ -11,7 +11,7 @@ Cette première fondation transforme le Hohner Club Modell I en asset applicatif
 - 21 commandes de mélodie reliées aux identifiants `c1-out-*`, `c1-in-*` et `c1-help-*` ;
 - 8 commandes main gauche reliées aux identifiants `bass-*` et `chord-*` ;
 - positions fermées et ouvertes enregistrées dans les extras glTF ;
-- ouverture symétrique de type « feuillet » : translation, éventail, légère inclinaison et torsion ;
+- ouverture organique : affaissement central, contre-courbe asymétrique, profondeur et inertie transitoire ;
 - axe et profondeur de pression enregistrés sur chaque bouton ;
 - retour visuel applicatif des boutons actifs : course physique, léger grossissement et émission corail ;
 - veinage de noyer empaqueté dans le fichier Blender et exporté dans le GLB, sans dépendance à une photo externe ;
@@ -31,12 +31,15 @@ La scène canonique exporte uniquement les objets utiles. Les corrections automa
 - UV manquants ;
 - transformations négatives ;
 - capture réelle des frames fermée et ouverte de l’action Blender ;
-- mouvement de soufflet reproductible de type `book-fan`, contrôlé par les propriétés de la racine ;
+- mouvement de soufflet reproductible de type `organic-wave`, piloté pli par pli et contrôlé par les propriétés de la racine ;
+- peau plissée continue exportée comme morph target glTF, afin que la toile suive la vague sans laisser d'espaces entre les plis ;
 - matériau bois bitmap procédural empaqueté, lisible par le moteur glTF ;
 - matériaux de soufflet assombris et moins brillants ;
 - exclusion des drivers Blender au runtime au profit de valeurs continues explicites.
 
-Budget mesuré lors de cette livraison : 4,6 Mo et environ 129 000 triangles. Le seuil CI est de 5 Mo et 150 000 triangles. Le validateur refuse aussi un modèle dont les corps s'écartent sans rotation, afin d'éviter le retour à une ouverture purement latérale.
+Budget mesuré lors de cette livraison : environ 1,7 Mo et 37 000 triangles. Le seuil CI est de 5 Mo et 150 000 triangles. Le validateur refuse aussi un modèle dont les corps s'écartent sans rotation, sans vague verticale, sans profondeur ou sans peau continue animée, afin d'éviter le retour à une ouverture purement latérale.
+
+Le GLB porte une révision explicite dans son URL. Les fichiers de modèle stables sont servis avec revalidation obligatoire : un navigateur ayant chargé une ancienne version ne peut plus conserver silencieusement le binaire pendant un an.
 
 ## Laboratoire de lecture
 
@@ -82,6 +85,8 @@ Si l’animation Blender du soufflet change, recalculer d’abord les états ext
 ```
 
 `normalize_club_i.py` sert à recréer la scène canonique depuis le fichier de travail ouvert dans Blender. Il sauvegarde d’abord une copie et ne remplace pas le fichier source.
+
+L’export conserve volontairement les shape keys (`export_apply=False`) : appliquer les modificateurs à l’export supprimerait la peau continue animée du soufflet.
 
 ## Étapes suivantes avant activation dans le lecteur
 
