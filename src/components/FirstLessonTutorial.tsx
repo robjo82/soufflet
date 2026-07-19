@@ -1,16 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight, AudioLines, Check, ChevronDown, CircleGauge, Gauge, Headphones,
-  Mic2, MoveHorizontal, Play, Repeat2, RotateCcw, Sparkles, TimerReset,
+  Mic2, Play, Repeat2, Sparkles,
 } from 'lucide-react';
 import type { AccordionConfig, Direction, Notation, PracticeMode, Song, SongEvent } from '../types';
-import {
-  classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, readBellowsProfiles,
-  removeBellowsProfile, saveBellowsProfile,
-  type AudioFeatureFrame, type BellowsDetection, type BellowsProfile, type BellowsReference,
-} from '../audioTraining';
 import { PRACTICE_MODES } from '../practiceModes';
-import { TUTORIAL_MODE_TRIALS } from '../tutorialFlow';
+import { createWaitTutorialSong, TUTORIAL_MODE_TRIALS } from '../tutorialFlow';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
 import { AccordionView } from './AccordionView';
@@ -18,6 +13,7 @@ import { ScoreStrip } from './ScoreStrip';
 import { MicrophoneRecovery } from './MicrophoneRecovery';
 
 interface FirstLessonTutorialProps {
+  accountId: string;
   accordion: AccordionConfig;
   notation: Notation;
   song: Song;
@@ -37,23 +33,25 @@ interface TutorialDraft {
 const DRAFT_KEY = 'soufflet.firstLessonTutorial';
 const CHAPTERS = ['Découvrir', 'Écouter', 'Jouer', 'Essayer les modes', 'Visiter l’interface'];
 
-function readDraft(): TutorialDraft | null {
+function readDraft(key: string): TutorialDraft | null {
   try {
-    const value = localStorage.getItem(DRAFT_KEY);
+    const value = localStorage.getItem(key) ?? localStorage.getItem(DRAFT_KEY);
     return value ? JSON.parse(value) as TutorialDraft : null;
   } catch {
     return null;
   }
 }
 
-export function FirstLessonTutorial({ accordion, notation, song, onNotationChange, onComplete }: FirstLessonTutorialProps) {
-  const initialDraft = useMemo(readDraft, []);
+export function FirstLessonTutorial({ accountId, accordion, notation, song, onNotationChange, onComplete }: FirstLessonTutorialProps) {
+  const draftKey = `${DRAFT_KEY}.${accountId}`;
+  const initialDraft = useMemo(() => readDraft(draftKey), [draftKey]);
   const [stage, setStage] = useState(() => Math.min(4, Math.max(0, initialDraft?.stage ?? 0)));
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeAccompanimentIndex, setActiveAccompanimentIndex] = useState(0);
   const [demoPlaying, setDemoPlaying] = useState(false);
   const [demoDone, setDemoDone] = useState(() => (initialDraft?.stage ?? 0) > 1);
   const [guidedProgress, setGuidedProgress] = useState(initialDraft?.guidedProgress ?? 0);
+  const [guidedCelebrating, setGuidedCelebrating] = useState(false);
   const [modeIndex, setModeIndex] = useState(initialDraft?.modeIndex ?? 2);
   const [modeProgress, setModeProgress] = useState(initialDraft?.modeProgress ?? 0);
   const [completedModes, setCompletedModes] = useState<Set<PracticeMode>>(
@@ -69,18 +67,8 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
   });
   const timersRef = useRef<number[]>([]);
   const heldMidiRef = useRef<number | null>(null);
-  const rhythmTimesRef = useRef<number[]>([]);
-  const lastOnsetIdRef = useRef(0);
-  const bellowsFramesRef = useRef<AudioFeatureFrame[]>([]);
-  const bellowsReferencesRef = useRef<Partial<Record<Direction, BellowsReference>>>({});
-  const bellowsCandidateRef = useRef<{ direction: Direction | null; frames: number }>({ direction: null, frames: 0 });
-  const lastBellowsDirectionRef = useRef<Direction | null>(null);
-  const [bellowsProfile, setBellowsProfile] = useState<BellowsProfile | null>(() => readBellowsProfiles()[accordion.id] ?? null);
-  const [bellowsCaptureDirection, setBellowsCaptureDirection] = useState<Direction | null>(null);
-  const [bellowsCaptureState, setBellowsCaptureState] = useState<'idle' | 'countdown' | 'recording'>('idle');
-  const [bellowsCountdown, setBellowsCountdown] = useState(3);
-  const [bellowsDetection, setBellowsDetection] = useState<BellowsDetection | null>(null);
   const detector = usePitchDetector();
+  const stopDetector = detector.stop;
   const { playMidi, playLeftHand } = useSynth();
   const tutorialSong = useMemo(() => ({
     ...song,
@@ -89,14 +77,9 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
     accompaniment: song.accompaniment?.filter((event) => event.beat < 3),
   }), [song]);
   const events = tutorialSong.events;
+  const waitTutorialSong = useMemo(() => createWaitTutorialSong(song), [song]);
+  const waitEvents = waitTutorialSong.events;
   const currentTrial = TUTORIAL_MODE_TRIALS[modeIndex];
-  const expectedBassButton = accordion.basses.find((button) => button.role === 'bass') ?? accordion.basses[0];
-  const expectedBassId = expectedBassButton?.id;
-  const calibrationButton = useMemo(() => {
-    const profileButton = accordion.buttons.find((button) => button.id === bellowsProfile?.buttonId);
-    const songButton = accordion.buttons.find((button) => button.id === events[0]?.buttonId && button.pushMidi !== button.pullMidi && !button.isGleichton);
-    return profileButton ?? songButton ?? accordion.buttons.find((button) => button.pushMidi !== button.pullMidi && !button.isGleichton) ?? accordion.buttons[0];
-  }, [accordion.buttons, bellowsProfile?.buttonId, events]);
   const guidedDone = guidedProgress >= events.length;
   const modeFinished = currentTrial ? completedModes.has(currentTrial.id) : false;
 
@@ -109,18 +92,17 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
       completedModes: [...completedModes],
       tourStep,
     };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  }, [completedModes, guidedProgress, modeIndex, modeProgress, stage, tourStep]);
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+    localStorage.removeItem(DRAFT_KEY);
+  }, [completedModes, draftKey, guidedProgress, modeIndex, modeProgress, stage, tourStep]);
 
   useEffect(() => () => timersRef.current.forEach((timer) => window.clearTimeout(timer)), []);
 
-  const goToStage = (next: number) => {
+  const goToStage = useCallback((next: number) => {
     heldMidiRef.current = null;
-    rhythmTimesRef.current = [];
-    lastBellowsDirectionRef.current = null;
     setStage(next);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
   const playDemo = () => {
     timersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -172,7 +154,7 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
       setGuidedProgress(next);
       setActiveIndex(Math.min(next, events.length - 1));
       if (next >= events.length) {
-        setFeedback({ good: true, title: 'Mélodie réussie !', detail: 'Les trois hauteurs sont justes. Le tutoriel peut maintenant te montrer les autres façons de travailler.' });
+        setFeedback({ good: true, title: 'Mélodie réussie !', detail: 'Les trois hauteurs sont justes. Le micro s’arrête et nous passons à une vraie petite phrase.' });
       } else {
         setFeedback({ good: true, title: 'Bonne note', detail: `Encore ${events.length - next} ${events.length - next === 1 ? 'note' : 'notes'}. Regarde le prochain bouton.` });
       }
@@ -180,135 +162,43 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
     }
 
     if (stage !== 3 || !currentTrial || modeFinished) return;
-    if (!['melody', 'combined', 'memory'].includes(currentTrial.task)) {
-      setFeedback({ good: false, title: 'Pas encore', detail: currentTrial.instruction });
-      return;
-    }
-    if (currentTrial.task === 'combined' && modeProgress === 0) {
-      setFeedback({ good: false, title: 'Commence par la basse', detail: 'La coordination se construit dans cet ordre : main gauche, puis main droite.' });
-      return;
-    }
-    const expected = currentTrial.task === 'memory' ? events[Math.min(modeProgress, events.length - 1)] : events[0];
+    if (!['wait-melody', 'memory'].includes(currentTrial.task)) return;
+    const trialEvents = currentTrial.task === 'wait-melody' ? waitEvents : events;
+    const expected = trialEvents[Math.min(modeProgress, trialEvents.length - 1)];
     if (midi !== expected.midi) {
-      setFeedback({ good: false, title: 'Ce n’est pas encore la bonne note', detail: currentTrial.task === 'memory' ? 'Repars de la première note de la petite mélodie.' : 'Essaie le bouton attendu une nouvelle fois.' });
+      setFeedback({ good: false, title: midi < expected.midi ? 'Cette note est trop grave' : 'Cette note est trop aiguë', detail: currentTrial.task === 'memory' ? 'Repars de la première note de la petite mélodie.' : 'La lecture reste ici. Repère le bouton éclairé puis réessaie.' });
       if (currentTrial.task === 'memory') setModeProgress(0);
       return;
     }
-    if (direction && currentTrial.task !== 'memory' && direction !== expected.direction) {
+    if (direction && currentTrial.task === 'wait-melody' && direction !== expected.direction) {
       setFeedback({ good: false, title: 'La note est bonne, pas le soufflet', detail: `Utilise la direction ${expected.direction === 'pull' ? 'tirer' : 'pousser'}.` });
       return;
     }
-    if (currentTrial.task === 'memory') {
-      const next = modeProgress + 1;
-      setModeProgress(next);
-      if (next >= events.length) markModeComplete(currentTrial.id, 'Tu as retrouvé les trois notes sans touche éclairée.');
-      else setFeedback({ good: true, title: 'Bien mémorisé', detail: `Il reste ${events.length - next} ${events.length - next === 1 ? 'note' : 'notes'}.` });
-      return;
+    const next = modeProgress + 1;
+    setModeProgress(next);
+    setActiveIndex(Math.min(next, trialEvents.length - 1));
+    if (next >= trialEvents.length) {
+      markModeComplete(currentTrial.id, currentTrial.task === 'memory'
+        ? 'Tu as retrouvé les trois notes sans touche éclairée.'
+        : 'Tu as fait avancer toute la petite phrase, note après note, à ton rythme.');
+    } else {
+      setFeedback({
+        good: true,
+        title: currentTrial.task === 'memory' ? 'Bien mémorisé' : 'Bonne note, la lecture avance',
+        detail: `Il reste ${trialEvents.length - next} ${trialEvents.length - next === 1 ? 'note' : 'notes'}.`,
+      });
     }
-    markModeComplete(currentTrial.id, currentTrial.task === 'combined' ? 'La basse puis la mélodie sont parties dans le bon ordre.' : 'La note attendue a été reconnue.');
-  }, [currentTrial, events, guidedDone, guidedProgress, markModeComplete, modeFinished, modeProgress, stage]);
-
-  const submitBass = useCallback((buttonId: string) => {
-    if (stage !== 3 || !currentTrial || !['bass', 'combined'].includes(currentTrial.task) || modeFinished) return;
-    if (buttonId !== expectedBassId) {
-      setFeedback({ good: false, title: 'Essaie la basse éclairée', detail: 'Sur la main gauche, commence par le bouton situé en haut de la grille.' });
-      return;
-    }
-    if (currentTrial.task === 'bass') {
-      markModeComplete(currentTrial.id, 'Tu sais maintenant isoler une basse de la main gauche.');
-      return;
-    }
-    setModeProgress(1);
-    setFeedback({ good: true, title: 'Basse correcte', detail: 'Maintenant, joue la note éclairée avec la main droite.' });
-  }, [currentTrial, expectedBassId, markModeComplete, modeFinished, stage]);
+  }, [currentTrial, events, guidedDone, guidedProgress, markModeComplete, modeFinished, modeProgress, stage, waitEvents]);
 
   const handleButtonPress = (buttonId: string, direction: Direction) => {
     if (stage === 3 && detector.status !== 'denied' && detector.status !== 'error') {
       setFeedback({ good: false, title: 'Essaie sur ton accordéon', detail: 'Le dessin sert à écouter et à repérer le bouton. Seul le son du vrai instrument valide ce mini-défi.' });
       return;
     }
-    if (accordion.basses.some((button) => button.id === buttonId)) {
-      submitBass(buttonId);
-      return;
-    }
     const button = accordion.buttons.find((item) => item.id === buttonId);
     if (!button) return;
     submitMelody(direction === 'push' ? button.pushMidi : button.pullMidi, direction);
   };
-
-  const chooseBellows = useCallback((direction: Direction) => {
-    if (currentTrial?.task !== 'bellows' || modeFinished) return;
-    const expected: Direction = modeProgress === 0 ? 'push' : 'pull';
-    if (direction !== expected) {
-      setFeedback({ good: false, title: `Commence par ${expected === 'push' ? 'pousser' : 'tirer'}`, detail: 'Le mode soufflet évalue la direction avant la hauteur.' });
-      return;
-    }
-    const next = modeProgress + 1;
-    setModeProgress(next);
-    if (next >= 2) markModeComplete(currentTrial.id, 'Le micro a reconnu fermer puis ouvrir dans le bon ordre.');
-    else setFeedback({ good: true, title: 'Pousser reconnu', detail: 'Relâche le bouton un instant, puis tire en tenant le même bouton.' });
-  }, [currentTrial, markModeComplete, modeFinished, modeProgress]);
-
-  const finishBellowsCapture = useCallback((direction: Direction) => {
-    const reference = createBellowsReference(direction, bellowsFramesRef.current);
-    setBellowsCaptureState('idle');
-    setBellowsCaptureDirection(null);
-    if (!reference) {
-      setFeedback({ good: false, title: 'Son trop court ou trop faible', detail: 'Garde le bouton enfoncé pendant tout l’enregistrement et fais un mouvement régulier.' });
-      return;
-    }
-    bellowsReferencesRef.current[direction] = reference;
-    const push = bellowsReferencesRef.current.push;
-    const pull = bellowsReferencesRef.current.pull;
-    if (!push || !pull) {
-      setFeedback({ good: true, title: 'Pousser enregistré', detail: 'Nous avons gardé seulement sa signature acoustique. Enregistre maintenant tirer avec le même bouton.' });
-      return;
-    }
-    if (push.midi === pull.midi && Math.abs(push.frequency - pull.frequency) < 8) {
-      bellowsReferencesRef.current = {};
-      setFeedback({ good: false, title: 'Les deux références se ressemblent trop', detail: 'Vérifie que tu as bien fermé pour pousser, puis ouvert pour tirer, toujours avec le bouton indiqué.' });
-      return;
-    }
-    const profile: BellowsProfile = {
-      accordionId: accordion.id,
-      buttonId: calibrationButton.id,
-      createdAt: new Date().toISOString(),
-      push,
-      pull,
-    };
-    saveBellowsProfile(profile);
-    setBellowsProfile(profile);
-    setFeedback({ good: true, title: 'Soufflet calibré', detail: 'Le micro peut maintenant comparer ce qu’il entend à tes deux références.' });
-  }, [accordion.id, calibrationButton.id]);
-
-  const startBellowsCapture = (direction: Direction) => {
-    bellowsFramesRef.current = [];
-    setBellowsCaptureDirection(direction);
-    setBellowsCaptureState('countdown');
-    setBellowsCountdown(3);
-    [2, 1].forEach((value, index) => {
-      timersRef.current.push(window.setTimeout(() => setBellowsCountdown(value), (index + 1) * 800));
-    });
-    timersRef.current.push(window.setTimeout(() => {
-      setBellowsCountdown(0);
-      setBellowsCaptureState('recording');
-    }, 2400));
-    timersRef.current.push(window.setTimeout(() => finishBellowsCapture(direction), 4400));
-  };
-
-  const recalibrateBellows = () => {
-    removeBellowsProfile(accordion.id);
-    bellowsReferencesRef.current = {};
-    lastBellowsDirectionRef.current = null;
-    setBellowsProfile(null);
-    setBellowsDetection(null);
-    setModeProgress(0);
-    setFeedback({ good: false, title: 'Recalibrage du soufflet', detail: 'Nous allons réenregistrer pousser puis tirer, sans conserver le son brut.' });
-  };
-
-  useEffect(() => {
-    if (bellowsCaptureState === 'recording' && detector.audioFrame) bellowsFramesRef.current.push(detector.audioFrame);
-  }, [bellowsCaptureState, detector.audioFrame]);
 
   useEffect(() => {
     const reading = detector.reading;
@@ -322,63 +212,26 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
       submitMelody(reading.midi);
       return;
     }
-    if (!currentTrial || ['rhythm', 'bellows'].includes(currentTrial.task)) return;
-    if ((currentTrial.task === 'bass' || (currentTrial.task === 'combined' && modeProgress === 0)) && expectedBassButton) {
-      const direction = events[0]?.direction ?? 'push';
-      const expectedMidi = direction === 'push' ? expectedBassButton.pushMidi : expectedBassButton.pullMidi;
-      if (midiMatches(expectedMidi, reading.midi)) submitBass(expectedBassButton.id);
-      else setFeedback({ good: false, title: 'La basse attendue n’est pas encore reconnue', detail: 'Joue seulement le bouton de basse éclairé, sans la main droite, puis laisse le son s’arrêter.' });
-      return;
-    }
     submitMelody(reading.midi);
-  }, [currentTrial, detector.reading, events, expectedBassButton, modeProgress, stage, submitBass, submitMelody]);
+  }, [detector.reading, stage, submitMelody]);
 
   useEffect(() => {
-    const onset = detector.onset;
-    if (stage !== 3 || currentTrial?.task !== 'rhythm' || modeFinished || !onset || onset.id === lastOnsetIdRef.current) return;
-    lastOnsetIdRef.current = onset.id;
-    const times = [...rhythmTimesRef.current, onset.at];
-    rhythmTimesRef.current = times;
-    setModeProgress(times.length);
-    if (times.length < 4) {
-      setFeedback({ good: true, title: `Attaque ${times.length} sur 4 entendue`, detail: 'Continue sur ton accordéon en gardant le même espace.' });
-      return;
-    }
-    const result = evaluateRhythm(times);
-    if (result.regular) markModeComplete(currentTrial.id, `Quatre attaques régulières reconnues à environ ${Math.round(60_000 / result.averageInterval)} BPM.`);
-    else {
-      rhythmTimesRef.current = [];
+    if (stage !== 2 || !guidedDone) return;
+    stopDetector();
+    setGuidedCelebrating(true);
+    setFeedback({ good: true, title: 'Mélodie réussie !', detail: 'Les trois notes sont justes. Le microphone est maintenant coupé.' });
+    const timer = window.setTimeout(() => {
+      setGuidedCelebrating(false);
+      setModeIndex(2);
       setModeProgress(0);
-      setFeedback({ good: false, title: 'Le micro a entendu quatre notes, mais elles sont irrégulières', detail: 'Recommence plus lentement : joue, attends, joue, attends, toujours avec le même espace.' });
-    }
-  }, [currentTrial, detector.onset, markModeComplete, modeFinished, stage]);
-
-  useEffect(() => {
-    const frame = detector.audioFrame;
-    if (stage !== 3 || currentTrial?.task !== 'bellows' || modeFinished || !bellowsProfile || bellowsCaptureState !== 'idle' || !frame) return;
-    const detection = classifyBellows(frame, bellowsProfile);
-    setBellowsDetection(detection);
-    if (!detection.direction) {
-      if (!frame.pitch || frame.volume < .008) lastBellowsDirectionRef.current = null;
-      bellowsCandidateRef.current = { direction: null, frames: 0 };
-      return;
-    }
-    const candidate = bellowsCandidateRef.current;
-    bellowsCandidateRef.current = candidate.direction === detection.direction
-      ? { direction: detection.direction, frames: candidate.frames + 1 }
-      : { direction: detection.direction, frames: 1 };
-    if (bellowsCandidateRef.current.frames < 3 || lastBellowsDirectionRef.current === detection.direction) return;
-    lastBellowsDirectionRef.current = detection.direction;
-    bellowsCandidateRef.current = { direction: null, frames: 0 };
-    chooseBellows(detection.direction);
-  }, [bellowsCaptureState, bellowsProfile, chooseBellows, currentTrial, detector.audioFrame, modeFinished, stage]);
+      setFeedback({ good: false, title: TUTORIAL_MODE_TRIALS[2].title, detail: TUTORIAL_MODE_TRIALS[2].instruction });
+      goToStage(3);
+    }, 2200);
+    return () => window.clearTimeout(timer);
+  }, [goToStage, guidedDone, stage, stopDetector]);
 
   const advanceMode = () => {
     heldMidiRef.current = null;
-    rhythmTimesRef.current = [];
-    lastOnsetIdRef.current = detector.onset?.id ?? 0;
-    lastBellowsDirectionRef.current = null;
-    setBellowsDetection(null);
     setModeProgress(0);
     if (modeIndex >= TUTORIAL_MODE_TRIALS.length - 1) {
       goToStage(4);
@@ -396,32 +249,18 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
       const accompaniment = tutorialSong.accompaniment?.[activeAccompanimentIndex];
       return event && accompaniment ? { ...event, bassButtonId: accompaniment.buttonId, bassLabel: accompaniment.chord } : event;
     }
-    if (stage === 2) return events[Math.min(guidedProgress, events.length - 1)];
+    if (stage === 2) return guidedDone ? undefined : events[Math.min(guidedProgress, events.length - 1)];
     if (stage !== 3 || !currentTrial) return events[0];
-    if (currentTrial.task === 'memory' || currentTrial.task === 'rhythm') return undefined;
-    if (currentTrial.task === 'bellows' && calibrationButton) {
-      const direction = bellowsCaptureDirection ?? (modeProgress === 0 ? 'push' : 'pull');
-      return {
-        ...events[0],
-        buttonId: calibrationButton.id,
-        direction,
-        midi: direction === 'push' ? calibrationButton.pushMidi : calibrationButton.pullMidi,
-        note: direction === 'push' ? calibrationButton.push : calibrationButton.pull,
-      };
-    }
-    if (currentTrial.task === 'bass' || (currentTrial.task === 'combined' && modeProgress === 0)) {
-      return { ...events[0], buttonId: '', bassButtonId: expectedBassId, bassLabel: 'B' };
-    }
-    return events[0];
-  }, [activeAccompanimentIndex, activeIndex, bellowsCaptureDirection, calibrationButton, currentTrial, events, expectedBassId, guidedProgress, modeProgress, stage, tutorialSong.accompaniment]);
+    if (currentTrial.task === 'memory' || modeFinished) return undefined;
+    return waitEvents[Math.min(modeProgress, waitEvents.length - 1)];
+  }, [activeAccompanimentIndex, activeIndex, currentTrial, events, guidedDone, guidedProgress, modeFinished, modeProgress, stage, tutorialSong.accompaniment, waitEvents]);
 
-  const visualDirection: Direction = currentTrial?.task === 'bellows'
-    ? (bellowsCaptureDirection ?? (modeProgress === 0 ? 'push' : 'pull'))
-    : activeEvent?.direction ?? events[0]?.direction ?? 'push';
+  const visualDirection: Direction = activeEvent?.direction ?? events[0]?.direction ?? 'push';
 
   const finishTutorial = () => {
+    localStorage.removeItem(draftKey);
     localStorage.removeItem(DRAFT_KEY);
-    detector.stop();
+    stopDetector();
     onComplete();
   };
 
@@ -479,13 +318,14 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
             )}
           </section>
           <section className="tutorial-instrument-card">
-            <AccordionView config={accordion} activeEvent={activeEvent} direction={activeEvent?.direction} notation={notation} detectedMidi={detector.reading?.midi} depressActive={stage === 1 && demoPlaying} onButtonPress={handleButtonPress} />
+            <AccordionView config={accordion} activeEvent={guidedCelebrating ? undefined : activeEvent} direction={activeEvent?.direction} notation={notation} detectedMidi={detector.reading?.midi} depressActive={stage === 1 && demoPlaying} onButtonPress={handleButtonPress} />
+            {guidedCelebrating && <div className="tutorial-success-burst" role="status"><span><Check /></span><Sparkles /><strong>Trois notes justes !</strong><p>Micro coupé · prochaine étape…</p>{Array.from({ length: 8 }).map((_, index) => <i key={index} />)}</div>}
           </section>
-          {stage === 2 && <div className="tutorial-score"><ScoreStrip song={tutorialSong} activeIndex={Math.min(guidedProgress, events.length - 1)} notation={notation} onSelect={() => undefined} /></div>}
+          {stage === 2 && <div className="tutorial-score"><ScoreStrip song={tutorialSong} activeIndex={Math.min(guidedProgress, events.length - 1)} notation={notation} completed={guidedDone} onSelect={() => undefined} /></div>}
           <section className={`tutorial-feedback ${feedback.good ? 'is-good' : ''}`} aria-live="polite"><AudioLines /><span><small>TON PROFESSEUR</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></span></section>
           <footer className="tutorial-lesson-footer">
             {stage === 1 && <button type="button" className="primary-button" disabled={!demoDone} onClick={() => { setFeedback({ good: false, title: 'À toi de jouer', detail: 'Commence par la première note éclairée.' }); goToStage(2); }}>À moi de jouer <ArrowRight /></button>}
-            {stage === 2 && <button type="button" className="primary-button" disabled={!guidedDone} onClick={() => { if (detector.status === 'idle') void detector.start(); setFeedback({ good: false, title: TUTORIAL_MODE_TRIALS[2].title, detail: TUTORIAL_MODE_TRIALS[2].instruction }); goToStage(3); }}>Découvrir les modes <ArrowRight /></button>}
+            {stage === 2 && guidedCelebrating && <span className="tutorial-auto-next"><i /> Passage automatique vers la suite</span>}
           </footer>
         </main>
       )}
@@ -493,17 +333,33 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
       {stage === 3 && currentTrial && (
         <main className="tutorial-modes">
           <aside className="tutorial-mode-rail">
-            <span className="eyebrow">Tous les modes</span>
-            <h1>Essaie-les une fois.</h1>
-            <p>Chaque essai se joue sur ton accordéon. Le dessin montre où agir, le micro valide ce qu’il entend.</p>
+            <span className="eyebrow">4 façons de travailler</span>
+            <h1>Un rôle clair pour chacune.</h1>
+            <p>Tu as déjà observé la démonstration et joué avec le guidage. Essaie maintenant l’attente sans pression, puis la performance sans aide.</p>
             <ol>{TUTORIAL_MODE_TRIALS.map((trial, index) => <li key={trial.id} className={completedModes.has(trial.id) ? 'is-done' : index === modeIndex ? 'is-current' : ''}><i>{completedModes.has(trial.id) ? <Check /> : index + 1}</i><span><strong>{trial.title}</strong><small>{PRACTICE_MODES.find((mode) => mode.id === trial.id)?.short}</small></span></li>)}</ol>
           </aside>
           <section className="tutorial-mode-workspace">
             <header><span className="eyebrow">Mode {modeIndex + 1} sur {TUTORIAL_MODE_TRIALS.length}</span><h2>{currentTrial.title}</h2><p>{currentTrial.explanation}</p><div className="tutorial-task"><CircleGauge /><span><small>TON MINI-DÉFI</small><strong>{currentTrial.instruction}</strong></span></div></header>
-            <div className={`tutorial-mode-instrument ${currentTrial.task === 'memory' ? 'is-performance' : ''}`}>
-              <AccordionView config={accordion} activeEvent={activeEvent} direction={visualDirection} notation={notation} detectedMidi={detector.reading?.midi} onButtonPress={handleButtonPress} />
-              {currentTrial.task === 'rhythm' && <div className="rhythm-listen-card"><TimerReset /><span><small>LE MICRO COMPTE LES ATTAQUES</small><strong>Joue quatre notes courtes</strong><p>N’importe quelle note, avec un silence bref entre chacune.</p></span><b>{Array.from({ length: 4 }).map((_, index) => <i key={index} className={index < modeProgress ? 'is-done' : ''}>{index < modeProgress ? <Check /> : index + 1}</i>)}</b></div>}
-              {currentTrial.task === 'bellows' && <div className="bellows-listen-card">{!bellowsProfile ? <><header><MoveHorizontal /><span><small>CALIBRATION PERSONNELLE</small><strong>Tiens le bouton {calibrationButton.index} pendant chaque mouvement</strong><p>Le son n’est jamais conservé : seules quelques mesures acoustiques restent sur cet appareil.</p></span></header><div className="bellows-record-actions"><button type="button" className={bellowsReferencesRef.current.push ? 'is-done' : ''} disabled={detector.status !== 'listening' || bellowsCaptureState !== 'idle' || Boolean(bellowsReferencesRef.current.push)} onClick={() => startBellowsCapture('push')}>{bellowsReferencesRef.current.push ? <Check /> : <span>1</span>} Fermer · pousser</button><button type="button" className={bellowsReferencesRef.current.pull ? 'is-done' : ''} disabled={detector.status !== 'listening' || bellowsCaptureState !== 'idle' || !bellowsReferencesRef.current.push} onClick={() => startBellowsCapture('pull')}>{bellowsReferencesRef.current.pull ? <Check /> : <span>2</span>} Ouvrir · tirer</button></div>{bellowsCaptureState !== 'idle' && <div className={`bellows-recording-state ${bellowsCaptureState}`}><i />{bellowsCaptureState === 'countdown' ? `Prépare-toi… ${bellowsCountdown}` : `Enregistrement ${bellowsCaptureDirection === 'push' ? 'pousser' : 'tirer'}…`}</div>}</> : <><header><MoveHorizontal /><span><small>DÉTECTION EN DIRECT</small><strong>{modeProgress === 0 ? 'Ferme le soufflet en poussant' : 'Ouvre le soufflet en tirant'}</strong><p>Garde le bouton {calibrationButton.index} enfoncé, puis relâche-le entre les deux gestes.</p></span></header><div className={`bellows-live-result ${bellowsDetection?.direction ? 'has-direction' : ''}`}><span>{bellowsDetection?.direction === 'push' ? 'P →' : bellowsDetection?.direction === 'pull' ? '← T' : '…'}</span><div><strong>{bellowsDetection?.direction === 'push' ? 'Pousser entendu' : bellowsDetection?.direction === 'pull' ? 'Tirer entendu' : bellowsDetection?.reason === 'ambiguous' ? 'Signal ambigu' : 'Joue quand tu es prêt'}</strong><small>{bellowsDetection?.direction ? `Confiance ${Math.round(bellowsDetection.confidence * 100)} %` : 'Le micro attend une note stable.'}</small></div><button type="button" onClick={recalibrateBellows} aria-label="Recalibrer le soufflet"><RotateCcw /></button></div></>}</div>}
+            <div className="tutorial-practice-preview">
+              <div className="practice-toolbar tutorial-practice-toolbar">
+                <button type="button" className="mode-trigger"><span><small>MODE D’ENTRAÎNEMENT</small><strong>{currentTrial.title}</strong></span><ChevronDown /></button>
+                <div className="tutorial-hand-focus"><small>JE TRAVAILLE</small><strong>Mélodie · main droite</strong></div>
+                <div className="notation-switch">{(['french', 'english', 'tablature'] as Notation[]).map((item) => <button type="button" key={item} className={notation === item ? 'is-active' : ''} onClick={() => onNotationChange(item)}>{item === 'french' ? 'Do Ré' : item === 'english' ? 'A B C' : '1P / 1T'}</button>)}</div>
+              </div>
+              {currentTrial.task === 'wait-melody' ? <>
+                <section className="instrument-stage tutorial-wait-instrument">
+                  <AccordionView config={accordion} activeEvent={activeEvent} direction={visualDirection} notation={notation} detectedMidi={detector.reading?.midi} onButtonPress={handleButtonPress} />
+                  {!modeFinished && <aside className={`tutorial-context-bubble bubble-step-${Math.min(3, modeProgress)}`}>
+                    <span>{modeProgress === 0 ? '1' : modeProgress < 3 ? '2' : '3'}</span>
+                    <div><small>{modeProgress === 0 ? 'LE GESTE À JOUER' : modeProgress < 3 ? 'LA PARTITION T’ATTEND' : 'AUCUNE PRESSION DE TEMPO'}</small><strong>{modeProgress === 0 ? 'Commence par le bouton éclairé.' : modeProgress < 3 ? 'Une bonne note grise la précédente et révèle la suivante.' : 'Prends le temps de trouver chaque note. Ici, le rythme ne compte pas.'}</strong></div>
+                  </aside>}
+                </section>
+                <ScoreStrip song={waitTutorialSong} activeIndex={Math.min(modeProgress, waitEvents.length - 1)} notation={notation} completed={modeFinished} onSelect={() => undefined} />
+                <section className={`coach-feedback ${feedback.good ? 'feedback-good' : 'feedback-neutral'}`} aria-live="polite"><div className="coach-avatar"><AudioLines /></div><div><small>CONSEIL EN DIRECT</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></div><div className="tutorial-wait-counter"><b>{Math.min(modeProgress, waitEvents.length)}</b><span>/ {waitEvents.length}<small>notes</small></span></div></section>
+              </> : <section className="tutorial-performance-stage">
+                <span><Mic2 /></span><small>PERFORMANCE SANS ASSISTANCE</small><h3>L’écran se retire. Ton oreille et ta mémoire prennent le relais.</h3><p>Joue Do, Ré, Mi comme au début. Le micro confirme chaque note, mais aucun bouton n’est montré.</p>
+                <div className="guided-note-progress">{events.map((event, index) => <span key={event.id} className={index < modeProgress ? 'is-done' : index === modeProgress ? 'is-current' : ''}>{index < modeProgress ? <Check /> : index + 1}</span>)}</div>
+              </section>}
             </div>
             {detector.status === 'idle' && currentTrial.task !== 'already-done' && <button type="button" className="primary-button tutorial-start-mic" onClick={() => void detector.start()}><Mic2 /> Activer le micro pour jouer ce mode</button>}
             {detector.status === 'requesting' && <span className="tutorial-mic-state"><Mic2 /> Autorise le microphone…</span>}
@@ -517,7 +373,7 @@ export function FirstLessonTutorial({ accordion, notation, song, onNotationChang
                 onRetry={() => void detector.start()}
               />
             )}
-            <section className={`tutorial-feedback ${feedback.good ? 'is-good' : ''}`} aria-live="polite"><AudioLines /><span><small>VALIDATION AUTOMATIQUE</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></span></section>
+            {currentTrial.task !== 'wait-melody' && <section className={`tutorial-feedback ${feedback.good ? 'is-good' : ''}`} aria-live="polite"><AudioLines /><span><small>VALIDATION AUTOMATIQUE</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></span></section>}
             <footer><button type="button" className="primary-button" disabled={!modeFinished} onClick={advanceMode}>{modeIndex === TUTORIAL_MODE_TRIALS.length - 1 ? 'Visiter l’interface' : 'Mode suivant'} <ArrowRight /></button></footer>
           </section>
         </main>

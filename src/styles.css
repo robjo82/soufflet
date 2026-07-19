@@ -528,7 +528,7 @@ svg { stroke-width: 1.8; }
 .tutorial-instruction-card h1 { margin: 13px 0 15px; font-size: 37px; line-height: 1.02; letter-spacing: -.045em; }
 .tutorial-instruction-card > p { color: var(--muted); font-size: 14px; line-height: 1.65; }
 .tutorial-instruction-card > button, .tutorial-instruction-card > .tutorial-mic-state { margin-top: auto; }
-.tutorial-instrument-card { min-width: 0; min-height: 505px; padding: 16px; border-radius: 22px; display: flex; align-items: center; overflow: hidden; }
+.tutorial-instrument-card { min-width: 0; min-height: 505px; padding: 16px; position: relative; border-radius: 22px; display: flex; align-items: center; overflow: hidden; }
 .tutorial-instrument-card .accordion { transform: scale(.94); margin-block: -12px; }
 .tutorial-score { grid-column: 1 / -1; border-radius: 18px; overflow: hidden; }
 .tutorial-score .score-shell { border: 0; height: 145px; }
@@ -549,6 +549,28 @@ svg { stroke-width: 1.8; }
 .tutorial-feedback.is-good { border-color: #adccb9; background: #edf5f0; }
 .tutorial-lesson-footer { grid-column: 1 / -1; display: flex; justify-content: end; }
 .tutorial-lesson-footer .primary-button { min-height: 54px; }
+.tutorial-auto-next { min-height: 42px; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px; color: var(--green); background: var(--green-soft); font-size: 10px; font-weight: 800; }
+.tutorial-auto-next i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: micPulse 1s infinite; }
+.tutorial-success-burst { position: absolute; z-index: 15; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--green); background: rgba(247,251,248,.92); backdrop-filter: blur(8px); animation: tutorialSuccessIn .45s cubic-bezier(.2,.8,.2,1) both; }
+.tutorial-success-burst > span { width: 82px; height: 82px; margin-bottom: 14px; border-radius: 50%; display: grid; place-items: center; color: white; background: var(--green); box-shadow: 0 0 0 13px rgba(49,92,75,.12); animation: tutorialSuccessPulse .8s ease-out both; }
+.tutorial-success-burst > span svg { width: 43px; height: 43px; stroke-width: 3; }
+.tutorial-success-burst > svg { position: absolute; width: 38px; height: 38px; margin: -125px 0 0 130px; color: var(--yellow); }
+.tutorial-success-burst strong { font: 800 27px 'Manrope'; }
+.tutorial-success-burst p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+.tutorial-success-burst > i { width: 9px; height: 9px; position: absolute; left: 50%; top: 50%; border-radius: 2px; background: var(--coral); animation: tutorialConfetti 1.2s ease-out both; }
+.tutorial-success-burst > i:nth-of-type(2n) { background: var(--yellow); }
+.tutorial-success-burst > i:nth-of-type(3n) { border-radius: 50%; background: var(--green); }
+.tutorial-success-burst > i:nth-of-type(1) { --x: -145px; --y: -95px; }
+.tutorial-success-burst > i:nth-of-type(2) { --x: -105px; --y: 90px; }
+.tutorial-success-burst > i:nth-of-type(3) { --x: -55px; --y: -135px; }
+.tutorial-success-burst > i:nth-of-type(4) { --x: 20px; --y: 125px; }
+.tutorial-success-burst > i:nth-of-type(5) { --x: 75px; --y: -120px; }
+.tutorial-success-burst > i:nth-of-type(6) { --x: 130px; --y: 75px; }
+.tutorial-success-burst > i:nth-of-type(7) { --x: 160px; --y: -45px; }
+.tutorial-success-burst > i:nth-of-type(8) { --x: -165px; --y: 25px; }
+@keyframes tutorialSuccessIn { from { opacity: 0; transform: scale(.96); } }
+@keyframes tutorialSuccessPulse { from { opacity: 0; transform: scale(.5); } 70% { transform: scale(1.1); } }
+@keyframes tutorialConfetti { from { opacity: 0; transform: translate(-50%,-50%) scale(.2) rotate(0); } 30% { opacity: 1; } to { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1) rotate(180deg); } }
 .tutorial-limitation { padding: 10px 13px; border-radius: 10px; color: #7a5b2a; background: #f7e8c8; font-size: 10px; line-height: 1.5; }
 .microphone-recovery { width: 100%; display: grid; gap: 10px; }
 .microphone-recovery-actions { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -580,6 +602,33 @@ svg { stroke-width: 1.8; }
 .tutorial-task > span { display: flex; flex-direction: column; }
 .tutorial-task small { font-size: 7px; letter-spacing: .1em; font-weight: 900; }
 .tutorial-task strong { font-size: 11px; line-height: 1.4; }
+.tutorial-practice-preview { min-width: 0; margin-top: 18px; border: 1px solid var(--line); border-radius: 19px; overflow: hidden; background: #f6f3ed; box-shadow: 0 16px 42px rgba(48,42,35,.08); }
+.tutorial-practice-toolbar { min-height: 64px; padding: 8px 12px; background: rgba(255,255,255,.72); }
+.tutorial-practice-toolbar .mode-trigger { margin-right: auto; pointer-events: none; }
+.tutorial-hand-focus { min-height: 36px; padding: 5px 10px; border-radius: 9px; display: flex; flex-direction: column; justify-content: center; color: var(--green); background: var(--green-soft); }
+.tutorial-hand-focus small { font-size: 6px; font-weight: 900; letter-spacing: .1em; }
+.tutorial-hand-focus strong { font-size: 9px; }
+.tutorial-wait-instrument { min-height: 435px; padding: 12px; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.tutorial-wait-instrument .accordion { transform: scale(.83); margin-block: -32px; }
+.tutorial-context-bubble { width: min(330px, calc(100% - 28px)); min-height: 74px; padding: 12px; position: absolute; z-index: 18; top: 14px; right: 14px; border: 1px solid #9ebcac; border-radius: 14px; display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 10px; color: var(--green); background: rgba(247,251,248,.96); box-shadow: 0 13px 34px rgba(49,92,75,.17); }
+.tutorial-context-bubble > span { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: white; background: var(--green); font-weight: 900; }
+.tutorial-context-bubble > div { display: flex; flex-direction: column; }
+.tutorial-context-bubble small { font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.tutorial-context-bubble strong { margin-top: 2px; color: var(--ink); font-size: 10px; line-height: 1.4; }
+.tutorial-practice-preview .score-shell { height: 140px; border-inline: 0; border-radius: 0; }
+.tutorial-practice-preview .coach-feedback { margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.tutorial-wait-counter { min-width: 72px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.tutorial-wait-counter b { margin-right: 4px; color: var(--green); font: 800 25px 'Manrope'; }
+.tutorial-wait-counter span { display: flex; flex-direction: column; font-size: 9px; }
+.tutorial-wait-counter small { color: var(--muted); font-size: 7px; text-transform: uppercase; }
+.tutorial-performance-stage { min-height: 500px; padding: 45px; border-top: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: white; background: radial-gradient(circle at 50% 42%, #426e5c 0, #18372b 72%); }
+.tutorial-performance-stage > span { width: 70px; height: 70px; border: 1px solid rgba(255,255,255,.2); border-radius: 20px; display: grid; place-items: center; background: rgba(255,255,255,.1); }
+.tutorial-performance-stage > span svg { width: 31px; height: 31px; }
+.tutorial-performance-stage > small { margin-top: 18px; color: #bcd6c8; font-size: 8px; font-weight: 900; letter-spacing: .13em; }
+.tutorial-performance-stage h3 { max-width: 610px; margin: 8px 0; font-size: 25px; }
+.tutorial-performance-stage p { max-width: 580px; margin: 0; color: rgba(255,255,255,.7); font-size: 11px; line-height: 1.6; }
+.tutorial-performance-stage .guided-note-progress { margin: 28px 0 0; }
+.tutorial-performance-stage .guided-note-progress span { border-color: rgba(255,255,255,.35); color: white; background: rgba(255,255,255,.08); }
 .tutorial-mode-instrument { min-height: 420px; margin: 18px 0 12px; position: relative; display: grid; place-items: center; border-radius: 18px; overflow: hidden; background: radial-gradient(circle, #fff, #f1ece3); }
 .tutorial-mode-instrument .accordion { transform: scale(.84); margin-block: -31px; }
 .tutorial-mode-instrument .direction-banner { min-height: 44px; margin-bottom: 0; transform: scale(.9); }
@@ -691,6 +740,17 @@ svg { stroke-width: 1.8; }
   .tutorial-mode-rail li > i { margin: auto; }
   .tutorial-mode-workspace > header { grid-template-columns: 1fr; }
   .tutorial-task { grid-column: 1; grid-row: auto; margin-top: 12px; }
+  .tutorial-practice-toolbar { flex-wrap: wrap; }
+  .tutorial-practice-toolbar .mode-trigger { width: 100%; }
+  .tutorial-hand-focus { flex: 1; }
+  .tutorial-wait-instrument { min-height: 360px; padding: 0; }
+  .tutorial-wait-instrument .direction-banner { min-height: 43px; margin-bottom: 0; transform: scale(.8); }
+  .tutorial-wait-instrument .accordion { transform: scale(.57); margin-block: -81px; }
+  .tutorial-context-bubble { top: 10px; right: 10px; }
+  .tutorial-practice-preview .score-shell { grid-template-columns: 47px 1fr; }
+  .tutorial-practice-preview .coach-feedback { align-items: flex-start; }
+  .tutorial-wait-counter { min-width: 56px; }
+  .tutorial-performance-stage { min-height: 390px; padding: 30px 20px; }
   .tutorial-mode-instrument { min-height: 330px; }
   .tutorial-mode-instrument .direction-banner { min-height: 42px; margin-bottom: 0; transform: scale(.78); }
   .tutorial-mode-instrument .accordion { transform: scale(.54); transform-origin: left center; margin-block: -86px; }
@@ -1525,6 +1585,13 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .week-stats span { flex-direction: column; }
   .week-stats span + span { padding-left: 8px; }
   .notation-cards { grid-template-columns: 1fr; }
+  .tutorial-mode-workspace { padding: 14px; }
+  .tutorial-context-bubble { top: auto; right: 10px; bottom: 10px; }
+  .tutorial-context-bubble strong { font-size: 9px; }
+  .tutorial-wait-instrument { min-height: 330px; }
+  .tutorial-wait-instrument .accordion { transform: scale(.49); margin-block: -98px; }
+  .tutorial-practice-preview .coach-feedback > div:nth-child(2) { display: block; }
+  .tutorial-practice-preview .coach-feedback > div:nth-child(2) small { display: block; }
   .notation-card { min-height: 115px; }
   .onboarding-step { display: none; }
   .onboarding-footer .secondary-button, .onboarding-footer .primary-button { padding: 0 12px; font-size: 10px; }

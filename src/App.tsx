@@ -230,7 +230,7 @@ export function App() {
   }
 
   if (!preferences.tutorialDone) {
-    return <FirstLessonTutorial accordion={selectedAccordion} notation={preferences.notation} song={firstLessonSong} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onComplete={() => {
+    return <FirstLessonTutorial accountId={user.id} accordion={selectedAccordion} notation={preferences.notation} song={firstLessonSong} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onComplete={() => {
       savePreferences({ ...preferences, tutorialDone: true });
       setPracticeSong(null);
       setPage('home');

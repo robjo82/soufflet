@@ -3,7 +3,7 @@ import { adaptSongToAccordion, DEMO_SONG, displayNote, FALLBACK_ACCORDIONS } fro
 import { EMPTY_PITCH_STABILITY, frequencyToPitch, rememberReliablePitch, stabilizePitchReading } from './hooks/usePitchDetector';
 import { getAccordionVisualVariant, getMelodyButtonSize } from './components/accordionLayout';
 import { HAND_FOCUS_OPTIONS, PRACTICE_MODES, PRIMARY_PRACTICE_MODES } from './practiceModes';
-import { TUTORIAL_MODE_TRIALS } from './tutorialFlow';
+import { createWaitTutorialSong, TUTORIAL_MODE_TRIALS } from './tutorialFlow';
 import { getCountInSequence, getPlaybackStartIndex, getWaitAdvance } from './practiceProgress';
 import { createPracticeTimeline } from './practiceTimeline';
 import { classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, type AudioFeatureFrame, type BellowsProfile } from './audioTraining';
@@ -92,12 +92,20 @@ describe('first lesson tutorial', () => {
   it('introduces only the four primary practice modes', () => {
     expect(PRIMARY_PRACTICE_MODES.map((mode) => mode.id)).toEqual(['demo', 'guided', 'wait', 'performance']);
     expect(TUTORIAL_MODE_TRIALS.map((trial) => trial.id)).toEqual(PRIMARY_PRACTICE_MODES.map((mode) => mode.id));
+    expect(TUTORIAL_MODE_TRIALS.map((trial) => trial.task)).toEqual(['already-done', 'already-done', 'wait-melody', 'memory']);
   });
 
   it('keeps hands as a focus and rhythm or bellows as supplemental workshops', () => {
     expect(PRACTICE_MODES.map((mode) => mode.id)).toEqual(['demo', 'guided', 'wait', 'performance', 'rhythm', 'bellows']);
     expect(HAND_FOCUS_OPTIONS.map((option) => option.id)).toEqual(['right', 'left', 'both']);
     expect(PRACTICE_MODES.some((mode) => ['right', 'left', 'combined'].includes(mode.id))).toBe(false);
+  });
+
+  it('uses a recognizable seven-note phrase in wait mode', () => {
+    const phrase = createWaitTutorialSong(DEMO_SONG);
+    expect(phrase.events.map((event) => event.midi)).toEqual([60, 60, 60, 62, 64, 62, 60]);
+    expect(phrase.events.map((event) => event.beat)).toEqual([0, 1, 2, 3, 4, 6, 8]);
+    expect(phrase.accompaniment).toBeUndefined();
   });
 });
 
