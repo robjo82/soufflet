@@ -22,7 +22,7 @@ La première leçon réutilise les composants et le vocabulaire de la future int
 - la frise, le clavier, la direction de soufflet et le conseil contextuel sont ceux que l’élève retrouvera ensuite en séance ;
 - démonstration et lecture guidée sont considérées comme expérimentées dans les deux premières étapes ; attente et performance doivent être réellement réussies avant de continuer.
 
-Le tutoriel ne prétend pas déduire la direction mécanique du soufflet à partir du son seul : la hauteur valide la note tandis que le mouvement pousser/tirer reste indiqué explicitement. Aucun son brut n’est conservé.
+Le tutoriel ne prétend pas déduire la direction mécanique du soufflet à partir du son seul : la hauteur valide la note tandis que le mouvement pousser/tirer reste indiqué explicitement. Aucun son brut n’est conservé. Dans l’accordeur, seules les mesures numériques explicitement validées sont archivées avec le compte pour conserver le diagnostic et permettre son export.
 
 ## Défi des touches
 
@@ -38,7 +38,7 @@ La recherche sur l’apprentissage moteur musical montre que l’alternance et l
 
 ## Vérification de l’instrument
 
-L’accordeur sépare la mesure acoustique de la cartographie. La dernière hauteur fiable reste visible pendant que l’utilisateur sélectionne un bouton, mais elle n’est jamais enregistrée automatiquement dans la configuration.
+L’accordeur sépare la mesure acoustique de la cartographie. La dernière hauteur fiable reste visible pendant que l’utilisateur sélectionne un bouton, mais elle n’est jamais enregistrée automatiquement dans la configuration. Une validation archive la fréquence, l’écart en cents, la confiance et le geste dans une campagne liée au compte. L’export JSON contient cette campagne et un instantané complet de la cartographie, y compris lorsqu’aucun ancien relevé fin n’est disponible.
 
 Le parcours ordonne chaque bouton en deux gestes : pousser, puis tirer. Une note conforme peut être validée avant de continuer ; une note différente demande une correction explicite, crée si nécessaire une configuration personnelle et avance ensuite vers le geste suivant. Le bouton courant reçoit un contour distinct de la détection audio, et un sélecteur textuel garantit l’accès aux rangs intérieurs sur les petits écrans.
 

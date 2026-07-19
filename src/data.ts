@@ -60,12 +60,12 @@ const gcInner = [
 ];
 
 const clubOuter = [
-  [78, 75], [82, 80], [60, 62], [64, 65], [67, 69],
-  [72, 71], [76, 74], [79, 77], [84, 81], [88, 86],
+  [78, 80], [55, 59], [60, 62], [64, 65], [67, 69],
+  [72, 71], [76, 74], [79, 77], [84, 81], [88, 83],
 ];
 const clubInner = [
-  [48, 54], [52, 55], [55, 59], [60, 60], [64, 65],
-  [67, 69], [72, 71], [76, 74], [79, 77],
+  [57, 60], [60, 64], [65, 67], [69, 70], [72, 72],
+  [77, 76], [81, 79], [84, 82], [89, 86],
 ];
 
 const mapRow = (prefix: string, row: number, notes: number[][]) =>
@@ -88,16 +88,16 @@ export const FALLBACK_ACCORDIONS: AccordionConfig[] = [
     color: '#6e2f28',
     rightRows: [10, 9, 2],
     bassCount: 8,
-    description: 'Variante Club I avec deux boutons aigus en tête, dont P1 = F♯5, et bouton Gleichton.',
+    description: 'Variante Club I mesurée : rangée de Do, rangée de Fa avec Gleichton Do5 et deux altérations.',
     buttons: [
       ...mapRow('c1-out', 1, clubOuter),
-      ...mapRow('c1-in', 2, clubInner).map((button) => button.index === 4 ? { ...button, isGleichton: true } : button),
-      makeButton('c1-help-1', 3, 1, 66, 63, { role: 'accidental', finger: 2 }),
-      makeButton('c1-help-2', 3, 2, 70, 68, { role: 'accidental', finger: 3 }),
+      ...mapRow('c1-in', 2, clubInner).map((button) => button.index === 5 ? { ...button, isGleichton: true } : button),
+      makeButton('c1-help-1', 3, 1, 66, 68, { role: 'accidental', finger: 2 }),
+      makeButton('c1-help-2', 3, 2, 75, 73, { role: 'accidental', finger: 3 }),
     ],
     basses: standardBasses('CF'),
     verified: false,
-    sourceNote: 'Variante relevée : P1 = F♯5 et boutons 5P/5T à 9T validés par la tablature du Brise-pieds. Les autres Club I peuvent différer.',
+    sourceNote: 'Variante mesurée le 19/07/2026 : P1 = F♯5/G♯5, rang Do dès G3/B3, rang Fa dès F4/G4 et Gleichton Do5 au bouton 5. Les autres Club I peuvent différer.',
   },
   {
     id: 'standard-gc-21-8',
