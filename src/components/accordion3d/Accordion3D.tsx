@@ -1,7 +1,7 @@
 import { ContactShadows, OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
-import { Euler, MathUtils, Object3D, Quaternion, Vector3 } from 'three';
+import { Color, Euler, MathUtils, Mesh, MeshStandardMaterial, Object3D, Quaternion, Vector3 } from 'three';
 
 interface Accordion3DProps {
   activeButtonIds?: string[];
@@ -17,7 +17,23 @@ interface MotionNode {
   openRotation: Euler;
 }
 
+interface ButtonVisual {
+  material: MeshStandardMaterial;
+  restEmissive: Color;
+  restEmissiveIntensity: number;
+}
+
+interface ButtonNode {
+  node: Object3D;
+  rest: Vector3;
+  restScale: Vector3;
+  axis: Vector3;
+  depth: number;
+  visuals: ButtonVisual[];
+}
+
 const MODEL_URL = '/models/hohner-club-i.glb';
+const ACTIVE_BUTTON_COLOR = new Color('#ff5738');
 
 function blenderVector(values: unknown, fallback: Vector3) {
   return Array.isArray(values) && values.length === 3 && values.every((value) => typeof value === 'number')
@@ -39,16 +55,33 @@ function Model({ activeButtonIds = [], bellowsAmount, onButtonPress }: Accordion
   const buttonProgress = useRef(new Map<string, number>());
 
   const contract = useMemo(() => {
-    const buttons = new Map<string, { node: Object3D; rest: Vector3; axis: Vector3; depth: number }>();
+    const buttons = new Map<string, ButtonNode>();
     const motion: MotionNode[] = [];
     scene.traverse((node) => {
       const buttonId = typeof node.userData.buttonId === 'string' ? node.userData.buttonId : undefined;
       if (buttonId) {
+        const visuals: ButtonVisual[] = [];
+        node.traverse((child) => {
+          if (!(child instanceof Mesh)) return;
+          const sourceMaterials = Array.isArray(child.material) ? child.material : [child.material];
+          const clonedMaterials = sourceMaterials.map((material) => material.clone());
+          child.material = Array.isArray(child.material) ? clonedMaterials : clonedMaterials[0];
+          clonedMaterials.forEach((material) => {
+            if (!(material instanceof MeshStandardMaterial)) return;
+            visuals.push({
+              material,
+              restEmissive: material.emissive.clone(),
+              restEmissiveIntensity: material.emissiveIntensity,
+            });
+          });
+        });
         buttons.set(buttonId, {
           node,
           rest: node.position.clone(),
+          restScale: node.scale.clone(),
           axis: blenderVector(node.userData.pressAxis, new Vector3(0, 0, -1)).normalize(),
           depth: typeof node.userData.pressDepth === 'number' ? node.userData.pressDepth : 0.004,
+          visuals,
         });
       }
       if (Array.isArray(node.userData.closedPosition) && Array.isArray(node.userData.openPosition)) {
@@ -64,14 +97,23 @@ function Model({ activeButtonIds = [], bellowsAmount, onButtonPress }: Accordion
     return { buttons, motion };
   }, [scene]);
 
+  useEffect(() => () => {
+    contract.buttons.forEach(({ visuals }) => visuals.forEach(({ material }) => material.dispose()));
+  }, [contract]);
+
   useFrame((_, delta) => {
     const active = new Set(activeButtonIds);
     const easing = 1 - Math.exp(-delta * 18);
-    contract.buttons.forEach(({ node, rest, axis, depth }, id) => {
+    contract.buttons.forEach(({ node, rest, restScale, axis, depth, visuals }, id) => {
       const current = buttonProgress.current.get(id) ?? 0;
       const progress = MathUtils.lerp(current, active.has(id) ? 1 : 0, easing);
       buttonProgress.current.set(id, progress);
       node.position.copy(rest).addScaledVector(axis, depth * progress);
+      node.scale.copy(restScale).multiplyScalar(1 + progress * 0.055);
+      visuals.forEach(({ material, restEmissive, restEmissiveIntensity }) => {
+        material.emissive.copy(restEmissive).lerp(ACTIVE_BUTTON_COLOR, progress);
+        material.emissiveIntensity = restEmissiveIntensity + progress * 1.35;
+      });
     });
     const amount = MathUtils.clamp(bellowsAmount, 0, 1);
     contract.motion.forEach(({ node, closedPosition, openPosition, closedRotation, openRotation }) => {
@@ -118,13 +160,19 @@ function ResponsiveCamera() {
   return null;
 }
 
+let cachedWebGLSupport: boolean | undefined;
+
 function supportsWebGL() {
+  if (cachedWebGLSupport !== undefined) return cachedWebGLSupport;
   try {
     const canvas = document.createElement('canvas');
-    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+    const context = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    cachedWebGLSupport = Boolean(context);
+    context?.getExtension('WEBGL_lose_context')?.loseContext();
   } catch {
-    return false;
+    cachedWebGLSupport = false;
   }
+  return cachedWebGLSupport;
 }
 
 export function Accordion3D(props: Accordion3DProps) {
