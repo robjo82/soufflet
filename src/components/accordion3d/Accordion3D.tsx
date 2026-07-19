@@ -1,12 +1,28 @@
 import { ContactShadows, OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
-import { Color, Euler, MathUtils, Mesh, MeshStandardMaterial, Object3D, Quaternion, Vector3 } from 'three';
+import { getAccordionDirectionGuide } from '../../accordion3dGuides';
+import type { Direction } from '../../types';
+import {
+  CanvasTexture,
+  Color,
+  Euler,
+  MathUtils,
+  Mesh,
+  MeshStandardMaterial,
+  Object3D,
+  Quaternion,
+  Sprite,
+  SpriteMaterial,
+  Vector3,
+} from 'three';
 
 interface Accordion3DProps {
   activeButtonIds?: string[];
   bellowsAmount: number;
+  direction?: Direction;
   onButtonPress?: (buttonId: string) => void;
+  showLearningGuides?: boolean;
 }
 
 interface MotionNode {
@@ -35,13 +51,35 @@ interface ButtonNode {
   restScale: Vector3;
   axis: Vector3;
   depth: number;
+  guide: Sprite;
   visuals: ButtonVisual[];
 }
 
 // Public models keep a stable filename, so the revision must change whenever
 // their binary content changes. This also invalidates useGLTF's in-memory cache.
-const MODEL_URL = '/models/hohner-club-i.glb?revision=organic-wave-2';
-const ACTIVE_BUTTON_COLOR = new Color('#ff5738');
+const MODEL_URL = '/models/hohner-club-i.glb?revision=organic-wave-3';
+const ACTIVE_BUTTON_COLOR = new Color('#46c9f2');
+const STANDARD_BUTTON_COLOR = new Color('#ff5738');
+
+function createButtonGuideTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  if (context) {
+    const gradient = context.createRadialGradient(64, 64, 22, 64, 64, 62);
+    gradient.addColorStop(0, 'rgba(39, 185, 240, 0.3)');
+    gradient.addColorStop(0.35, 'rgba(39, 185, 240, 0.22)');
+    gradient.addColorStop(0.52, 'rgba(22, 160, 222, 1)');
+    gradient.addColorStop(0.7, 'rgba(52, 196, 242, 0.44)');
+    gradient.addColorStop(1, 'rgba(52, 196, 242, 0)');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 128, 128);
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
 
 function blenderVector(values: unknown, fallback: Vector3) {
   return Array.isArray(values) && values.length === 3 && values.every((value) => typeof value === 'number')
@@ -57,11 +95,13 @@ function blenderEuler(values: unknown, fallback: Euler) {
   return new Euler().setFromQuaternion(converted, fallback.order);
 }
 
-function Model({ activeButtonIds = [], bellowsAmount, onButtonPress }: Accordion3DProps) {
+function Model({ activeButtonIds = [], bellowsAmount, onButtonPress, showLearningGuides = true }: Accordion3DProps) {
   const gltf = useGLTF(MODEL_URL);
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
   const buttonProgress = useRef(new Map<string, number>());
   const smoothedBellowsAmount = useRef(bellowsAmount);
+  const guidePulseTime = useRef(0);
+  const guideTexture = useMemo(createButtonGuideTexture, []);
 
   const contract = useMemo(() => {
     const buttons = new Map<string, ButtonNode>();
@@ -91,6 +131,28 @@ function Model({ activeButtonIds = [], bellowsAmount, onButtonPress }: Accordion
           restScale: node.scale.clone(),
           axis: blenderVector(node.userData.pressAxis, new Vector3(0, 0, -1)).normalize(),
           depth: typeof node.userData.pressDepth === 'number' ? node.userData.pressDepth : 0.004,
+          guide: (() => {
+            const guideName = `${buttonId}-learning-guide`;
+            const existingGuide = node.getObjectByName(guideName);
+            if (existingGuide instanceof Sprite) return existingGuide;
+            const axis = blenderVector(node.userData.pressAxis, new Vector3(0, 0, -1)).normalize();
+            const material = new SpriteMaterial({
+              map: guideTexture,
+              color: '#d5f6ff',
+              transparent: true,
+              opacity: 0,
+              depthTest: false,
+              depthWrite: false,
+            });
+            const guide = new Sprite(material);
+            guide.name = guideName;
+            guide.position.copy(axis).multiplyScalar(-0.008);
+            guide.scale.setScalar(0.036);
+            guide.renderOrder = 20;
+            guide.visible = false;
+            node.add(guide);
+            return guide;
+          })(),
           visuals,
         });
       }
@@ -116,24 +178,34 @@ function Model({ activeButtonIds = [], bellowsAmount, onButtonPress }: Accordion
       }
     });
     return { buttons, motion, morphs };
-  }, [scene]);
+  }, [guideTexture, scene]);
 
   useEffect(() => () => {
-    contract.buttons.forEach(({ visuals }) => visuals.forEach(({ material }) => material.dispose()));
-  }, [contract]);
+    contract.buttons.forEach(({ guide, visuals }) => {
+      guide.removeFromParent();
+      guide.material.dispose();
+      visuals.forEach(({ material }) => material.dispose());
+    });
+    guideTexture.dispose();
+  }, [contract, guideTexture]);
 
   useFrame((_, delta) => {
+    guidePulseTime.current += delta;
     const active = new Set(activeButtonIds);
     const easing = 1 - Math.exp(-delta * 18);
-    contract.buttons.forEach(({ node, rest, restScale, axis, depth, visuals }, id) => {
+    contract.buttons.forEach(({ node, rest, restScale, axis, depth, guide, visuals }, id) => {
       const current = buttonProgress.current.get(id) ?? 0;
       const progress = MathUtils.lerp(current, active.has(id) ? 1 : 0, easing);
       buttonProgress.current.set(id, progress);
       node.position.copy(rest).addScaledVector(axis, depth * progress);
       node.scale.copy(restScale).multiplyScalar(1 + progress * 0.055);
+      const pulse = 1 + Math.sin(guidePulseTime.current * 5.4) * 0.08;
+      guide.visible = showLearningGuides && progress > 0.01;
+      guide.material.opacity = progress * 0.94;
+      guide.scale.setScalar((0.036 + progress * 0.01) * pulse);
       visuals.forEach(({ material, restEmissive, restEmissiveIntensity }) => {
-        material.emissive.copy(restEmissive).lerp(ACTIVE_BUTTON_COLOR, progress);
-        material.emissiveIntensity = restEmissiveIntensity + progress * 1.35;
+        material.emissive.copy(restEmissive).lerp(showLearningGuides ? ACTIVE_BUTTON_COLOR : STANDARD_BUTTON_COLOR, progress);
+        material.emissiveIntensity = restEmissiveIntensity + progress * 1.9;
       });
     });
     const targetAmount = MathUtils.clamp(bellowsAmount, 0, 1);
@@ -185,16 +257,18 @@ function LoadingModel() {
 
 function ResponsiveCamera({ bellowsAmount }: Pick<Accordion3DProps, 'bellowsAmount'>) {
   const { camera, size } = useThree();
+  const squareStage = size.height >= size.width * 0.75;
+  const closedDistance = squareStage ? (size.width < 420 ? 1.02 : 0.88) : size.width < 600 ? 1.6 : 1.25;
   useEffect(() => {
-    camera.position.set(0, 0.2, size.width < 600 ? 1.6 : 1.25);
-    camera.lookAt(0, 0.2, 0);
+    camera.position.set(0, 0.01, closedDistance);
+    camera.lookAt(0, 0.01, 0);
     camera.updateProjectionMatrix();
-  }, [camera, size.width]);
+  }, [camera, closedDistance]);
   useFrame((_, delta) => {
     const opening = MathUtils.clamp(bellowsAmount, 0, 1);
-    const targetDistance = size.width < 600 ? 1.6 + opening * 0.15 : 1.25 + opening * 0.12;
+    const targetDistance = closedDistance + opening * (squareStage ? 0.3 : 0.12);
     camera.position.z = MathUtils.damp(camera.position.z, targetDistance, 7, delta);
-    camera.position.y = MathUtils.damp(camera.position.y, 0.2 - opening * 0.008, 7, delta);
+    camera.position.y = MathUtils.damp(camera.position.y, 0.01 - opening * 0.008, 7, delta);
   });
   return null;
 }
@@ -216,6 +290,7 @@ function supportsWebGL() {
 
 export function Accordion3D(props: Accordion3DProps) {
   if (!supportsWebGL()) return null;
+  const directionGuide = getAccordionDirectionGuide(props.direction ?? 'pull');
   return (
     <div className="accordion-3d-canvas" role="img" aria-label="Accordéon Hohner Club I interactif en trois dimensions">
       <Canvas camera={{ position: [0, 0.2, 1.25], fov: 32, near: 0.01, far: 10 }} dpr={[1, 1.75]} gl={{ antialias: true, alpha: true }}>
@@ -228,8 +303,22 @@ export function Accordion3D(props: Accordion3DProps) {
           <Model {...props} />
         </Suspense>
         <ContactShadows position={[0, -0.18, 0]} opacity={0.28} scale={1.1} blur={2.5} far={1} />
-        <OrbitControls target={[0, 0.2, 0]} minDistance={0.65} maxDistance={2.4} enablePan={false} />
+        <OrbitControls target={[0, 0.01, 0]} minDistance={0.65} maxDistance={2.4} enablePan={false} />
       </Canvas>
+      {props.showLearningGuides !== false && (
+        <div
+          className={`accordion-3d-direction-guides is-${props.direction ?? 'pull'}`}
+          role="status"
+          aria-label={directionGuide.label}
+        >
+          <span className="accordion-3d-direction-guide is-left" aria-hidden="true">
+            <b>{directionGuide.leftArrow}</b>
+          </span>
+          <span className="accordion-3d-direction-guide is-right" aria-hidden="true">
+            <b>{directionGuide.rightArrow}</b>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

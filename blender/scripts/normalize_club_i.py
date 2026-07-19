@@ -124,7 +124,7 @@ def configure_book_motion(
     open_half_width = 0.169
     rotation_blend = 0.72
     root["bellows_motion_style"] = "organic-wave: asymmetric sag, counter-curve and inertial runtime"
-    root["model_revision"] = "organic-wave-2"
+    root["model_revision"] = "organic-wave-3"
     root["wave_sag_m"] = sag
     root["wave_counter_m"] = counter_wave
     root["wave_depth_m"] = depth
@@ -178,7 +178,9 @@ def configure_bellows_skin() -> bpy.types.Object:
         raise RuntimeError("Missing bellows extension shape key.")
 
     closed_half_width = max(abs(vertex.co.x) for vertex in basis.data)
-    extension_distance = 0.105
+    # Six millimetres of overlap disappear below each end frame and prevent a
+    # visible slit between the first inner pleat and the wooden casing.
+    extension_distance = 0.111
     sag = 0.014
     counter_wave = 0.008
     depth = 0.006
@@ -426,7 +428,7 @@ def normalize() -> dict:
             "minimum": 0,
             "maximum": 1,
             "motionStyle": "organic-wave",
-            "modelRevision": "organic-wave-2",
+            "modelRevision": "organic-wave-3",
             "skin": {
                 "node": "Closed_Bellows_Pleated_Skin",
                 "morphTarget": "SK_Bellows_Extension",

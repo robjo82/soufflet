@@ -1747,52 +1747,88 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 /* Internal 3D asset lab ---------------------------------------------------- */
-.accordion-3d-lab { min-height: 100vh; padding: clamp(18px, 3vw, 42px); background: radial-gradient(circle at 50% 0, #fffdf8 0, #f3efe6 60%, #e9e3d8 100%); color: #24231f; }
-.accordion-3d-lab-header { max-width: 1500px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
-.accordion-3d-lab-header h1 { margin: 6px 0; font-size: clamp(28px, 4vw, 54px); line-height: 1; letter-spacing: -.035em; }
-.accordion-3d-lab-header p { max-width: 760px; margin: 0; color: #6a685f; font-size: clamp(15px, 1.4vw, 19px); }
+.accordion-3d-lab { min-height: 100vh; padding: clamp(16px, 2vw, 28px); background: radial-gradient(circle at 50% 0, #fffdf8 0, #f3efe6 60%, #e9e3d8 100%); color: #24231f; }
+.accordion-3d-lab-header { max-width: 1500px; margin: 0 auto 14px; display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.accordion-3d-lab-header h1 { margin: 4px 0; font-size: clamp(26px, 3vw, 42px); line-height: 1; letter-spacing: -.035em; }
+.accordion-3d-lab-header p { max-width: 760px; margin: 0; color: #6a685f; font-size: clamp(13px, 1.1vw, 16px); }
 .accordion-3d-lab .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #2e6957; text-transform: uppercase; font-size: 12px; font-weight: 800; letter-spacing: .15em; }
 .accordion-3d-lab .secondary-button { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 16px; border: 1px solid #d4cec1; border-radius: 14px; background: rgba(255,255,255,.72); color: inherit; text-decoration: none; font-weight: 750; white-space: nowrap; }
-.accordion-3d-stage { max-width: 1500px; height: min(68vh, 760px); min-height: 430px; margin: 0 auto; position: relative; overflow: hidden; border: 1px solid rgba(81,72,58,.15); border-radius: 30px; background: #f3efe7; box-shadow: 0 26px 80px rgba(70,55,37,.14); }
+.accordion-3d-workspace { --accordion-lab-size: clamp(460px, calc(100dvh - 190px), min(760px, calc(100vw - 500px))); max-width: 1500px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, var(--accordion-lab-size)) minmax(400px, 1fr); align-items: stretch; gap: 18px; }
+.accordion-3d-stage { width: 100%; height: var(--accordion-lab-size); position: relative; overflow: hidden; border: 1px solid rgba(81,72,58,.15); border-radius: 30px; background: #f3efe7; box-shadow: 0 26px 80px rgba(70,55,37,.14); }
 .accordion-3d-revision { min-height: 32px; padding: 0 11px; position: absolute; z-index: 2; top: 14px; left: 14px; display: inline-flex; align-items: center; border: 1px solid rgba(47,105,87,.18); border-radius: 999px; color: #245743; background: rgba(255,255,255,.82); backdrop-filter: blur(8px); font-size: 10px; font-weight: 850; letter-spacing: .04em; pointer-events: none; }
-.accordion-3d-canvas { width: 100%; height: 100%; }
+.accordion-3d-canvas { width: 100%; height: 100%; position: relative; overflow: hidden; }
 .accordion-3d-canvas canvas { touch-action: none; }
-.accordion-3d-controls, .accordion-3d-buttons { max-width: 1500px; margin: 18px auto 0; padding: 20px; border: 1px solid #dcd5c8; border-radius: 22px; background: rgba(255,255,255,.84); }
-.accordion-3d-demo { margin-bottom: 20px; padding: 16px; display: grid; grid-template-columns: minmax(210px, .8fr) minmax(260px, 1.6fr) auto; align-items: center; gap: 12px; border: 1px solid #d6ded8; border-radius: 17px; background: linear-gradient(105deg, #edf5f0, #fffaf1); }
+.accordion-3d-direction-guides { position: absolute; z-index: 3; inset: 0; pointer-events: none; }
+.accordion-3d-direction-guide { width: 58px; height: 58px; position: absolute; top: 84%; display: grid; place-items: center; border: 1px solid rgba(112,222,255,.72); border-radius: 50%; color: #d7f7ff; background: radial-gradient(circle, rgba(43,180,225,.82), rgba(42,153,207,.4) 54%, rgba(42,153,207,0) 72%); filter: drop-shadow(0 0 12px rgba(66,201,244,.68)); transform: translateY(-50%); }
+.accordion-3d-direction-guide b { font-size: 36px; line-height: 1; text-shadow: 0 0 12px rgba(255,255,255,.8); }
+.accordion-3d-direction-guide.is-left { left: 1.5%; }
+.accordion-3d-direction-guide.is-right { right: 1.5%; }
+.accordion-3d-direction-guides.is-pull .is-left { animation: accordion-guide-left 1.3s ease-in-out infinite; }
+.accordion-3d-direction-guides.is-pull .is-right { animation: accordion-guide-right 1.3s ease-in-out infinite; }
+.accordion-3d-direction-guides.is-push .is-left { animation: accordion-guide-in-left 1.3s ease-in-out infinite; }
+.accordion-3d-direction-guides.is-push .is-right { animation: accordion-guide-in-right 1.3s ease-in-out infinite; }
+@keyframes accordion-guide-left { 0%, 100% { margin-left: 7px; opacity: .66; } 50% { margin-left: -7px; opacity: 1; } }
+@keyframes accordion-guide-right { 0%, 100% { margin-right: 7px; opacity: .66; } 50% { margin-right: -7px; opacity: 1; } }
+@keyframes accordion-guide-in-left { 0%, 100% { margin-left: -7px; opacity: .66; } 50% { margin-left: 7px; opacity: 1; } }
+@keyframes accordion-guide-in-right { 0%, 100% { margin-right: -7px; opacity: .66; } 50% { margin-right: 7px; opacity: 1; } }
+.accordion-3d-inspector { height: var(--accordion-lab-size); padding: 14px; overflow: auto; border: 1px solid #dcd5c8; border-radius: 24px; background: rgba(255,255,255,.86); box-shadow: 0 20px 54px rgba(70,55,37,.1); scrollbar-gutter: stable; }
+.accordion-3d-inspector-heading { min-height: 48px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.accordion-3d-inspector-heading small { color: #2e6957; font-size: 9px; font-weight: 900; letter-spacing: .13em; }
+.accordion-3d-inspector-heading h2 { margin: 2px 0 0; font-size: 20px; }
+.accordion-3d-inspector-heading > span { padding: 7px 10px; border-radius: 999px; color: #24647b; background: #e2f6fc; font-size: 10px; font-weight: 850; white-space: nowrap; }
+.accordion-3d-controls, .accordion-3d-buttons { margin: 0; padding: 0; border: 0; background: transparent; }
+.accordion-3d-demo { margin-bottom: 12px; padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 9px; border: 1px solid #d6ded8; border-radius: 17px; background: linear-gradient(105deg, #edf5f0, #fffaf1); }
 .accordion-3d-demo > label { display: flex; align-items: center; gap: 11px; color: #255844; }
+.accordion-3d-demo > label { grid-column: 1 / -1; }
 .accordion-3d-demo > label svg { width: 22px; flex: 0 0 auto; }
 .accordion-3d-demo > label span { display: grid; gap: 3px; }
 .accordion-3d-demo > label small { font-size: 9px; font-weight: 900; letter-spacing: .12em; }
 .accordion-3d-demo > label strong { font-size: 13px; }
-.accordion-3d-demo select { width: 100%; min-height: 46px; padding: 0 38px 0 13px; border: 1px solid #c9d1ca; border-radius: 12px; color: #2d342f; background: #fff; font: inherit; font-weight: 720; }
-.accordion-3d-demo > button { min-height: 46px; padding: 0 17px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; color: #fff; background: #2e6957; font-weight: 820; cursor: pointer; }
+.accordion-3d-demo select { width: 100%; min-width: 0; min-height: 42px; padding: 0 34px 0 11px; border: 1px solid #c9d1ca; border-radius: 12px; color: #2d342f; background: #fff; font: inherit; font-size: 12px; font-weight: 720; }
+.accordion-3d-demo > button { min-height: 42px; padding: 0 13px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 12px; color: #fff; background: #2e6957; font-size: 12px; font-weight: 820; cursor: pointer; }
 .accordion-3d-demo > button.is-playing { background: #b84f3b; }
 .accordion-3d-demo > button svg { width: 18px; }
-.accordion-3d-library-state { grid-column: 2 / -1; color: #6c716d; font-size: 11px; }
-.accordion-3d-control-row { display: grid; grid-template-columns: minmax(180px, 280px) 1fr; align-items: center; gap: 18px; }
+.accordion-3d-library-state { grid-column: 1 / -1; color: #6c716d; font-size: 10px; }
+.accordion-3d-control-row { display: grid; grid-template-columns: 1fr; gap: 7px; }
 .accordion-3d-control-row label { display: flex; justify-content: space-between; gap: 12px; }
 .accordion-3d-control-row input { width: 100%; accent-color: #2e6957; }
-.accordion-3d-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.accordion-3d-toolbar { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
 .accordion-3d-toolbar button, .accordion-3d-button-grid button { border: 1px solid #d7d0c4; background: #fff; color: #37352f; cursor: pointer; }
-.accordion-3d-toolbar button { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 14px; border-radius: 12px; font-weight: 750; }
+.accordion-3d-toolbar button { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 10px; border-radius: 11px; font-size: 11px; font-weight: 750; }
 .accordion-3d-toolbar button.is-active, .accordion-3d-button-grid button.is-active { border-color: #2e6957; background: #2e6957; color: #fff; }
-.accordion-3d-buttons { display: grid; grid-template-columns: 2fr 1fr; gap: 26px; }
-.accordion-3d-buttons h2 { margin: 0 0 12px; font-size: 18px; }
-.accordion-3d-button-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
-.accordion-3d-button-grid button { min-height: 62px; border-radius: 12px; text-align: left; padding: 9px 11px; transition: transform .15s ease, background .15s ease; }
+.accordion-3d-toolbar button.is-guide-active { border-color: #5bc9ee; color: #185a70; background: #e4f8ff; box-shadow: inset 0 0 0 1px rgba(91,201,238,.18); }
+.accordion-3d-buttons { margin-top: 14px; padding-top: 13px; display: grid; grid-template-columns: 1fr; gap: 14px; border-top: 1px solid #e1dcd2; }
+.accordion-3d-buttons h2 { margin: 0 0 7px; font-size: 13px; }
+.accordion-3d-button-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+.accordion-3d-button-grid.is-bass { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.accordion-3d-button-grid button { min-height: 45px; min-width: 0; border-radius: 10px; text-align: left; padding: 6px 7px; transition: transform .15s ease, background .15s ease; }
 .accordion-3d-button-grid button:active { transform: translateY(2px); }
 .accordion-3d-button-grid small, .accordion-3d-button-grid strong { display: block; }
-.accordion-3d-button-grid small { opacity: .68; font-size: 10px; }
-.accordion-3d-button-grid strong { margin-top: 4px; font-size: 16px; }
+.accordion-3d-button-grid small { overflow: hidden; opacity: .68; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.accordion-3d-button-grid strong { margin-top: 2px; font-size: 13px; }
+
+@media (max-width: 960px) {
+  .accordion-3d-workspace { --accordion-lab-size: min(76vw, 680px); display: block; }
+  .accordion-3d-stage { max-width: var(--accordion-lab-size); margin: 0 auto; }
+  .accordion-3d-inspector { height: auto; max-width: var(--accordion-lab-size); margin: 16px auto 0; overflow: visible; }
+}
 
 @media (max-width: 760px) {
   .accordion-3d-lab { padding: max(14px, env(safe-area-inset-top)) 12px max(18px, env(safe-area-inset-bottom)); }
   .accordion-3d-lab-header { display: block; }
   .accordion-3d-lab-header .secondary-button { margin-top: 14px; }
-  .accordion-3d-stage { height: 56vh; min-height: 360px; border-radius: 20px; }
+  .accordion-3d-workspace { --accordion-lab-size: min(92vw, 520px); }
+  .accordion-3d-stage { border-radius: 20px; }
+  .accordion-3d-inspector { padding: 12px; border-radius: 20px; }
   .accordion-3d-demo, .accordion-3d-control-row, .accordion-3d-buttons { grid-template-columns: 1fr; }
   .accordion-3d-library-state { grid-column: auto; }
   .accordion-3d-buttons { gap: 22px; }
+  .accordion-3d-button-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .accordion-3d-button-grid.is-bass { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .accordion-3d-direction-guide { width: 44px; height: 44px; }
+  .accordion-3d-direction-guide b { font-size: 28px; }
+  .accordion-3d-direction-guide.is-left { left: 3%; }
+  .accordion-3d-direction-guide.is-right { right: 3%; }
 }
 
 /* Button memory game ------------------------------------------------------ */
