@@ -62,6 +62,32 @@ export function rememberReliablePitch(previous: PitchReading | null, current: Pi
   return current && current.confidence > minimumConfidence ? current : previous;
 }
 
+export interface PitchStabilityState {
+  stable: PitchReading | null;
+  candidateMidi: number | null;
+  candidateFrames: number;
+}
+
+export const EMPTY_PITCH_STABILITY: PitchStabilityState = { stable: null, candidateMidi: null, candidateFrames: 0 };
+
+export function stabilizePitchReading(state: PitchStabilityState, current: PitchReading | null, minimumConfidence = 0.72) {
+  if (!current || current.confidence <= minimumConfidence) {
+    return { state: { ...state, candidateMidi: null, candidateFrames: 0 }, reading: null as PitchReading | null };
+  }
+  if (state.stable?.midi === current.midi) {
+    return { state: { stable: current, candidateMidi: null, candidateFrames: 0 }, reading: current as PitchReading | null };
+  }
+  const candidateFrames = state.candidateMidi === current.midi ? state.candidateFrames + 1 : 1;
+  const requiredFrames = state.stable ? 3 : 2;
+  if (candidateFrames >= requiredFrames) {
+    return { state: { stable: current, candidateMidi: null, candidateFrames: 0 }, reading: current as PitchReading | null };
+  }
+  return {
+    state: { ...state, candidateMidi: current.midi, candidateFrames },
+    reading: null as PitchReading | null,
+  };
+}
+
 export function usePitchDetector() {
   const [reading, setReading] = useState<PitchReading | null>(null);
   const [audioFrame, setAudioFrame] = useState<AudioFeatureFrame | null>(null);
@@ -76,6 +102,7 @@ export function usePitchDetector() {
   const noiseFloorRef = useRef(.006);
   const lastOnsetRef = useRef(0);
   const onsetIdRef = useRef(0);
+  const pitchStabilityRef = useRef<PitchStabilityState>(EMPTY_PITCH_STABILITY);
 
   const stop = useCallback(() => {
     cancelAnimationFrame(frameRef.current);
@@ -83,6 +110,7 @@ export function usePitchDetector() {
     void contextRef.current?.close();
     streamRef.current = null;
     contextRef.current = null;
+    pitchStabilityRef.current = EMPTY_PITCH_STABILITY;
     setReading(null);
     setAudioFrame(null);
     setOnset(null);
@@ -119,6 +147,7 @@ export function usePitchDetector() {
       const frequencyData = new Float32Array(analyser.frequencyBinCount);
       streamRef.current = stream;
       contextRef.current = context;
+      pitchStabilityRef.current = EMPTY_PITCH_STABILITY;
       setStatus('listening');
 
       const analyze = (timestamp: number) => {
@@ -161,7 +190,9 @@ export function usePitchDetector() {
             onsetIdRef.current += 1;
             setOnset({ id: onsetIdRef.current, at: timestamp, volume: result.volume });
           }
-          setReading(pitch);
+          const stabilized = stabilizePitchReading(pitchStabilityRef.current, pitch);
+          pitchStabilityRef.current = stabilized.state;
+          setReading(stabilized.reading);
           setAudioFrame(frame);
         }
         frameRef.current = requestAnimationFrame(analyze);

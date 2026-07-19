@@ -720,6 +720,9 @@ svg { stroke-width: 1.8; }
 .practice-meta { display: flex; justify-content: end; align-items: center; gap: 8px; }
 .practice-meta > span { min-height: 28px; padding: 0 9px; border: 1px solid var(--line); border-radius: 8px; display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 700; }
 .practice-meta .icon-button { width: 32px; height: 32px; }
+.shortcut-hint { min-height: 32px; padding: 0 9px; border: 1px solid var(--line); border-radius: 8px; display: flex; align-items: center; gap: 6px; color: var(--muted); background: rgba(255,255,255,.65); cursor: pointer; font-size: 9px; font-weight: 800; }
+.shortcut-hint:hover { color: var(--green); border-color: #acc2b6; background: var(--green-soft); }
+.shortcut-hint kbd { min-width: 24px; padding: 2px 5px; border: 1px solid #d6d0c6; border-radius: 5px; color: var(--ink); background: white; text-align: center; }
 .session-progress { height: 3px; background: #ded9cf; }
 .session-progress i { display: block; height: 100%; background: var(--coral); transition: width .2s; }
 .practice-main { width: min(1180px, calc(100% - 42px)); margin: 0 auto; }
@@ -772,6 +775,17 @@ svg { stroke-width: 1.8; }
 .mini-direction.direction-pull { color: #2e5f7d; background: #dfecf2; }
 .confidence-warning { position: absolute; right: 3px; bottom: 3px; color: #bb7428; }
 .playhead-mark { position: absolute; left: -9px; top: 58%; color: var(--coral); fill: var(--coral); }
+.shortcut-overlay { position: fixed; z-index: 110; inset: 0; padding: 24px; display: grid; place-items: center; background: rgba(23,34,30,.6); backdrop-filter: blur(7px); }
+.shortcut-card { width: min(620px, 100%); padding: 24px; border: 1px solid rgba(255,255,255,.65); border-radius: 22px; background: var(--paper); box-shadow: 0 26px 70px rgba(20,35,29,.28); }
+.shortcut-card > header { display: grid; grid-template-columns: 46px 1fr 38px; align-items: center; gap: 12px; }
+.shortcut-card > header > span { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; color: white; background: var(--green); }
+.shortcut-card > header small { color: var(--green); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.shortcut-card h2 { margin: 2px 0 0; font-size: 23px; }
+.shortcut-grid { margin: 22px 0 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.shortcut-grid > span { min-height: 48px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 10px; display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 9px; background: white; }
+.shortcut-grid kbd, .shortcut-card > p kbd { width: max-content; min-width: 28px; padding: 5px 8px; border: 1px solid #d6d0c6; border-bottom-width: 3px; border-radius: 6px; color: var(--ink); background: #f8f6f2; font-size: 10px; font-weight: 900; text-align: center; }
+.shortcut-grid b { font-size: 11px; }
+.shortcut-card > p { margin: 0; color: var(--muted); font-size: 10px; text-align: center; }
 .coach-feedback { min-height: 74px; margin: 12px 0 18px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 14px; display: flex; align-items: center; gap: 12px; background: white; }
 .feedback-good { border-color: #b9d0c2; background: #eef5f0; }
 .feedback-hint { border-color: #e8cba4; background: #faf1df; }
@@ -1518,6 +1532,8 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .instrument-choice { grid-template-columns: 55px 1fr 25px; }
   .instrument-swatch { width: 42px; }
   .practice-meta > span { display: none; }
+  .shortcut-hint span, .shortcut-hint > svg { display: none; }
+  .shortcut-hint { padding-inline: 6px; }
   .tool-toggle { font-size: 0; }
   .notation-switch button { padding: 0 7px; }
   .instrument-stage .accordion { transform: scale(.52); margin-block: -94px; }
@@ -1529,6 +1545,9 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .transport-side .transport-tool:nth-child(2) { display: none; }
   .primary-play { min-width: 135px; grid-template-columns: 25px 1fr; }
   .primary-play kbd { display: none; }
+  .shortcut-overlay { padding: 12px; }
+  .shortcut-card { padding: 18px; }
+  .shortcut-grid { grid-template-columns: 1fr; max-height: min(58vh, 480px); overflow: auto; }
   .library-tools { flex-wrap: wrap; }
   .search-box { width: 100%; }
   .modal-backdrop { padding: 0; align-items: end; }
