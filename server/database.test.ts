@@ -48,7 +48,9 @@ describe('production data migrations', () => {
     const db = makeDatabase();
     db.createUser({ id: 'usr_delete', email: 'delete@example.fr', displayName: 'À supprimer', passwordHash: 'test' });
     db.createSession('session-delete', 'usr_delete', new Date(Date.now() + 60_000).toISOString());
-    db.saveUserPreferences('usr_delete', { accordionId: 'hohner-club-i-cf-10-9-2', notation: 'french', countIn: true });
+    db.saveUserPreferences('usr_delete', {
+      accordionId: 'hohner-club-i-cf-10-9-2', notation: 'french', countIn: true, onboardingDone: true, tutorialDone: true,
+    });
     db.saveAccordion({ id: 'custom-delete', maker: 'Test', model: 'Privé', tuning: 'Do/Fa' }, 'usr_delete');
     db.savePracticeSession('usr_delete', {
       id: '065f8f4b-d1ae-4bb1-9c13-a2db57f42f96', songId: 'first-breath', songTitle: 'Premier souffle', mode: 'guided',
@@ -64,14 +66,24 @@ describe('production data migrations', () => {
     expect((db.listAccordions('usr_delete') as Array<{ id: string }>).some((item) => item.id === 'custom-delete')).toBe(false);
   });
 
-  it('synchronizes portable learning preferences without device tutorial state', () => {
+  it('synchronizes the complete learning journey across devices', () => {
     const db = makeDatabase();
     db.createUser({ id: 'usr_preferences', email: 'prefs@example.fr', displayName: 'Préférences', passwordHash: 'test' });
     expect(db.getUserPreferences('usr_preferences')).toBeNull();
     expect(db.saveUserPreferences('usr_preferences', {
-      accordionId: 'hohner-club-i-cf-10-9-2', notation: 'tablature', countIn: false,
-    })).toMatchObject({ accordionId: 'hohner-club-i-cf-10-9-2', notation: 'tablature', countIn: false });
-    expect(db.getUserPreferences('usr_preferences')).toMatchObject({ notation: 'tablature', countIn: false });
+      accordionId: 'hohner-club-i-cf-10-9-2', notation: 'tablature', countIn: false, onboardingDone: true, tutorialDone: true,
+    })).toMatchObject({
+      accordionId: 'hohner-club-i-cf-10-9-2', notation: 'tablature', countIn: false, onboardingDone: true, tutorialDone: true,
+    });
+    expect(db.getUserPreferences('usr_preferences')).toMatchObject({
+      notation: 'tablature', countIn: false, onboardingDone: true, tutorialDone: true,
+    });
+
+    expect(db.saveUserPreferences('usr_preferences', {
+      accordionId: 'standard-gc-21-8', notation: 'french', countIn: true, onboardingDone: false, tutorialDone: false,
+    })).toMatchObject({
+      accordionId: 'standard-gc-21-8', notation: 'french', countIn: true, onboardingDone: true, tutorialDone: true,
+    });
   });
 
   it('seeds the shared, licensed learning library', () => {

@@ -12,6 +12,14 @@ interface PublicUserRow {
   created_at: string;
 }
 
+interface StoredUserPreferences {
+  accordionId: string;
+  notation: 'french' | 'english' | 'tablature' | 'button';
+  countIn: boolean;
+  onboardingDone: boolean;
+  tutorialDone: boolean;
+}
+
 export class SouffletDatabase {
   private readonly db: DatabaseSync;
 
@@ -104,6 +112,17 @@ export class SouffletDatabase {
           notation TEXT NOT NULL CHECK(notation IN ('french', 'english', 'tablature', 'button')),
           count_in INTEGER NOT NULL DEFAULT 1,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `,
+      `
+        ALTER TABLE user_preferences ADD COLUMN onboarding_done INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE user_preferences ADD COLUMN tutorial_done INTEGER NOT NULL DEFAULT 0;
+        UPDATE user_preferences
+        SET onboarding_done = 1, tutorial_done = 1
+        WHERE EXISTS (
+          SELECT 1 FROM practice_sessions
+          WHERE practice_sessions.user_id = user_preferences.user_id
+            AND practice_sessions.active_seconds > 0
         );
       `,
     ];
@@ -236,22 +255,45 @@ export class SouffletDatabase {
 
   getUserPreferences(userId: string) {
     const row = this.db.prepare(`
-      SELECT accordion_id, notation, count_in, updated_at
+      SELECT accordion_id, notation, count_in, onboarding_done, tutorial_done, updated_at
       FROM user_preferences WHERE user_id = ?
-    `).get(userId) as { accordion_id: string; notation: 'french' | 'english' | 'tablature' | 'button'; count_in: number; updated_at: string } | undefined;
-    return row ? { accordionId: row.accordion_id, notation: row.notation, countIn: Boolean(row.count_in), updatedAt: row.updated_at } : null;
+    `).get(userId) as {
+      accordion_id: string;
+      notation: StoredUserPreferences['notation'];
+      count_in: number;
+      onboarding_done: number;
+      tutorial_done: number;
+      updated_at: string;
+    } | undefined;
+    return row ? {
+      accordionId: row.accordion_id,
+      notation: row.notation,
+      countIn: Boolean(row.count_in),
+      onboardingDone: Boolean(row.onboarding_done),
+      tutorialDone: Boolean(row.tutorial_done),
+      updatedAt: row.updated_at,
+    } : null;
   }
 
-  saveUserPreferences(userId: string, preferences: { accordionId: string; notation: 'french' | 'english' | 'tablature' | 'button'; countIn: boolean }) {
+  saveUserPreferences(userId: string, preferences: StoredUserPreferences) {
     this.db.prepare(`
-      INSERT INTO user_preferences (user_id, accordion_id, notation, count_in)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO user_preferences (user_id, accordion_id, notation, count_in, onboarding_done, tutorial_done)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         accordion_id = excluded.accordion_id,
         notation = excluded.notation,
         count_in = excluded.count_in,
+        onboarding_done = MAX(user_preferences.onboarding_done, excluded.onboarding_done),
+        tutorial_done = MAX(user_preferences.tutorial_done, excluded.tutorial_done),
         updated_at = CURRENT_TIMESTAMP
-    `).run(userId, preferences.accordionId, preferences.notation, Number(preferences.countIn));
+    `).run(
+      userId,
+      preferences.accordionId,
+      preferences.notation,
+      Number(preferences.countIn),
+      Number(preferences.onboardingDone),
+      Number(preferences.tutorialDone),
+    );
     return this.getUserPreferences(userId)!;
   }
 
