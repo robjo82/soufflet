@@ -3,7 +3,7 @@ import {
   Gauge, Headphones, Lightbulb, Music2, Play, Repeat2, Sparkles, Target, TrendingUp,
 } from 'lucide-react';
 import type { AccordionConfig, PracticeSessionInput, PracticeStats, Song } from '../types';
-import { AccordionView } from './AccordionView';
+import { AccordionInstrument } from './AccordionInstrument';
 import { practiceModeLabel } from '../practiceModes';
 
 interface HomePageProps {
@@ -67,7 +67,7 @@ export function HomePage({ accordion, song, stats, onPractice, onNavigateLearn, 
         <div className="hero-visual">
           <div className="daily-card">
             <div className="daily-card-head"><span><small>{hasData ? 'PROCHAINE SÉANCE' : 'PREMIER OBJECTIF'}</small><strong>Pousser, tirer… respirer</strong></span><b>{hasData ? overview!.totalSessions + 1 : '01'}</b></div>
-            <div className="lesson-preview"><AccordionView config={accordion} direction="pull" notation="tablature" compact /><span className="gesture-tip"><Target /> Une difficulté à la fois</span></div>
+            <div className="lesson-preview"><AccordionInstrument config={accordion} direction="pull" notation="tablature" compact context="lesson" showLearningGuides={false} /><span className="gesture-tip"><Target /> Une difficulté à la fois</span></div>
             <div className="lesson-progress"><Clock3 /> <span>{hasData ? `${formatDuration(overview!.weekSeconds)} de pratique réelle cette semaine` : 'Tes premières secondes seront comptées au démarrage'}</span></div>
           </div>
           <span className="floating-badge badge-streak"><Flame /><b>{overview?.currentStreak ?? 0} jour{overview?.currentStreak === 1 ? '' : 's'}</b><small>{hasData ? 'série actuelle' : 'série à commencer'}</small></span>

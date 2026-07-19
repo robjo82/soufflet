@@ -18,6 +18,14 @@ Navigateur React
 
 Le front est construit par Vite. Express sert l’API et le build statique en production. SQLite utilise le module natif `node:sqlite`, le journal WAL et un volume Docker persistant. Les migrations sont enregistrées dans `schema_migrations`. Les configurations et morceaux intégrés sont réappliqués de façon idempotente ; les configurations personnelles portent un propriétaire et ne sont jamais écrasées par un seed.
 
+## Rendu de l’instrument
+
+`AccordionInstrument` constitue la frontière unique entre les écrans pédagogiques et la représentation de l’instrument. Pour un Hohner Club I compatible, il charge paresseusement le moteur React Three Fiber et le GLB ; pour tout autre modèle, WebGL indisponible ou erreur de chargement, il rend `AccordionView`. Le paquet Three.js et le modèle de 1,7 Mo restent donc hors du bundle initial et ne sont téléchargés que lorsqu’ils sont utiles.
+
+Les deux moteurs consomment le même `AccordionConfig`, le même `SongEvent` et le même plan de soufflet. Les identifiants du contrat glTF correspondent directement aux boutons SQLite. Les états « suggéré », « enfoncé », « détecté par le micro » et « sélectionné dans l’accordeur » sont calculés séparément ; cette distinction empêche une touche seulement attendue d’apparaître déjà jouée. Une pression dans le canevas ou son clavier DOM accessible traverse la même fonction que la vue HTML et joue la même banque d’échantillons.
+
+La rotation et le zoom sont désactivés dans l’application pour préserver la coordination spatiale et le défilement tactile. Ils restent disponibles dans `/dev/accordion-3d`. Les dimensions sont définies par contexte (tutoriel, lecteur, studio, accordeur, réglages) et par breakpoint ; le canevas adapte ensuite sa caméra à la surface réellement mesurée.
+
 ## Android
 
 La cible Android est une coque Capacitor native qui charge exclusivement l’origine HTTPS de production. Ce choix conserve les cookies de session en contexte propriétaire, évite un second système d’authentification et rend immédiatement disponibles les mêmes données sur le web, le téléphone et la tablette. Le socle commun fournit le microphone, le maintien de l’écran, la barre d’état, le retour système et les retours haptiques. Sur Android 15 et versions ultérieures, `SystemBars` injecte les insets réels de la barre d’état, de la navigation gestuelle et des découpes d’écran ; les surfaces interactives les consomment via les variables CSS `--safe-area-inset-*`.

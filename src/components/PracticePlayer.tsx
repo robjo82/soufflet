@@ -4,7 +4,7 @@ import {
   Hand, Keyboard, Minimize, Music2, Pause, Play, Redo2, Repeat2, Settings2, SlidersHorizontal, TimerReset, Volume2, X,
   Wind,
 } from 'lucide-react';
-import { AccordionView } from './AccordionView';
+import { AccordionInstrument } from './AccordionInstrument';
 import { ScoreStrip } from './ScoreStrip';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
@@ -642,7 +642,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
         <section className="instrument-stage">
           {countInBeat !== null && <div className="count-in-overlay" aria-live="assertive"><small>PRÉPARE TON ACCORDÉON</small><strong>{countInBeat}</strong><p>Le morceau démarre après le dernier temps.</p><span>{countInSequence.map((beat) => <i key={beat} className={beat >= countInBeat ? 'is-counted' : ''} />)}</span></div>}
           {settings.mode !== 'performance' && (
-            <AccordionView
+            <AccordionInstrument
               config={accordion}
               activeEvent={sessionFinished ? undefined : displayedEvent}
               direction={currentEvent?.direction}
@@ -651,6 +651,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
               bellowsAmount={bellowsAmount}
               airValveActive={Boolean(currentBellowsStep?.airBefore) && !playing && countInBeat === null}
               depressActive={playing && countInBeat === null && !sessionFinished}
+              context="practice"
               onButtonPress={(buttonId, direction) => {
                 if (direction !== currentEvent?.direction) {
                   setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${currentEvent?.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
