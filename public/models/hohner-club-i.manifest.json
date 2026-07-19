@@ -33,7 +33,7 @@
     "minimum": 0,
     "maximum": 1,
     "motionStyle": "organic-wave",
-    "modelRevision": "organic-wave-2",
+    "modelRevision": "organic-wave-3",
     "skin": {
       "node": "Closed_Bellows_Pleated_Skin",
       "morphTarget": "SK_Bellows_Extension"

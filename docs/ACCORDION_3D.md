@@ -33,6 +33,7 @@ La scène canonique exporte uniquement les objets utiles. Les corrections automa
 - capture réelle des frames fermée et ouverte de l’action Blender ;
 - mouvement de soufflet reproductible de type `organic-wave`, piloté pli par pli et contrôlé par les propriétés de la racine ;
 - peau plissée continue exportée comme morph target glTF, afin que la toile suive la vague sans laisser d'espaces entre les plis ;
+- léger recouvrement de cette peau sous les cadres d'extrémité pour éviter un jour au raccord avec les caisses en bois ;
 - matériau bois bitmap procédural empaqueté, lisible par le moteur glTF ;
 - matériaux de soufflet assombris et moins brillants ;
 - exclusion des drivers Blender au runtime au profit de valeurs continues explicites.
@@ -49,6 +50,8 @@ Une session connectée charge tous les morceaux prêts de la bibliothèque commu
 - les basses ou accords de la main gauche ;
 - la direction et l'amplitude du soufflet ;
 - la durée de pression et le signal lumineux de chaque touche.
+
+Le laboratoire utilise un pupitre à deux colonnes sur ordinateur : scène carrée à gauche, contrôles et touches compactes à droite. Les halos cyan des touches et les deux flèches de soufflet constituent une couche pédagogique indépendante, désactivable avec « Guides bleus ».
 
 Sans session ou en cas d'indisponibilité de l'API, le laboratoire conserve un exercice local explicite au lieu de simuler une bibliothèque chargée.
 

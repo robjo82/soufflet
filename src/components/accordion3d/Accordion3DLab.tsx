@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Box, Music2, Pause, Play, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Box, Music2, Pause, Play, RotateCcw, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createAccordion3DPlayback } from '../../accordion3dPlayback';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, FRENCH_NOTES } from '../../data';
@@ -24,6 +24,7 @@ export default function Accordion3DLab() {
   const [libraryState, setLibraryState] = useState<'loading' | 'ready' | 'fallback'>('loading');
   const [demoPlaying, setDemoPlaying] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
+  const [showLearningGuides, setShowLearningGuides] = useState(true);
   const timers = useRef<number[]>([]);
   const activeCounts = useRef(new Map<string, number>());
   const { playMidi, playLeftHand } = useSynth();
@@ -85,7 +86,7 @@ export default function Accordion3DLab() {
   const press = (buttonId: string) => {
     const button = [...accordion.buttons, ...accordion.basses].find((item) => item.id === buttonId);
     if (!button) return;
-    activateButton(buttonId, 280);
+    activateButton(buttonId, 520);
     playMidi(direction === 'push' ? button.pushMidi : button.pullMidi, 0.65, 0.08);
   };
 
@@ -130,79 +131,91 @@ export default function Accordion3DLab() {
         <a className="secondary-button" href="/"><ArrowLeft size={18} /> Revenir à Soufflet</a>
       </header>
 
-      <section className="accordion-3d-stage">
-        <span className="accordion-3d-revision">Vague organique · modèle v2</span>
-        <Accordion3DErrorBoundary fallback={fallback}>
-          {showFallback ? fallback : (
-            <Accordion3D
-              bellowsAmount={bellowsAmount}
-              activeButtonIds={activeButtonIds}
-              onButtonPress={press}
-            />
-          )}
-        </Accordion3DErrorBoundary>
-      </section>
+      <div className="accordion-3d-workspace">
+        <section className="accordion-3d-stage">
+          <span className="accordion-3d-revision">Vague organique · modèle v3</span>
+          <Accordion3DErrorBoundary fallback={fallback}>
+            {showFallback ? fallback : (
+              <Accordion3D
+                bellowsAmount={bellowsAmount}
+                activeButtonIds={activeButtonIds}
+                direction={direction}
+                showLearningGuides={showLearningGuides}
+                onButtonPress={press}
+              />
+            )}
+          </Accordion3DErrorBoundary>
+        </section>
 
-      <section className="accordion-3d-controls" aria-label="Commandes de test du modèle 3D">
-        <div className="accordion-3d-demo">
-          <label htmlFor="accordion-3d-song">
-            <Music2 aria-hidden="true" />
-            <span><small>MÉLODIE DE LA BIBLIOTHÈQUE</small><strong>{songs.length} morceau{songs.length > 1 ? 'x' : ''} compatible{songs.length > 1 ? 's' : ''}</strong></span>
-          </label>
-          <select
-            id="accordion-3d-song"
-            value={selectedSongId}
-            onChange={(event) => { stopDemo(); setSelectedSongId(event.target.value); }}
-            disabled={libraryState === 'loading'}
-          >
-            {songs.map((song) => <option key={song.id} value={song.id}>{song.title} · {song.artist}</option>)}
-          </select>
-          <button type="button" className={demoPlaying ? 'is-playing' : ''} onClick={demoPlaying ? stopDemo : playDemo}>
-            {demoPlaying ? <><Pause fill="currentColor" /> Arrêter</> : <><Play fill="currentColor" /> Voir jouer</>}
-          </button>
-          <small className="accordion-3d-library-state">
-            {libraryState === 'loading' && 'Chargement de la bibliothèque…'}
-            {libraryState === 'ready' && 'Mélodie, accompagnement et soufflet sont synchronisés.'}
-            {libraryState === 'fallback' && 'Bibliothèque privée indisponible : exercice de démonstration chargé.'}
-          </small>
-        </div>
-        <div className="accordion-3d-control-row">
-          <label htmlFor="bellows-amount">
-            <span>Ouverture du soufflet</span>
-            <strong>{Math.round(bellowsAmount * 100)} %</strong>
-          </label>
-          <input id="bellows-amount" type="range" min="0" max="1" step="0.01" value={bellowsAmount} onChange={(event) => setBellowsAmount(Number(event.target.value))} />
-        </div>
-        <div className="accordion-3d-toolbar">
-          <button type="button" className={direction === 'push' ? 'is-active' : ''} onClick={() => setDirection('push')}><ArrowRight /> Pousser</button>
-          <button type="button" className={direction === 'pull' ? 'is-active' : ''} onClick={() => setDirection('pull')}><ArrowLeft /> Tirer</button>
-          <button type="button" onClick={() => { stopDemo(); setBellowsAmount(0); }}><RotateCcw /> Fermer</button>
-          <button type="button" onClick={() => setShowFallback((value) => !value)}>{showFallback ? 'Afficher la 3D' : 'Tester le repli 2D'}</button>
-        </div>
-      </section>
+        <aside className="accordion-3d-inspector" aria-label="Commandes du laboratoire 3D">
+          <div className="accordion-3d-inspector-heading">
+            <div><small>PUPITRE DE TEST</small><h2>Commande et repères</h2></div>
+            <span>{direction === 'pull' ? 'Tirer · ouvrir' : 'Pousser · fermer'}</span>
+          </div>
 
-      <section className="accordion-3d-buttons">
-        <div>
-          <h2>Main droite · 10 + 9 + 2</h2>
-          <div className="accordion-3d-button-grid">
-            {accordion.buttons.map((button) => (
-              <button type="button" className={activeButtonIds.includes(button.id) ? 'is-active' : ''} key={button.id} onClick={() => press(button.id)}>
-                <small>{button.id}</small><strong>{buttonLabel(button, direction)}</strong>
+          <section className="accordion-3d-controls" aria-label="Commandes de test du modèle 3D">
+            <div className="accordion-3d-demo">
+              <label htmlFor="accordion-3d-song">
+                <Music2 aria-hidden="true" />
+                <span><small>MÉLODIE DE LA BIBLIOTHÈQUE</small><strong>{songs.length} morceau{songs.length > 1 ? 'x' : ''} compatible{songs.length > 1 ? 's' : ''}</strong></span>
+              </label>
+              <select
+                id="accordion-3d-song"
+                value={selectedSongId}
+                onChange={(event) => { stopDemo(); setSelectedSongId(event.target.value); }}
+                disabled={libraryState === 'loading'}
+              >
+                {songs.map((song) => <option key={song.id} value={song.id}>{song.title} · {song.artist}</option>)}
+              </select>
+              <button type="button" className={demoPlaying ? 'is-playing' : ''} onClick={demoPlaying ? stopDemo : playDemo}>
+                {demoPlaying ? <><Pause fill="currentColor" /> Arrêter</> : <><Play fill="currentColor" /> Voir jouer</>}
               </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h2>Main gauche · basses et accords</h2>
-          <div className="accordion-3d-button-grid is-bass">
-            {accordion.basses.map((button) => (
-              <button type="button" className={activeButtonIds.includes(button.id) ? 'is-active' : ''} key={button.id} onClick={() => press(button.id)}>
-                <small>{button.id}</small><strong>{button.role === 'bass' ? 'Basse' : 'Accord'}</strong>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
+              <small className="accordion-3d-library-state">
+                {libraryState === 'loading' && 'Chargement de la bibliothèque…'}
+                {libraryState === 'ready' && 'Mélodie, accompagnement et soufflet sont synchronisés.'}
+                {libraryState === 'fallback' && 'Bibliothèque privée indisponible : exercice de démonstration chargé.'}
+              </small>
+            </div>
+            <div className="accordion-3d-control-row">
+              <label htmlFor="bellows-amount">
+                <span>Ouverture du soufflet</span>
+                <strong>{Math.round(bellowsAmount * 100)} %</strong>
+              </label>
+              <input id="bellows-amount" type="range" min="0" max="1" step="0.01" value={bellowsAmount} onChange={(event) => setBellowsAmount(Number(event.target.value))} />
+            </div>
+            <div className="accordion-3d-toolbar">
+              <button type="button" className={direction === 'push' ? 'is-active' : ''} onClick={() => setDirection('push')}><ArrowRight /> Pousser</button>
+              <button type="button" className={direction === 'pull' ? 'is-active' : ''} onClick={() => setDirection('pull')}><ArrowLeft /> Tirer</button>
+              <button type="button" className={showLearningGuides ? 'is-guide-active' : ''} aria-pressed={showLearningGuides} onClick={() => setShowLearningGuides((value) => !value)}><Sparkles /> Guides bleus</button>
+              <button type="button" onClick={() => { stopDemo(); setBellowsAmount(0); }}><RotateCcw /> Fermer</button>
+              <button type="button" onClick={() => setShowFallback((value) => !value)}>{showFallback ? 'Afficher la 3D' : 'Repli 2D'}</button>
+            </div>
+          </section>
+
+          <section className="accordion-3d-buttons">
+            <div>
+              <h2>Main droite · 10 + 9 + 2</h2>
+              <div className="accordion-3d-button-grid">
+                {accordion.buttons.map((button) => (
+                  <button type="button" className={activeButtonIds.includes(button.id) ? 'is-active' : ''} key={button.id} onClick={() => press(button.id)}>
+                    <small>{button.id}</small><strong>{buttonLabel(button, direction)}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h2>Main gauche · basses et accords</h2>
+              <div className="accordion-3d-button-grid is-bass">
+                {accordion.basses.map((button) => (
+                  <button type="button" className={activeButtonIds.includes(button.id) ? 'is-active' : ''} key={button.id} onClick={() => press(button.id)}>
+                    <small>{button.id}</small><strong>{button.role === 'bass' ? 'Basse' : 'Accord'}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
     </main>
   );
 }
