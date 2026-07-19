@@ -157,6 +157,7 @@ export default function Accordion3DLab() {
                 airValveActive={airValveActive}
                 showLearningGuides={showLearningGuides}
                 onButtonPress={press}
+                allowOrbit
               />
             )}
           </Accordion3DErrorBoundary>

@@ -8,7 +8,7 @@ import { noteFromMidi } from '../data';
 import { frequencyToPitch, rememberReliablePitch, usePitchDetector } from '../hooks/usePitchDetector';
 import { buildTunerExport, tunerExportFilename } from '../tunerExport';
 import { createTunerTargets, findTunerTargetIndex, nextTunerTarget } from '../tunerWorkflow';
-import { AccordionView } from './AccordionView';
+import { AccordionInstrument } from './AccordionInstrument';
 
 interface TunerPageProps {
   accordion: AccordionConfig;
@@ -280,12 +280,13 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
           </div>
 
           <div className="tuner-accordion-viewport">
-            <AccordionView
+            <AccordionInstrument
               config={accordion}
               notation={notation}
               direction={direction}
               detectedMidi={reading?.midi}
               selectedButtonId={selectedButton?.id}
+              context="tuner"
               onButtonPress={(buttonId) => selectTarget(buttonId)}
             />
           </div>

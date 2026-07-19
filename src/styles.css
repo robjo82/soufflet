@@ -488,7 +488,7 @@ svg { stroke-width: 1.8; }
 .calibration-result small { font: 10px 'DM Sans'; color: var(--muted); }
 .privacy-note { display: block; margin-top: 19px; color: var(--muted); }
 .first-breath-step { max-width: 980px; }
-.first-breath-step > .accordion-wrap { margin: 20px 0; }
+.first-breath-step > .accordion-wrap, .first-breath-step > .accordion-instrument { margin: 20px 0; }
 .direction-practice-button { border: 0; border-radius: 13px; padding: 12px 17px; color: var(--green); background: var(--green-soft); display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 800; }
 .direction-practice-button svg { width: 19px; }
 .onboarding-footer { padding: 0 36px; border-top: 1px solid var(--line); background: rgba(250,248,243,.9); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
@@ -1805,10 +1805,37 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
 .accordion-3d-workspace { --accordion-lab-size: clamp(460px, calc(100dvh - 190px), min(760px, calc(100vw - 500px))); max-width: 1500px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, var(--accordion-lab-size)) minmax(400px, 1fr); align-items: stretch; gap: 18px; }
 .accordion-3d-stage { width: 100%; height: var(--accordion-lab-size); position: relative; overflow: hidden; border: 1px solid rgba(81,72,58,.15); border-radius: 30px; background: #f3efe7; box-shadow: 0 26px 80px rgba(70,55,37,.14); }
 .accordion-3d-revision { min-height: 32px; padding: 0 11px; position: absolute; z-index: 2; top: 14px; left: 14px; display: inline-flex; align-items: center; border: 1px solid rgba(47,105,87,.18); border-radius: 999px; color: #245743; background: rgba(255,255,255,.82); backdrop-filter: blur(8px); font-size: 10px; font-weight: 850; letter-spacing: .04em; pointer-events: none; }
-.accordion-3d-canvas { width: 100%; height: 100%; position: relative; overflow: hidden; }
-.accordion-3d-canvas canvas { touch-action: none; }
+.accordion-instrument { width: 100%; min-width: 0; position: relative; }
+.accordion-instrument.is-3d { height: clamp(360px, 39vw, 520px); align-self: center; overflow: hidden; border-radius: 20px; background: #f3efe7; }
+.accordion-instrument.is-3d.accordion-instrument-lesson { height: 360px; }
+.accordion-instrument.is-3d.accordion-instrument-onboarding { height: clamp(350px, 42vw, 450px); }
+.accordion-instrument.is-3d.accordion-instrument-tutorial { height: 470px; min-height: 330px; }
+.accordion-instrument.is-3d.accordion-instrument-practice { height: clamp(410px, 39vw, 560px); }
+.accordion-instrument.is-3d.accordion-instrument-studio { height: clamp(350px, 38vw, 470px); margin-top: 20px; }
+.accordion-instrument.is-3d.accordion-instrument-tuner { height: 100%; min-height: 0; border-radius: 12px; }
+.accordion-instrument.is-3d.accordion-instrument-settings { height: 330px; }
+.tutorial-intro-instrument > .accordion-instrument.is-3d { height: 390px; }
+.tutorial-instrument-card > .accordion-instrument.is-3d { height: 470px; }
+.tutorial-wait-instrument > .accordion-instrument.is-3d { height: 410px; }
+.tutorial-ui-instrument > .accordion-instrument.is-3d { height: 100%; min-height: 0; }
+.accordion-instrument-loading { width: 100%; height: 100%; display: grid; place-items: center; color: var(--muted); background: radial-gradient(circle, #fff, #f3efe7); font-size: 11px; font-weight: 750; }
+.accordion-3d-canvas { width: 100%; height: 100%; position: relative; overflow: hidden; border-radius: inherit; }
+.accordion-3d-canvas canvas { touch-action: pan-y; }
+.accordion-instrument .accordion-3d-canvas canvas { cursor: pointer; }
+.accordion-3d-canvas.is-orbit-enabled canvas { touch-action: none; cursor: grab; }
+.accordion-3d-gesture { min-height: 44px; padding: 7px 14px; position: absolute; z-index: 4; top: 12px; left: 50%; display: flex; align-items: center; gap: 9px; border: 1px solid rgba(112,222,255,.58); border-radius: 12px; color: #174f67; background: rgba(229,248,255,.88); box-shadow: 0 7px 22px rgba(39,124,158,.15); backdrop-filter: blur(8px); transform: translateX(-50%); pointer-events: none; white-space: nowrap; }
+.accordion-3d-gesture small { font-size: 8px; font-weight: 900; letter-spacing: .1em; }
+.accordion-3d-gesture strong { font-size: 11px; }
+.accordion-3d-gesture.is-push { color: #7d392c; border-color: rgba(239,157,132,.58); background: rgba(255,236,230,.9); }
+.accordion-3d-accessible-controls { width: 1px; height: 1px; padding: 0; position: absolute; z-index: 12; left: 8px; bottom: 8px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.accordion-3d-accessible-controls:focus-within { width: min(440px, calc(100% - 16px)); height: auto; max-height: calc(100% - 16px); padding: 12px; overflow: auto; clip-path: none; white-space: normal; border: 2px solid var(--green); border-radius: 14px; background: rgba(255,255,255,.96); box-shadow: 0 12px 35px rgba(20,38,31,.2); }
+.accordion-3d-accessible-controls > strong, .accordion-3d-accessible-controls > span { display: block; }
+.accordion-3d-accessible-controls > span { margin: 3px 0 9px; color: var(--muted); font-size: 10px; }
+.accordion-3d-accessible-controls > div { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+.accordion-3d-accessible-controls button { min-height: 34px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: white; font-size: 9px; cursor: pointer; }
+.accordion-3d-accessible-controls button:focus-visible { outline: 3px solid #66c8e7; outline-offset: 1px; }
 .accordion-3d-direction-guides { position: absolute; z-index: 3; inset: 0; pointer-events: none; }
-.accordion-3d-direction-guide { width: 58px; height: 58px; position: absolute; top: 84%; display: grid; place-items: center; border: 1px solid rgba(112,222,255,.72); border-radius: 50%; color: #d7f7ff; background: radial-gradient(circle, rgba(43,180,225,.82), rgba(42,153,207,.4) 54%, rgba(42,153,207,0) 72%); filter: drop-shadow(0 0 12px rgba(66,201,244,.68)); transform: translateY(-50%); }
+.accordion-3d-direction-guide { width: 58px; height: 58px; position: absolute; top: 52%; display: grid; place-items: center; border: 1px solid rgba(112,222,255,.72); border-radius: 50%; color: #d7f7ff; background: radial-gradient(circle, rgba(43,180,225,.82), rgba(42,153,207,.4) 54%, rgba(42,153,207,0) 72%); filter: drop-shadow(0 0 12px rgba(66,201,244,.68)); transform: translateY(-50%); }
 .accordion-3d-direction-guide b { font-size: 36px; line-height: 1; text-shadow: 0 0 12px rgba(255,255,255,.8); }
 .accordion-3d-direction-guide.is-left { left: 1.5%; }
 .accordion-3d-direction-guide.is-right { right: 1.5%; }
@@ -2142,4 +2169,64 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .tuner-check-panel { padding: 10px; }
   .tuner-expected-note strong, .tuner-heard-note strong { font-size: 21px; }
   .tuner-expected-note span, .tuner-heard-note span { white-space: normal; }
+}
+
+/* Shared 3D instrument sizing. Kept after page breakpoints so each practice
+   surface preserves a useful, predictable framing on tablets and phones. */
+@media (min-width: 1200px) {
+  html:fullscreen .accordion-instrument.is-3d.accordion-instrument-practice { height: clamp(500px, 52dvh, 680px); }
+}
+
+@media (min-width: 1200px) and (max-height: 900px) {
+  html:fullscreen .accordion-instrument.is-3d.accordion-instrument-practice { height: 410px; }
+}
+
+@media (min-width: 801px) and (max-height: 900px) {
+  .tuner-page.page-content { padding-top: 30px; }
+  .tuner-heading-compact { margin-bottom: 12px; }
+  .tuner-heading-compact .back-link { margin-bottom: 10px; }
+  .tuner-dial-compact { min-height: 250px; }
+  .tuner-dial-compact::before { bottom: -225px; }
+  .tuner-dial-compact .tuner-scale { bottom: 20px; transform: scale(.7); }
+  .tuner-dial-compact .tuner-needle { height: 112px; bottom: 27px; }
+  .tuner-dial-compact .tuner-reading { top: 18px; }
+  .tuner-dial-compact .tuner-reading > strong { font-size: 48px; }
+  .tuner-accordion-viewport { height: 250px; }
+  .accordion-instrument.is-3d.accordion-instrument-tuner { min-height: 0; }
+}
+
+@media (max-width: 800px) {
+  .accordion-instrument.is-3d.accordion-instrument-lesson { height: 250px; }
+  .accordion-instrument.is-3d.accordion-instrument-onboarding { height: 340px; }
+  .accordion-instrument.is-3d.accordion-instrument-practice { height: 360px; }
+  .accordion-instrument.is-3d.accordion-instrument-studio { height: 340px; margin-top: 12px; }
+  .accordion-instrument.is-3d.accordion-instrument-settings { height: 290px; }
+  .tutorial-intro-instrument > .accordion-instrument.is-3d { height: 310px; }
+  .tutorial-instrument-card > .accordion-instrument.is-3d { height: 340px; min-height: 0; }
+  .tutorial-wait-instrument > .accordion-instrument.is-3d { height: 350px; min-height: 0; }
+  .tutorial-ui-instrument > .accordion-instrument.is-3d { height: 100%; min-height: 0; }
+  .accordion-3d-gesture { min-height: 38px; top: 8px; padding: 5px 10px; }
+  .accordion-3d-gesture strong { font-size: 10px; }
+  .accordion-3d-direction-guide { width: 44px; height: 44px; }
+  .accordion-3d-direction-guide b { font-size: 28px; }
+  .accordion-3d-accessible-controls > div { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .accordion-instrument.is-3d.accordion-instrument-practice { height: 280px; }
+  .accordion-instrument.is-3d.accordion-instrument-studio { height: 300px; }
+  .accordion-instrument.is-3d.accordion-instrument-settings { height: 265px; }
+  .tutorial-intro-instrument > .accordion-instrument.is-3d { height: 280px; }
+  .tutorial-instrument-card > .accordion-instrument.is-3d { height: 345px; }
+  .tutorial-wait-instrument > .accordion-instrument.is-3d { height: 325px; }
+  .accordion-3d-gesture { top: 6px; }
+  .accordion-3d-gesture small { display: none; }
+  .accordion-3d-direction-guide { width: 38px; height: 38px; }
+  .accordion-3d-direction-guide b { font-size: 24px; }
+  .accordion-3d-direction-guide.is-left { left: 2%; }
+  .accordion-3d-direction-guide.is-right { right: 2%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion-3d-direction-guide { animation: none !important; }
 }

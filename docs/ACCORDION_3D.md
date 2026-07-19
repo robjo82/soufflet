@@ -1,6 +1,6 @@
 # Pipeline 3D de l’accordéon
 
-Cette première fondation transforme le Hohner Club Modell I en asset applicatif vérifiable. Elle ne remplace pas encore l’accordéon HTML dans le lecteur : la migration reste volontairement derrière une page de laboratoire tant que le modèle n’a pas été validé sur les appareils cibles.
+Cette fondation transforme le Hohner Club Modell I en asset applicatif vérifiable et en instrument pédagogique partagé. Après validation dans le laboratoire, le modèle est désormais utilisé dans les surfaces principales de Soufflet dès que la configuration active est compatible.
 
 ## Contrat livré
 
@@ -13,12 +13,29 @@ Cette première fondation transforme le Hohner Club Modell I en asset applicatif
 - positions fermées et ouvertes enregistrées dans les extras glTF ;
 - ouverture organique : affaissement central, contre-courbe asymétrique, profondeur et inertie transitoire ;
 - axe et profondeur de pression enregistrés sur chaque bouton ;
-- retour visuel applicatif des boutons actifs : course physique, léger grossissement et émission corail ;
+- états visuels distincts : touche à jouer en cyan, note entendue en vert, bouton sélectionné dans l’accordeur en jaune et course physique uniquement pendant une pression réelle ;
 - veinage de noyer empaqueté dans le fichier Blender et exporté dans le GLB, sans dépendance à une photo externe ;
 - soufflet noir mat plus proche du modèle de référence ;
 - page de validation manuelle : `/dev/accordion-3d`.
 
-Le rendu 3D est chargé dynamiquement. Si WebGL ou le modèle échoue, l’interface HTML `AccordionView` reste disponible et fonctionnelle.
+Le rendu 3D est chargé dynamiquement. Si WebGL ou le modèle échoue, l’interface HTML `AccordionView` reste disponible et fonctionnelle. Les autres modèles d’accordéon restent volontairement en 2D tant qu’un asset 3D fidèle n’existe pas : Soufflet n’affiche jamais un Club I générique à la place de l’instrument configuré.
+
+## Intégration dans l’application
+
+`AccordionInstrument` est la façade commune utilisée par :
+
+- l’onboarding et toute la première leçon ;
+- le tableau de bord et l’aperçu de la prochaine séance ;
+- le lecteur d’entraînement, y compris le plein écran ;
+- le studio de correction ;
+- l’accordeur guidé ;
+- l’aperçu de l’instrument dans les réglages.
+
+La façade traduit le même événement musical en état 2D ou 3D, déclenche la même banque d’échantillons au clic et transmet les mêmes identifiants de boutons aux exercices. La mélodie, la main gauche, la direction, la réserve et la soupape restent donc coordonnées par les données du morceau, jamais par une animation parallèle.
+
+Chaque contexte possède un cadrage responsive explicite. La vue principale privilégie un instrument grand et lisible à environ un mètre ; l’accordeur emploie un cadrage plus compact afin de conserver le sélecteur et le verdict dans la même hauteur. Sur mobile, le canevas autorise le défilement vertical et ne capture pas les gestes de page. La rotation libre reste réservée au laboratoire.
+
+Le canevas est doublé d’un clavier DOM accessible. Il demeure visuellement discret, apparaît au focus clavier et permet d’écouter chaque touche avec Tab puis Entrée ou Espace. La direction est toujours exprimée par le mouvement, deux flèches, un libellé textuel et une couleur. `prefers-reduced-motion` désactive la pulsation des guides.
 
 ## Audit initial du modèle fourni
 
@@ -91,10 +108,9 @@ Si l’animation Blender du soufflet change, recalculer d’abord les états ext
 
 L’export conserve volontairement les shape keys (`export_apply=False`) : appliquer les modificateurs à l’export supprimerait la peau continue animée du soufflet.
 
-## Étapes suivantes avant activation dans le lecteur
+## Évolutions suivantes
 
-1. valider les proportions et matériaux sur téléphone Android, tablette et ordinateur ;
-2. profiler la cadence et la mémoire GPU sur les appareils bas de gamme ;
-3. produire un niveau de détail plus léger pour le mobile ;
-4. profiler la lecture d'un morceau complet avec plusieurs niveaux de détail ;
-5. conduire une validation pédagogique et visuelle avant d’activer le feature flag dans le lecteur principal.
+1. profiler la cadence et la mémoire GPU sur un panel d’appareils Android bas de gamme ;
+2. produire un niveau de détail plus léger si les mesures réelles le nécessitent ;
+3. ajouter des assets fidèles pour les autres configurations avant d’étendre leur rendu 3D ;
+4. valider le point de vue musicien avec plusieurs accordéonistes et prévoir un choix d’orientation si nécessaire.

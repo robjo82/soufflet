@@ -4,7 +4,7 @@ import { displayNote, FRENCH_NOTES } from '../data';
 import { useSynth } from '../hooks/useSynth';
 import { getAccordionVisualVariant, getMelodyButtonSize } from './accordionLayout';
 
-interface AccordionViewProps {
+export interface AccordionViewProps {
   config: AccordionConfig;
   activeEvent?: SongEvent;
   direction?: Direction;

@@ -8,7 +8,7 @@ import { PRACTICE_MODES } from '../practiceModes';
 import { createWaitTutorialSong, TUTORIAL_MODE_TRIALS } from '../tutorialFlow';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import { AccordionView } from './AccordionView';
+import { AccordionInstrument } from './AccordionInstrument';
 import { ScoreStrip } from './ScoreStrip';
 import { MicrophoneRecovery } from './MicrophoneRecovery';
 
@@ -292,7 +292,7 @@ export function FirstLessonTutorial({ accountId, accordion, notation, song, onNo
             <div className="tutorial-promises"><span><Headphones /> Une mélodie de trois notes</span><span><Mic2 /> Une validation automatique</span><span><Check /> Aucun solfège nécessaire</span></div>
             <button type="button" className="primary-button tutorial-main-action" onClick={() => goToStage(1)}>Commencer par écouter <ArrowRight /></button>
           </section>
-          <div className="tutorial-intro-instrument"><AccordionView config={accordion} notation={notation} direction="push" compact /></div>
+          <div className="tutorial-intro-instrument"><AccordionInstrument config={accordion} notation={notation} direction="push" compact context="tutorial" showLearningGuides={false} /></div>
         </main>
       )}
 
@@ -318,7 +318,7 @@ export function FirstLessonTutorial({ accountId, accordion, notation, song, onNo
             )}
           </section>
           <section className="tutorial-instrument-card">
-            <AccordionView config={accordion} activeEvent={guidedCelebrating ? undefined : activeEvent} direction={activeEvent?.direction} notation={notation} detectedMidi={detector.reading?.midi} depressActive={stage === 1 && demoPlaying} onButtonPress={handleButtonPress} />
+            <AccordionInstrument config={accordion} activeEvent={guidedCelebrating ? undefined : activeEvent} direction={activeEvent?.direction} notation={notation} detectedMidi={detector.reading?.midi} depressActive={stage === 1 && demoPlaying} onButtonPress={handleButtonPress} context="tutorial" />
             {guidedCelebrating && <div className="tutorial-success-burst" role="status"><span><Check /></span><Sparkles /><strong>Trois notes justes !</strong><p>Micro coupé · prochaine étape…</p>{Array.from({ length: 8 }).map((_, index) => <i key={index} />)}</div>}
           </section>
           {stage === 2 && <div className="tutorial-score"><ScoreStrip song={tutorialSong} activeIndex={Math.min(guidedProgress, events.length - 1)} notation={notation} completed={guidedDone} onSelect={() => undefined} /></div>}
@@ -348,7 +348,7 @@ export function FirstLessonTutorial({ accountId, accordion, notation, song, onNo
               </div>
               {currentTrial.task === 'wait-melody' ? <>
                 <section className="instrument-stage tutorial-wait-instrument">
-                  <AccordionView config={accordion} activeEvent={activeEvent} direction={visualDirection} notation={notation} detectedMidi={detector.reading?.midi} onButtonPress={handleButtonPress} />
+                  <AccordionInstrument config={accordion} activeEvent={activeEvent} direction={visualDirection} notation={notation} detectedMidi={detector.reading?.midi} onButtonPress={handleButtonPress} context="tutorial" />
                   {!modeFinished && <aside className={`tutorial-context-bubble bubble-step-${Math.min(3, modeProgress)}`}>
                     <span>{modeProgress === 0 ? '1' : modeProgress < 3 ? '2' : '3'}</span>
                     <div><small>{modeProgress === 0 ? 'LE GESTE À JOUER' : modeProgress < 3 ? 'LA PARTITION T’ATTEND' : 'AUCUNE PRESSION DE TEMPO'}</small><strong>{modeProgress === 0 ? 'Commence par le bouton éclairé.' : modeProgress < 3 ? 'Une bonne note grise la précédente et révèle la suivante.' : 'Prends le temps de trouver chaque note. Ici, le rythme ne compte pas.'}</strong></div>
@@ -394,7 +394,7 @@ export function FirstLessonTutorial({ accountId, accordion, notation, song, onNo
               </div>
               <button type="button" className={`tool-toggle ${tourStep < 3 ? 'is-concealed' : ''} ${tourStep === 3 ? 'is-tutorial-focus' : ''} ${looped ? 'is-active' : ''}`} onClick={() => { setLooped(!looped); if (tourStep === 3) setTourStep(4); }}><Repeat2 /> Boucler</button>
             </div>
-            <div className="tutorial-ui-instrument"><AccordionView config={accordion} activeEvent={events[0]} direction={events[0]?.direction} notation={notation} compact /></div>
+            <div className="tutorial-ui-instrument"><AccordionInstrument config={accordion} activeEvent={events[0]} direction={events[0]?.direction} notation={notation} compact context="tutorial" /></div>
             <div className={`${tourStep < 2 ? 'is-concealed' : ''} ${tourStep === 2 ? 'is-tutorial-focus score-focus' : ''}`}><ScoreStrip song={tutorialSong} activeIndex={0} notation={notation} onSelect={() => tourStep === 2 && setTourStep(3)} /></div>
             <footer className={`${tourStep < 4 ? 'is-concealed' : ''}`}>
               <button type="button" className="transport-tool"><Repeat2 /></button>

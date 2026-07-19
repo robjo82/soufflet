@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Mic2, MoveHorizontal, Sparkles, Volume2 } from 'lucide-react';
 import type { AccordionConfig, Notation } from '../types';
-import { AccordionView } from './AccordionView';
+import { AccordionInstrument } from './AccordionInstrument';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { MicrophoneRecovery } from './MicrophoneRecovery';
 
@@ -123,7 +123,7 @@ export function Onboarding({ accordions, initialAccordionId, initialNotation, on
               <span className="eyebrow">Ton premier geste</span>
               <h1>{direction === 'pull' ? 'Ouvre doucement le soufflet.' : 'Referme doucement le soufflet.'}</h1>
               <p>{direction === 'pull' ? 'Tirer fait entrer l’air. Tiens les deux côtés et écarte-les sans forcer.' : 'Pousser chasse l’air. Rapproche les deux côtés avec un mouvement régulier.'}</p>
-              <AccordionView config={accordion} direction={direction} notation={notation} compact />
+              <AccordionInstrument config={accordion} direction={direction} notation={notation} compact context="onboarding" />
               <button type="button" className="direction-practice-button" onClick={() => setDirection(direction === 'pull' ? 'push' : 'pull')}>
                 <MoveHorizontal /> J’ai fait le geste — montrer {direction === 'pull' ? 'pousser' : 'tirer'}
               </button>
