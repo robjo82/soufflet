@@ -176,6 +176,25 @@ export interface PitchReading {
   volume: number;
 }
 
+export interface TunerReading {
+  id: string;
+  sessionId: string;
+  accordionId: string;
+  accordionModel: string;
+  buttonId: string;
+  row: number;
+  buttonIndex: number;
+  direction: Direction;
+  expectedMidi: number;
+  detectedMidi: number;
+  frequency: number;
+  cents: number;
+  confidence: number;
+  volume: number;
+  outcome: 'matched' | 'corrected';
+  measuredAt: string;
+}
+
 export interface TranscriptionResult {
   title: string;
   artist: string;

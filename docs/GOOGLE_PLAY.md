@@ -81,7 +81,7 @@ Réponses conservatrices recommandées pour **Sécurité des données** :
 - données collectées : adresse e-mail, nom affiché, préférences, matériel et activité d’apprentissage ;
 - finalités : fonctionnement du compte, personnalisation et analyse de la progression ;
 - aucun partage publicitaire et aucune vente ;
-- microphone des exercices traité localement et non collecté ;
+- microphone des exercices traité localement et non collecté ; seules les mesures numériques explicitement validées dans l’accordeur sont conservées avec le compte ;
 - fichier envoyé volontairement pour transcription traité temporairement par Google Gemini comme prestataire ;
 - données chiffrées en transit ;
 - suppression accessible dans l’application et sur la page publique indiquée plus haut.

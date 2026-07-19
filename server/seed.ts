@@ -16,17 +16,17 @@ const basses = (roots: number[]) => roots.flatMap((root, pair) => [
 
 const gcOuter = [[55, 57], [59, 60], [62, 64], [67, 66], [71, 69], [74, 72], [79, 76], [83, 78], [86, 81], [91, 84]];
 const gcInner = [[48, 54], [52, 55], [55, 59], [60, 62], [64, 65], [67, 69], [72, 71], [76, 74], [79, 77], [84, 81], [88, 83]];
-// Variante relevée sur le Club I 10+9+2 du projet : les deux boutons de tête
-// sont des altérations aiguës et les boutons 5 à 9 suivent la tablature fournie.
-const clubOuter = [[78, 75], [82, 80], [60, 62], [64, 65], [67, 69], [72, 71], [76, 74], [79, 77], [84, 81], [88, 86]];
-const clubInner = [[48, 54], [52, 55], [55, 59], [60, 60], [64, 65], [67, 69], [72, 71], [76, 74], [79, 77]];
+// Variante mesurée sur le Club I 10+9+2 du projet. La première rangée suit Do
+// à partir du bouton 2 et la deuxième suit Fa, avec Do5 comme Gleichton.
+const clubOuter = [[78, 80], [55, 59], [60, 62], [64, 65], [67, 69], [72, 71], [76, 74], [79, 77], [84, 81], [88, 83]];
+const clubInner = [[57, 60], [60, 64], [65, 67], [69, 70], [72, 72], [77, 76], [81, 79], [84, 82], [89, 86]];
 
 export const ACCORDION_SEEDS = [
   {
     id: 'hohner-club-i-cf-10-9-2', maker: 'Hohner', model: 'Club I — 10 + 9 + 2', tuning: 'Do/Fa (C/F), Gleichton', color: '#6e2f28', rightRows: [10, 9, 2], bassCount: 8,
-    description: 'Variante Club I avec deux boutons aigus en tête, dont P1 = F♯5, et bouton Gleichton.',
-    buttons: [...row('c1-out', 1, clubOuter), ...row('c1-in', 2, clubInner).map((item) => item.index === 4 ? { ...item, isGleichton: true } : item), button('c1-help-1', 3, 1, 66, 63, { role: 'accidental', finger: 2 }), button('c1-help-2', 3, 2, 70, 68, { role: 'accidental', finger: 3 })],
-    basses: basses([36, 41, 43, 48]), verified: false, sourceNote: 'Variante relevée : P1 = F♯5 et boutons 5P/5T à 9T validés par la tablature du Brise-pieds. Les autres Club I peuvent différer.',
+    description: 'Variante Club I mesurée : rangée de Do, rangée de Fa avec Gleichton Do5 et deux altérations.',
+    buttons: [...row('c1-out', 1, clubOuter), ...row('c1-in', 2, clubInner).map((item) => item.index === 5 ? { ...item, isGleichton: true } : item), button('c1-help-1', 3, 1, 66, 68, { role: 'accidental', finger: 2 }), button('c1-help-2', 3, 2, 75, 73, { role: 'accidental', finger: 3 })],
+    basses: basses([36, 41, 43, 48]), verified: false, sourceNote: 'Variante mesurée le 19/07/2026 : P1 = F♯5/G♯5, rang Do dès G3/B3, rang Fa dès F4/G4 et Gleichton Do5 au bouton 5. Les autres Club I peuvent différer.',
   },
   {
     id: 'standard-gc-21-8', maker: 'Standard', model: '2 rangs — 21 + 8', tuning: 'Sol/Do (G/C)', color: '#315c4b', rightRows: [10, 11], bassCount: 8,

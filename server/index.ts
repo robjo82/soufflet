@@ -238,6 +238,43 @@ app.post('/api/practice-sessions', requireUser, (request, response) => {
   }
 });
 
+const tunerReadingSchema = z.object({
+  id: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  accordionId: z.string().min(1).max(100),
+  accordionModel: z.string().min(1).max(120),
+  buttonId: z.string().min(1).max(80),
+  row: z.number().int().min(0).max(5),
+  buttonIndex: z.number().int().min(1).max(30),
+  direction: z.enum(['push', 'pull']),
+  expectedMidi: z.number().int().min(0).max(127),
+  detectedMidi: z.number().int().min(0).max(127),
+  frequency: z.number().positive().max(5000),
+  cents: z.number().min(-100).max(100),
+  confidence: z.number().min(0).max(1),
+  volume: z.number().min(0).max(2),
+  outcome: z.enum(['matched', 'corrected']),
+  measuredAt: z.string().datetime(),
+});
+
+app.get('/api/tuner-readings', requireUser, (request, response) => {
+  try {
+    const sessionId = z.string().uuid().optional().parse(request.query.sessionId);
+    response.json({ readings: db.listTunerReadings(response.locals.user.id as string, sessionId) });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof Error ? error.message : 'Campagne d’accordage invalide.' });
+  }
+});
+
+app.post('/api/tuner-readings', requireUser, (request, response) => {
+  try {
+    const reading = tunerReadingSchema.parse(request.body);
+    response.status(201).json({ reading: db.saveTunerReading(response.locals.user.id as string, reading) });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof Error ? error.message : 'Relevé d’accordage invalide.' });
+  }
+});
+
 const accordionButtonSchema = z.object({
   id: z.string().min(1).max(80), row: z.number().int().min(0).max(5), index: z.number().int().min(1).max(30),
   push: z.string().min(1).max(8), pull: z.string().min(1).max(8), pushMidi: z.number().int().min(0).max(127), pullMidi: z.number().int().min(0).max(127),

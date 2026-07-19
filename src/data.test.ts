@@ -16,7 +16,14 @@ describe('accordion configurations', () => {
     expect(club).toBeDefined();
     expect(club?.rightRows).toEqual([10, 9, 2]);
     expect(club?.buttons).toHaveLength(21);
-    expect(club?.buttons.some((button) => button.isGleichton)).toBe(true);
+    expect(club?.buttons.find((button) => button.isGleichton)).toMatchObject({ id: 'c1-in-5', push: 'C5', pull: 'C5' });
+    expect(club?.buttons.filter((button) => button.row === 1).map((button) => [button.push, button.pull])).toEqual([
+      ['F#5', 'G#5'], ['G3', 'B3'], ['C4', 'D4'], ['E4', 'F4'], ['G4', 'A4'],
+      ['C5', 'B4'], ['E5', 'D5'], ['G5', 'F5'], ['C6', 'A5'], ['E6', 'B5'],
+    ]);
+    expect(club?.buttons.filter((button) => button.row === 2).slice(2).map((button) => [button.push, button.pull])).toEqual([
+      ['F4', 'G4'], ['A4', 'A#4'], ['C5', 'C5'], ['F5', 'E5'], ['A5', 'G5'], ['C6', 'A#5'], ['F6', 'D6'],
+    ]);
   });
 
   it('keeps every button mapping playable', () => {

@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, CircleCheck,
-  Info, Mic2, RotateCcw, Save, SlidersHorizontal, Volume2,
+  Download, Info, Mic2, RotateCcw, Save, SlidersHorizontal, Volume2,
 } from 'lucide-react';
-import type { AccordionConfig, Direction, Notation } from '../types';
+import type { AccordionConfig, Direction, Notation, PitchReading, TunerReading } from '../types';
 import { noteFromMidi } from '../data';
 import { frequencyToPitch, rememberReliablePitch, usePitchDetector } from '../hooks/usePitchDetector';
+import { buildTunerExport, tunerExportFilename } from '../tunerExport';
 import { createTunerTargets, findTunerTargetIndex, nextTunerTarget } from '../tunerWorkflow';
 import { AccordionView } from './AccordionView';
 
@@ -35,8 +36,11 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
   const [selectedButtonId, setSelectedButtonId] = useState(accordion.buttons[0]?.id ?? '');
   const [verifiedTargets, setVerifiedTargets] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [rememberedSignal, setRememberedSignal] = useState(detector.reading);
+  const [sessionReadings, setSessionReadings] = useState<TunerReading[]>([]);
+  const sessionId = useRef(crypto.randomUUID()).current;
 
   const targets = useMemo(() => createTunerTargets(accordion), [accordion]);
   const targetIndex = findTunerTargetIndex(targets, selectedButtonId, direction);
@@ -75,15 +79,58 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
     if (target) selectTarget(target.buttonId, target.direction);
   };
 
-  const validateAndContinue = () => {
-    if (!selectedButton) return;
+  const archiveReading = async (
+    outcome: TunerReading['outcome'],
+    capturedReading: PitchReading,
+    capturedExpectedMidi: number,
+    capturedAccordion: Pick<AccordionConfig, 'id' | 'model'> = accordion,
+  ) => {
+    if (!selectedButton) return false;
+    const tunerReading: TunerReading = {
+      id: crypto.randomUUID(),
+      sessionId,
+      accordionId: capturedAccordion.id,
+      accordionModel: capturedAccordion.model,
+      buttonId: selectedButton.id,
+      row: selectedButton.row,
+      buttonIndex: selectedButton.index,
+      direction,
+      expectedMidi: capturedExpectedMidi,
+      detectedMidi: capturedReading.midi,
+      frequency: capturedReading.frequency,
+      cents: capturedReading.cents,
+      confidence: capturedReading.confidence,
+      volume: capturedReading.volume,
+      outcome,
+      measuredAt: new Date().toISOString(),
+    };
+    setSessionReadings((previous) => [...previous, tunerReading]);
+    try {
+      const response = await fetch('/api/tuner-readings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tunerReading),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const validateAndContinue = async () => {
+    if (!selectedButton || !reading || expectedMidi === undefined) return;
+    setSaving(true);
+    const archived = await archiveReading('matched', reading, expectedMidi);
     setVerifiedTargets((previous) => new Set(previous).add(targetKey(selectedButton.id, direction)));
-    setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} vérifié pour le bouton ${selectedButton.index}.`);
+    setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} vérifié pour le bouton ${selectedButton.index}.${archived ? ' Relevé archivé.' : ' Relevé gardé pour l’export local.'}`);
+    setSaving(false);
     window.setTimeout(() => moveTarget(1), 380);
   };
 
   const applyDetectedNote = async () => {
     if (!selectedButton || !reading || !canCorrect) return;
+    const capturedReading = reading;
+    const capturedExpectedMidi = expectedMidi;
     setSaving(true);
     setSaveMessage('');
     try {
@@ -106,11 +153,14 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
       const payload = await response.json() as { accordion?: AccordionConfig; error?: string };
       if (!response.ok || !payload.accordion) throw new Error(payload.error ?? 'Impossible d’enregistrer la note.');
       const savedAccordion = payload.accordion;
+      const archived = capturedExpectedMidi === undefined
+        ? false
+        : await archiveReading('corrected', capturedReading, capturedExpectedMidi, savedAccordion);
       onAccordionChange(savedAccordion);
       const savedButton = savedAccordion.buttons.find((button) => button.row === selectedButton.row && button.index === selectedButton.index);
       if (savedButton) setSelectedButtonId(savedButton.id);
       setVerifiedTargets((previous) => new Set(previous).add(targetKey(savedButton?.id ?? selectedButton.id, direction)));
-      setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} · bouton ${selectedButton.index} corrigé en ${noteFromMidi(reading.midi)}.`);
+      setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} · bouton ${selectedButton.index} corrigé en ${noteFromMidi(capturedReading.midi)}.${archived ? ' Relevé archivé.' : ' Relevé gardé pour l’export local.'}`);
       window.setTimeout(() => {
         const updatedTargets = createTunerTargets(savedAccordion);
         const target = nextTunerTarget(updatedTargets, savedButton?.id ?? selectedButton.id, direction);
@@ -120,6 +170,34 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
       setSaveMessage(reason instanceof Error ? reason.message : 'Impossible d’enregistrer la note.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const exportReadings = async () => {
+    setExporting(true);
+    setSaveMessage('');
+    try {
+      let readings = sessionReadings;
+      if (!readings.length) {
+        const response = await fetch('/api/tuner-readings');
+        if (response.ok) readings = (await response.json() as { readings: TunerReading[] }).readings;
+      }
+      const report = buildTunerExport(accordion, readings);
+      const url = URL.createObjectURL(new Blob([`${JSON.stringify(report, null, 2)}\n`], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = tunerExportFilename(accordion);
+      document.body.append(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setSaveMessage(readings.length
+        ? `${readings.length} relevé${readings.length > 1 ? 's' : ''} et la cartographie complète ont été exportés.`
+        : 'La cartographie complète a été exportée. Les relevés fins commenceront à la prochaine validation.');
+    } catch {
+      setSaveMessage('Export impossible pour le moment. Réessaie sans quitter cette page.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -140,10 +218,15 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
           <h1>Accordeur</h1>
           <p>Sélectionne un bouton, joue pousser puis tirer : Soufflet mémorise la dernière note fiable et t’emmène au geste suivant.</p>
         </div>
-        <div className="tuner-progress-summary" aria-label={`${verifiedTargets.size} gestes vérifiés sur ${targets.length}`}>
-          <CircleCheck />
-          <span><strong>{verifiedTargets.size} / {targets.length}</strong><small>gestes vérifiés</small></span>
-          <i><b style={{ width: `${targets.length ? (verifiedTargets.size / targets.length) * 100 : 0}%` }} /></i>
+        <div className="tuner-heading-actions">
+          <button type="button" className="tuner-export-button" onClick={() => void exportReadings()} disabled={exporting}>
+            <Download /> <span><strong>{exporting ? 'Préparation…' : 'Exporter les relevés'}</strong><small>JSON · notes, Hz, cents et confiance</small></span>
+          </button>
+          <div className="tuner-progress-summary" aria-label={`${verifiedTargets.size} gestes vérifiés sur ${targets.length} dans cette session`}>
+            <CircleCheck />
+            <span><strong>{verifiedTargets.size} / {targets.length}</strong><small>session actuelle</small></span>
+            <i><b style={{ width: `${targets.length ? (verifiedTargets.size / targets.length) * 100 : 0}%` }} /></i>
+          </div>
         </div>
       </header>
 
@@ -223,7 +306,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
               type="button"
               className="primary-button tuner-confirm-button"
               disabled={(!noteMatches && !canCorrect) || saving || currentVerified}
-              onClick={() => noteMatches ? validateAndContinue() : void applyDetectedNote()}
+              onClick={() => noteMatches ? void validateAndContinue() : void applyDetectedNote()}
             >
               {currentVerified ? 'Geste déjà vérifié' : actionLabel} {canCorrect ? <Save /> : <ChevronRight />}
             </button>
@@ -233,7 +316,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
         </section>
       </section>
 
-      <section className="tuner-help tuner-help-compact"><Info /><div><strong>Mesure fiable</strong><p>Une seule note à la fois · soufflet régulier · téléphone éloigné des bruits mécaniques · attends la stabilisation avant de corriger la configuration.</p></div></section>
+      <section className="tuner-help tuner-help-compact"><Info /><div><strong>Mesure fiable et privée</strong><p>Une seule note à la fois · soufflet régulier · téléphone éloigné des bruits mécaniques · attends la stabilisation avant de corriger. Seules les mesures que tu valides sont archivées avec ton compte ; jamais l’audio.</p></div></section>
     </main>
   );
 }

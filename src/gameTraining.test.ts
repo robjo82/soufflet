@@ -3,11 +3,11 @@ import { FALLBACK_ACCORDIONS } from './data';
 import { BUTTON_GAME_LEVELS, createGameTargets, gameNoteLabel, selectGameButtons, timingGrade } from './gameTraining';
 
 describe('button learning game', () => {
-  it('selects adjacent central buttons from the configured accordion', () => {
+  it('selects adjacent middle-register buttons from the configured accordion', () => {
     const accordion = FALLBACK_ACCORDIONS.find((item) => item.id === 'hohner-club-i-cf-10-9-2')!;
     const buttons = selectGameButtons(accordion, 3);
     expect(buttons.map((button) => button.row)).toEqual([2, 2, 2]);
-    expect(buttons.map((button) => button.index)).toEqual([4, 5, 6]);
+    expect(buttons.map((button) => button.index)).toEqual([2, 3, 4]);
   });
 
   it('builds a deterministic push-only beginner sequence', () => {

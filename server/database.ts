@@ -20,6 +20,25 @@ interface StoredUserPreferences {
   tutorialDone: boolean;
 }
 
+export interface StoredTunerReading {
+  id: string;
+  sessionId: string;
+  accordionId: string;
+  accordionModel: string;
+  buttonId: string;
+  row: number;
+  buttonIndex: number;
+  direction: 'push' | 'pull';
+  expectedMidi: number;
+  detectedMidi: number;
+  frequency: number;
+  cents: number;
+  confidence: number;
+  volume: number;
+  outcome: 'matched' | 'corrected';
+  measuredAt: string;
+}
+
 export class SouffletDatabase {
   private readonly db: DatabaseSync;
 
@@ -130,6 +149,32 @@ export class SouffletDatabase {
           CHECK(hand IN ('right', 'left', 'both'));
         UPDATE practice_sessions SET hand = 'both' WHERE mode IN ('demo', 'combined');
         UPDATE practice_sessions SET hand = 'left' WHERE mode = 'left';
+      `,
+      `
+        CREATE TABLE IF NOT EXISTS tuner_readings (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          accordion_id TEXT NOT NULL,
+          accordion_model TEXT NOT NULL,
+          button_id TEXT NOT NULL,
+          button_row INTEGER NOT NULL,
+          button_index INTEGER NOT NULL,
+          direction TEXT NOT NULL CHECK(direction IN ('push', 'pull')),
+          expected_midi INTEGER NOT NULL CHECK(expected_midi BETWEEN 0 AND 127),
+          detected_midi INTEGER NOT NULL CHECK(detected_midi BETWEEN 0 AND 127),
+          frequency REAL NOT NULL CHECK(frequency > 0),
+          cents REAL NOT NULL CHECK(cents BETWEEN -100 AND 100),
+          confidence REAL NOT NULL CHECK(confidence BETWEEN 0 AND 1),
+          volume REAL NOT NULL CHECK(volume >= 0),
+          outcome TEXT NOT NULL CHECK(outcome IN ('matched', 'corrected')),
+          measured_at TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS tuner_readings_user_session_idx
+          ON tuner_readings(user_id, session_id, measured_at);
+        CREATE INDEX IF NOT EXISTS tuner_readings_user_latest_idx
+          ON tuner_readings(user_id, measured_at DESC);
       `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
@@ -389,5 +434,74 @@ export class SouffletDatabase {
 
   getPracticeStats(userId: string, timezoneOffset = 0, now = new Date()) {
     return summarizePractice(this.listPracticeSessions(userId), timezoneOffset, now);
+  }
+
+  saveTunerReading(userId: string, reading: StoredTunerReading) {
+    this.db.prepare(`
+      INSERT INTO tuner_readings (
+        id, session_id, user_id, accordion_id, accordion_model, button_id, button_row, button_index,
+        direction, expected_midi, detected_midi, frequency, cents, confidence, volume, outcome, measured_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        accordion_id = excluded.accordion_id,
+        accordion_model = excluded.accordion_model,
+        button_id = excluded.button_id,
+        button_row = excluded.button_row,
+        button_index = excluded.button_index,
+        direction = excluded.direction,
+        expected_midi = excluded.expected_midi,
+        detected_midi = excluded.detected_midi,
+        frequency = excluded.frequency,
+        cents = excluded.cents,
+        confidence = excluded.confidence,
+        volume = excluded.volume,
+        outcome = excluded.outcome,
+        measured_at = excluded.measured_at
+      WHERE tuner_readings.user_id = excluded.user_id
+    `).run(
+      reading.id, reading.sessionId, userId, reading.accordionId, reading.accordionModel,
+      reading.buttonId, reading.row, reading.buttonIndex, reading.direction, reading.expectedMidi,
+      reading.detectedMidi, reading.frequency, reading.cents, reading.confidence, reading.volume,
+      reading.outcome, reading.measuredAt,
+    );
+    return reading;
+  }
+
+  listTunerReadings(userId: string, sessionId?: string): StoredTunerReading[] {
+    const selectedSession = sessionId ?? (this.db.prepare(`
+      SELECT session_id FROM tuner_readings WHERE user_id = ? ORDER BY measured_at DESC LIMIT 1
+    `).get(userId) as { session_id: string } | undefined)?.session_id;
+    if (!selectedSession) return [];
+    const rows = this.db.prepare(`
+      SELECT id, session_id, accordion_id, accordion_model, button_id, button_row, button_index,
+             direction, expected_midi, detected_midi, frequency, cents, confidence, volume, outcome, measured_at
+      FROM tuner_readings
+      WHERE user_id = ? AND session_id = ?
+      ORDER BY measured_at, button_row, button_index
+      LIMIT 240
+    `).all(userId, selectedSession) as Array<{
+      id: string; session_id: string; accordion_id: string; accordion_model: string; button_id: string;
+      button_row: number; button_index: number; direction: 'push' | 'pull'; expected_midi: number;
+      detected_midi: number; frequency: number; cents: number; confidence: number; volume: number;
+      outcome: 'matched' | 'corrected'; measured_at: string;
+    }>;
+    return rows.map((row) => ({
+      id: row.id,
+      sessionId: row.session_id,
+      accordionId: row.accordion_id,
+      accordionModel: row.accordion_model,
+      buttonId: row.button_id,
+      row: row.button_row,
+      buttonIndex: row.button_index,
+      direction: row.direction,
+      expectedMidi: row.expected_midi,
+      detectedMidi: row.detected_midi,
+      frequency: row.frequency,
+      cents: row.cents,
+      confidence: row.confidence,
+      volume: row.volume,
+      outcome: row.outcome,
+      measuredAt: row.measured_at,
+    }));
   }
 }
