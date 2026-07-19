@@ -102,6 +102,10 @@ const preferencesSchema = z.object({
   accordionId: z.string().min(1).max(120),
   notation: z.enum(['french', 'english', 'tablature', 'button']),
   countIn: z.boolean(),
+  onboardingDone: z.boolean(),
+  tutorialDone: z.boolean(),
+}).refine((preferences) => !preferences.tutorialDone || preferences.onboardingDone, {
+  message: 'Le tutoriel ne peut pas être terminé avant la configuration initiale.',
 });
 
 app.get('/api/preferences', requireUser, (_request, response) => {
