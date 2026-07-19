@@ -711,7 +711,16 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
               <p>Commence lentement, puis accélère quand le geste reste régulier.</p>
             </section>
           )}
-          <button type="button" className={`transport-tool ${settings.metronome ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, metronome: !value.metronome }))}><TimerReset /><span>Métronome</span></button>
+          <button
+            type="button"
+            className={`transport-tool transport-metronome ${settings.metronome ? 'is-active' : ''}`}
+            aria-label={settings.metronome ? 'Désactiver le métronome' : 'Activer le métronome'}
+            aria-pressed={settings.metronome}
+            title={settings.metronome ? 'Désactiver le métronome' : 'Activer le métronome'}
+            onClick={() => setSettings((value) => ({ ...value, metronome: !value.metronome }))}
+          >
+            <TimerReset /><span>Métronome</span>
+          </button>
           <button type="button" className={`icon-button ${soundEnabled ? '' : 'is-active'}`} onClick={() => setSoundEnabled(!soundEnabled)} title={soundEnabled ? 'Couper le son de l’application' : 'Activer le son'}><Volume2 /></button>
           <button type="button" className="icon-button" onClick={() => setModeOpen(true)} title="Réglages du mode"><Settings2 /></button>
           <button type="button" className={`icon-button ${flagged ? 'is-active' : ''}`} title="Marquer ce passage difficile" onClick={() => { const next = !flagged; flaggedRef.current = next; setFlagged(next); setFeedback({ kind: 'neutral', title: flagged ? 'Marque retirée' : 'Passage marqué pour révision', detail: flagged ? 'Ce passage ne reviendra plus en priorité.' : 'Il sera proposé plus tôt dans une prochaine séance.' }); }}><Flag fill={flagged ? 'currentColor' : 'none'} /></button>
