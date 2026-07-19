@@ -47,6 +47,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
   const [modeOpen, setModeOpen] = useState(false);
   const [showScore, setShowScore] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [tempoOpen, setTempoOpen] = useState(false);
   const [flagged, setFlagged] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
   const [sessionFinished, setSessionFinished] = useState(false);
@@ -477,6 +478,10 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
         setShortcutsVisible(true);
         return;
       }
+      if (event.key === 'Escape' && tempoOpen) {
+        setTempoOpen(false);
+        return;
+      }
       const target = event.target as HTMLElement | null;
       const isEditable = target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '');
       if (isEditable || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -515,7 +520,7 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [activeIndex, begin, countInBeat, playing, practiceEvents.length, restart, selectIndex, selectMode, shortcutsVisible, toggleFullscreen]);
+  }, [activeIndex, begin, countInBeat, playing, practiceEvents.length, restart, selectIndex, selectMode, shortcutsVisible, tempoOpen, toggleFullscreen]);
 
   const closePractice = useCallback(() => {
     finishActiveSegment();
@@ -678,9 +683,34 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
           <button type="button" className="transport-tool" onClick={restart}><Redo2 /> <span>Recommencer<kbd>R</kbd></span></button>
           <button type="button" className={`transport-tool ${settings.loop ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, loop: !value.loop }))}><Repeat2 /> <span>Boucle<kbd>L</kbd></span></button>
         </div>
-        <button type="button" className="primary-play" onClick={begin}>{playing || countInBeat !== null ? <Pause /> : <Play fill="currentColor" />}<span>{countInBeat !== null ? `Départ dans ${countInBeat}` : playing ? 'Pause' : 'Commencer'}</span><kbd>Espace</kbd></button>
+        <button type="button" className="primary-play" onClick={() => { setTempoOpen(false); begin(); }}>{playing || countInBeat !== null ? <Pause /> : <Play fill="currentColor" />}<span>{countInBeat !== null ? `Départ dans ${countInBeat}` : playing ? 'Pause' : 'Commencer'}</span><kbd>Espace</kbd></button>
         <div className="transport-side align-right">
           <label className="tempo-control"><Gauge size={19} /><span>Tempo <strong>{settings.tempo} %</strong></span><input type="range" min="40" max="120" step="5" value={settings.tempo} onChange={(event) => setSettings((value) => ({ ...value, tempo: Number(event.target.value) }))} /></label>
+          <button
+            type="button"
+            className={`mobile-tempo-trigger ${tempoOpen ? 'is-active' : ''}`}
+            aria-label={`Régler le tempo, actuellement ${settings.tempo} pour cent`}
+            aria-expanded={tempoOpen}
+            aria-controls="mobile-tempo-panel"
+            onClick={() => setTempoOpen((value) => !value)}
+          >
+            <Gauge aria-hidden="true" />
+            <strong>{settings.tempo}%</strong>
+          </button>
+          {tempoOpen && (
+            <section id="mobile-tempo-panel" className="mobile-tempo-panel" role="dialog" aria-label="Réglage du tempo">
+              <header>
+                <div><small>TEMPO</small><strong>{settings.tempo} % · {Math.round(actualBpm)} BPM</strong></div>
+                <button type="button" aria-label="Fermer le réglage du tempo" onClick={() => setTempoOpen(false)}><X /></button>
+              </header>
+              <div className="mobile-tempo-adjuster">
+                <button type="button" aria-label="Ralentir de 5 pour cent" disabled={settings.tempo <= 40} onClick={() => setSettings((value) => ({ ...value, tempo: Math.max(40, value.tempo - 5) }))}>−</button>
+                <input aria-label="Tempo en pourcentage" type="range" min="40" max="120" step="5" value={settings.tempo} onChange={(event) => setSettings((value) => ({ ...value, tempo: Number(event.target.value) }))} />
+                <button type="button" aria-label="Accélérer de 5 pour cent" disabled={settings.tempo >= 120} onClick={() => setSettings((value) => ({ ...value, tempo: Math.min(120, value.tempo + 5) }))}>+</button>
+              </div>
+              <p>Commence lentement, puis accélère quand le geste reste régulier.</p>
+            </section>
+          )}
           <button type="button" className={`transport-tool ${settings.metronome ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, metronome: !value.metronome }))}><TimerReset /><span>Métronome</span></button>
           <button type="button" className={`icon-button ${soundEnabled ? '' : 'is-active'}`} onClick={() => setSoundEnabled(!soundEnabled)} title={soundEnabled ? 'Couper le son de l’application' : 'Activer le son'}><Volume2 /></button>
           <button type="button" className="icon-button" onClick={() => setModeOpen(true)} title="Réglages du mode"><Settings2 /></button>

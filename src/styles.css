@@ -876,6 +876,7 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .tempo-control svg { grid-row: 1 / 3; width: 18px; }
 .tempo-control span { display: flex; justify-content: space-between; }
 .tempo-control input { width: 100%; accent-color: var(--green); }
+.mobile-tempo-trigger, .mobile-tempo-panel { display: none; }
 
 @media (min-width: 1200px) {
   html:fullscreen .practice-page { padding-bottom: 94px; }
@@ -1587,6 +1588,22 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .transport-bar { padding: 0 10px; }
   .transport-side { gap: 0; }
   .tempo-control { display: none; }
+  .mobile-tempo-trigger { min-width: 54px; min-height: 44px; padding: 3px 6px; border: 1px solid transparent; border-radius: 10px; color: inherit; background: none; display: grid; place-items: center; align-content: center; gap: 1px; cursor: pointer; }
+  .mobile-tempo-trigger:hover, .mobile-tempo-trigger.is-active { color: var(--green); background: var(--green-soft); }
+  .mobile-tempo-trigger svg { width: 17px; height: 17px; }
+  .mobile-tempo-trigger strong { font-size: 9px; line-height: 1; }
+  .mobile-tempo-panel { width: min(340px, calc(100vw - 20px)); padding: 16px; position: absolute; right: max(10px, var(--safe-right)); bottom: calc(100% + 10px); border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.98); box-shadow: 0 18px 55px rgba(44,38,32,.2); display: grid; gap: 14px; text-align: left; }
+  .mobile-tempo-panel header { display: flex; align-items: center; justify-content: space-between; }
+  .mobile-tempo-panel header > div { display: grid; gap: 2px; }
+  .mobile-tempo-panel header small { color: var(--green); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+  .mobile-tempo-panel header strong { font-size: 17px; }
+  .mobile-tempo-panel header button { width: 38px; height: 38px; border: 0; border-radius: 10px; color: var(--muted); background: var(--cream); display: grid; place-items: center; cursor: pointer; }
+  .mobile-tempo-panel header button svg { width: 18px; }
+  .mobile-tempo-adjuster { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; align-items: center; gap: 10px; }
+  .mobile-tempo-adjuster button { min-height: 46px; border: 1px solid var(--line); border-radius: 12px; color: var(--green); background: var(--paper); font-size: 24px; font-weight: 700; cursor: pointer; }
+  .mobile-tempo-adjuster button:disabled { opacity: .4; cursor: default; }
+  .mobile-tempo-adjuster input { width: 100%; min-height: 46px; accent-color: var(--green); }
+  .mobile-tempo-panel p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
   .primary-play { min-width: 150px; }
   .studio-header { grid-template-columns: 1fr auto; padding: 13px; }
   .transcription-source-note { padding-inline: 13px; align-items: flex-start; }
