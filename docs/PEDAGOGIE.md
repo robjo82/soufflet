@@ -36,6 +36,12 @@ La direction utilise simultanément une flèche, un verbe, une lettre et une for
 
 La recherche sur l’apprentissage moteur musical montre que l’alternance et l’espacement peuvent réduire l’aisance ressentie pendant la séance tout en améliorant la rétention. L’app ne doit donc pas optimiser seulement le score immédiat. Référence : [Optimizing Music Learning: Blocked and Interleaved Practice](https://pmc.ncbi.nlm.nih.gov/articles/PMC4989027/).
 
+## Vérification de l’instrument
+
+L’accordeur sépare la mesure acoustique de la cartographie. La dernière hauteur fiable reste visible pendant que l’utilisateur sélectionne un bouton, mais elle n’est jamais enregistrée automatiquement dans la configuration.
+
+Le parcours ordonne chaque bouton en deux gestes : pousser, puis tirer. Une note conforme peut être validée avant de continuer ; une note différente demande une correction explicite, crée si nécessaire une configuration personnelle et avance ensuite vers le geste suivant. Le bouton courant reçoit un contour distinct de la détection audio, et un sélecteur textuel garantit l’accès aux rangs intérieurs sur les petits écrans.
+
 ## Modèle adaptatif prévu
 
 Chaque tentative produit des observations :

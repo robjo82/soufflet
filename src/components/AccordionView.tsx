@@ -10,6 +10,7 @@ interface AccordionViewProps {
   direction?: Direction;
   notation: Notation;
   detectedMidi?: number;
+  selectedButtonId?: string;
   compact?: boolean;
   depressActive?: boolean;
   onButtonPress?: (buttonId: string, direction: Direction) => void;
@@ -28,6 +29,7 @@ export function AccordionView({
   direction = 'push',
   notation,
   detectedMidi,
+  selectedButtonId,
   compact = false,
   depressActive = false,
   onButtonPress,
@@ -125,7 +127,7 @@ export function AccordionView({
                         playMidi(pressedDirection === 'push' ? button.pushMidi : button.pullMidi, .5);
                         onButtonPress?.(button.id, pressedDirection);
                       }}
-                      className={`melody-button ${isActive ? 'is-active' : ''} ${isActive && depressActive ? 'is-pressed' : ''} ${isDetected ? 'is-detected' : ''} ${button.role === 'accidental' ? 'is-helper' : ''}`}
+                      className={`melody-button ${isActive ? 'is-active' : ''} ${isActive && depressActive ? 'is-pressed' : ''} ${isDetected ? 'is-detected' : ''} ${selectedButtonId === button.id ? 'is-selected' : ''} ${button.role === 'accidental' ? 'is-helper' : ''}`}
                       aria-label={`Bouton ${button.index}, ${direction === 'push' ? button.push : button.pull}`}
                       aria-pressed={isActive && depressActive}
                       title={`Pousser : ${button.push} · Tirer : ${button.pull}${button.isGleichton ? ' · Gleichton' : ''}`}
