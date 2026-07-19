@@ -6,6 +6,7 @@ import { HAND_FOCUS_OPTIONS, PRACTICE_MODES, PRIMARY_PRACTICE_MODES } from './pr
 import { createWaitTutorialSong, TUTORIAL_MODE_TRIALS } from './tutorialFlow';
 import { getCountInSequence, getPlaybackStartIndex, getWaitAdvance } from './practiceProgress';
 import { createPracticeTimeline } from './practiceTimeline';
+import { createTunerTargets, findTunerTargetIndex, nextTunerTarget } from './tunerWorkflow';
 import { classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, type AudioFeatureFrame, type BellowsProfile } from './audioTraining';
 
 describe('accordion configurations', () => {
@@ -85,6 +86,28 @@ describe('pitch and notation', () => {
     expect(displayNote('C4', 'english', 'gc-in-4', 'push')).toBe('C4');
     expect(displayNote('C4', 'button', 'gc-in-4', 'pull')).toBe('4');
     expect(displayNote('C4', 'tablature', 'gc-in-4', 'pull')).toBe('4T');
+  });
+});
+
+describe('guided tuner workflow', () => {
+  const accordion = FALLBACK_ACCORDIONS[0];
+  const targets = createTunerTargets(accordion);
+
+  it('checks push then pull for every melody button', () => {
+    expect(targets).toHaveLength(accordion.buttons.length * 2);
+    expect(targets.slice(0, 4)).toEqual([
+      { buttonId: accordion.buttons[0].id, direction: 'push' },
+      { buttonId: accordion.buttons[0].id, direction: 'pull' },
+      { buttonId: accordion.buttons[1].id, direction: 'push' },
+      { buttonId: accordion.buttons[1].id, direction: 'pull' },
+    ]);
+  });
+
+  it('moves from pulling one button to pushing the next one', () => {
+    const first = accordion.buttons[0];
+    const next = nextTunerTarget(targets, first.id, 'pull');
+    expect(next).toEqual({ buttonId: accordion.buttons[1].id, direction: 'push' });
+    expect(findTunerTargetIndex(targets, next!.buttonId, next!.direction)).toBe(2);
   });
 });
 

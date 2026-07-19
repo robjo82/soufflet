@@ -8,7 +8,7 @@
 - représentation bisonore en volume, soufflet plissé synchronisé et touches animées ;
 - profil visuel procédural dédié au Hohner Club I, sans réutilisation des photographies de référence ;
 - lecture/synthèse au tempo, boucle, reprise en une action et raccourcis découvrables avec `Ctrl` ;
-- accordeur monophonique navigateur ;
+- accordeur monophonique navigateur et cartographie guidée pousser/tirer de toutes les touches mélodiques ;
 - première leçon microphone-first : trois notes guidées, mini-mélodie en attente de la bonne note et performance de mémoire ;
 - SQLite, API, validation d’entrée, limite d’upload et conteneur non-root ;
 - import de tablature simple et pipeline Gemini réel ;
