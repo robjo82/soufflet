@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { adaptSongToAccordion, DEMO_SONG, displayNote, FALLBACK_ACCORDIONS } from './data';
 import { frequencyToPitch, rememberReliablePitch } from './hooks/usePitchDetector';
 import { getAccordionVisualVariant, getMelodyButtonSize } from './components/accordionLayout';
-import { PRACTICE_MODES } from './practiceModes';
+import { HAND_FOCUS_OPTIONS, PRACTICE_MODES, PRIMARY_PRACTICE_MODES } from './practiceModes';
 import { TUTORIAL_MODE_TRIALS } from './tutorialFlow';
 import { getCountInSequence, getWaitAdvance } from './practiceProgress';
+import { createPracticeTimeline } from './practiceTimeline';
 import { classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, type AudioFeatureFrame, type BellowsProfile } from './audioTraining';
 
 describe('accordion configurations', () => {
@@ -67,14 +68,15 @@ describe('pitch and notation', () => {
 });
 
 describe('first lesson tutorial', () => {
-  it('includes a validated trial for every practice mode', () => {
-    expect(TUTORIAL_MODE_TRIALS.map((trial) => trial.id)).toEqual(PRACTICE_MODES.map((mode) => mode.id));
+  it('introduces only the four primary practice modes', () => {
+    expect(PRIMARY_PRACTICE_MODES.map((mode) => mode.id)).toEqual(['demo', 'guided', 'wait', 'performance']);
+    expect(TUTORIAL_MODE_TRIALS.map((trial) => trial.id)).toEqual(PRIMARY_PRACTICE_MODES.map((mode) => mode.id));
   });
 
-  it('requires the real instrument for rhythm, bellows and both hands', () => {
-    expect(TUTORIAL_MODE_TRIALS.find((trial) => trial.id === 'rhythm')?.instruction).toContain('accordéon');
-    expect(TUTORIAL_MODE_TRIALS.find((trial) => trial.id === 'left')?.instruction).toContain('accordéon');
-    expect(TUTORIAL_MODE_TRIALS.find((trial) => trial.id === 'combined')?.instruction).toContain('accordéon');
+  it('keeps hands as a focus and rhythm or bellows as supplemental workshops', () => {
+    expect(PRACTICE_MODES.map((mode) => mode.id)).toEqual(['demo', 'guided', 'wait', 'performance', 'rhythm', 'bellows']);
+    expect(HAND_FOCUS_OPTIONS.map((option) => option.id)).toEqual(['right', 'left', 'both']);
+    expect(PRACTICE_MODES.some((mode) => ['right', 'left', 'combined'].includes(mode.id))).toBe(false);
   });
 });
 
@@ -143,5 +145,14 @@ describe('left-hand accompaniment', () => {
       expect(accompaniment.midi).toBe(accompaniment.direction === 'push' ? button?.pushMidi : button?.pullMidi);
       expect(accompaniment.note.replace(/-?\d+$/, '')).toBe(accompaniment.chord);
     }
+  });
+
+  it('builds a dedicated bass-and-chord timeline when the left hand is selected', () => {
+    const song = adaptSongToAccordion(DEMO_SONG, FALLBACK_ACCORDIONS[1]);
+    const timeline = createPracticeTimeline(song, 'left');
+    expect(timeline).toHaveLength(song.accompaniment?.length ?? 0);
+    expect(timeline.every((event) => event.hand === 'left' && event.buttonId === '' && Boolean(event.bassButtonId))).toBe(true);
+    expect(createPracticeTimeline(song, 'right')).toBe(song.events);
+    expect(createPracticeTimeline(song, 'both')).toBe(song.events);
   });
 });

@@ -2,8 +2,9 @@ import {
   Activity, ArrowRight, Award, BarChart3, CalendarDays, CheckCircle2, Clock3, Flame,
   Gauge, Headphones, Lightbulb, Music2, Play, Repeat2, Sparkles, Target, TrendingUp,
 } from 'lucide-react';
-import type { AccordionConfig, PracticeMode, PracticeSessionInput, PracticeStats, Song } from '../types';
+import type { AccordionConfig, PracticeSessionInput, PracticeStats, Song } from '../types';
 import { AccordionView } from './AccordionView';
+import { practiceModeLabel } from '../practiceModes';
 
 interface HomePageProps {
   accordion: AccordionConfig;
@@ -14,10 +15,7 @@ interface HomePageProps {
   displayName: string;
 }
 
-const MODE_LABELS: Record<PracticeMode, string> = {
-  demo: 'Démonstration', guided: 'Lecture guidée', wait: 'Attendre la note', notes: 'Notes', rhythm: 'Rythme',
-  bellows: 'Soufflet', right: 'Main droite', left: 'Main gauche', combined: 'Deux mains', game: 'Défi des touches', performance: 'Performance',
-};
+const HAND_LABELS: Record<PracticeSessionInput['hand'], string> = { right: 'mélodie', left: 'basses', both: 'deux mains' };
 
 function formatDuration(seconds: number) {
   if (seconds <= 0) return '0 min';
@@ -130,7 +128,7 @@ export function HomePage({ accordion, song, stats, onPractice, onNavigateLearn, 
           <header><div><span className="eyebrow">Historique vérifiable</span><h3>Dernières séances</h3></div><small>Les démonstrations comptent dans le temps, jamais dans la précision.</small></header>
           <div className="recent-table" role="table">
             <div role="row" className="recent-table-head"><span>Date</span><span>Morceau</span><span>Mode</span><span>Temps actif</span><span>Précision</span><span>Avancement</span></div>
-            {stats?.recentSessions.map((session) => <div role="row" key={session.id}><span>{new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(session.endedAt))}</span><strong>{session.songTitle}</strong><span>{MODE_LABELS[session.mode]}</span><span>{formatDuration(session.activeSeconds)}</span><span>{sessionAccuracy(session) === null ? 'Non évaluée' : `${sessionAccuracy(session)} %`}</span><span>{Math.round(session.completionPercent)} %</span></div>)}
+            {stats?.recentSessions.map((session) => <div role="row" key={session.id}><span>{new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(session.endedAt))}</span><strong>{session.songTitle}</strong><span>{practiceModeLabel(session.mode)} · {HAND_LABELS[session.hand] ?? 'mélodie'}</span><span>{formatDuration(session.activeSeconds)}</span><span>{sessionAccuracy(session) === null ? 'Non évaluée' : `${sessionAccuracy(session)} %`}</span><span>{Math.round(session.completionPercent)} %</span></div>)}
             {!stats?.recentSessions.length && <div className="recent-empty">Aucune séance enregistrée. Ton historique commencera après ta première lecture active.</div>}
           </div>
         </article>

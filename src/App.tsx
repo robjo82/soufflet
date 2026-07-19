@@ -60,7 +60,6 @@ export function App() {
   const [preferencesReloadToken, setPreferencesReloadToken] = useState(0);
   const [songs, setSongs] = useState<Song[]>(() => getStored<Song[]>('soufflet.songs', []).filter((song) => !song.builtIn));
   const [practiceSong, setPracticeSong] = useState<Song | null>(null);
-  const [showButtonGame, setShowButtonGame] = useState(false);
   const [studioSong, setStudioSong] = useState<Song | undefined>();
   const [showImport, setShowImport] = useState(false);
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem('soufflet.geminiKey') ?? '');
@@ -203,20 +202,20 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    void setNativePracticeMode(Boolean(practiceSong || showButtonGame));
+    void setNativePracticeMode(Boolean(practiceSong || page === 'game'));
     return () => { void setNativePracticeMode(false); };
-  }, [practiceSong, showButtonGame]);
+  }, [page, practiceSong]);
 
   useEffect(() => {
     const onNativeBack = (event: Event) => {
       if (showImport) { event.preventDefault(); setShowImport(false); return; }
-      if (showButtonGame) { event.preventDefault(); setShowButtonGame(false); return; }
       if (practiceSong) { event.preventDefault(); setPracticeSong(null); return; }
+      if (page === 'game') { event.preventDefault(); navigate('home'); return; }
       if (page !== 'home') { event.preventDefault(); navigate('home'); }
     };
     document.addEventListener('soufflet:native-back', onNativeBack);
     return () => document.removeEventListener('soufflet:native-back', onNativeBack);
-  }, [navigate, page, practiceSong, showButtonGame, showImport]);
+  }, [navigate, page, practiceSong, showImport]);
 
   if (authLoading) return <div className="app-loading"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong><small>Préparation de ton espace…</small></div>;
   if (!user) return <AuthPage onAuthenticated={(account) => { setPreferences(defaultPreferences); setPreferencesReady(false); setPreferencesSyncError(''); setUser(account); }} />;
@@ -243,14 +242,14 @@ export function App() {
     return <PracticePlayer song={practiceSong} accordion={selectedAccordion} notation={preferences.notation} countIn={preferences.countIn} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onSessionUpdate={recordPracticeSession} onClose={() => setPracticeSong(null)} />;
   }
 
-  if (showButtonGame) {
-    return <ButtonMemoryGame accordion={selectedAccordion} notation={preferences.notation} onSessionUpdate={recordPracticeSession} onClose={() => { setShowButtonGame(false); setPage('learn'); window.scrollTo({ top: 0 }); }} />;
+  if (page === 'game') {
+    return <ButtonMemoryGame accordion={selectedAccordion} notation={preferences.notation} onSessionUpdate={recordPracticeSession} onClose={() => navigate('home')} />;
   }
 
   return (
     <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={logout}>
       {page === 'home' && <HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} stats={practiceStats} onPractice={startPractice} onNavigateLearn={() => navigate('learn')} displayName={user.displayName} />}
-      {page === 'learn' && <LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} onStartButtonGame={() => { window.scrollTo({ top: 0 }); setShowButtonGame(true); }} />}
+      {page === 'learn' && <LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} onStartButtonGame={() => navigate('game')} />}
       {page === 'library' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
       {page === 'studio' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} onSave={saveSong} onPractice={startPractice} />}
       {page === 'tuner' && <TunerPage accordion={selectedAccordion} notation={preferences.notation} onBack={() => navigate('home')} onAccordionChange={(updated) => { setAccordions((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); savePreferences({ ...preferences, accordionId: updated.id }); }} />}

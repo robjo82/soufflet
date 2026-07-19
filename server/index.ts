@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { SouffletDatabase } from './database.js';
 import { createTranscriber } from './transcription.js';
 import { clearSession, createUserId, hashPassword, readSessionToken, sessionHash, setSession, verifyPassword } from './auth.js';
+import { inferSessionHand } from './progress.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv({ path: resolve(root, '.env.local'), quiet: true });
@@ -204,6 +205,7 @@ const practiceSessionSchema = z.object({
   songId: z.string().min(1).max(120),
   songTitle: z.string().trim().min(1).max(160),
   mode: z.enum(['demo', 'guided', 'wait', 'notes', 'rhythm', 'bellows', 'right', 'left', 'combined', 'game', 'performance']),
+  hand: z.enum(['right', 'left', 'both']).optional(),
   startedAt: z.string().datetime(),
   endedAt: z.string().datetime(),
   activeSeconds: z.number().int().min(0).max(43_200),
@@ -214,7 +216,10 @@ const practiceSessionSchema = z.object({
   completionPercent: z.number().min(0).max(100),
   tempoPercent: z.number().int().min(40).max(120),
   flagged: z.boolean(),
-}).refine((session) => new Date(session.endedAt).getTime() >= new Date(session.startedAt).getTime(), { message: 'La fin de séance précède son début.' });
+}).transform((session) => ({
+  ...session,
+  hand: inferSessionHand(session.mode, session.hand),
+})).refine((session) => new Date(session.endedAt).getTime() >= new Date(session.startedAt).getTime(), { message: 'La fin de séance précède son début.' });
 
 app.get('/api/progress', requireUser, (request, response) => {
   const timezoneOffset = z.coerce.number().int().min(-840).max(840).catch(0).parse(request.query.timezoneOffset);

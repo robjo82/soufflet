@@ -125,6 +125,12 @@ export class SouffletDatabase {
             AND practice_sessions.active_seconds > 0
         );
       `,
+      `
+        ALTER TABLE practice_sessions ADD COLUMN hand TEXT NOT NULL DEFAULT 'right'
+          CHECK(hand IN ('right', 'left', 'both'));
+        UPDATE practice_sessions SET hand = 'both' WHERE mode IN ('demo', 'combined');
+        UPDATE practice_sessions SET hand = 'left' WHERE mode = 'left';
+      `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -322,13 +328,14 @@ export class SouffletDatabase {
   savePracticeSession(userId: string, session: StoredPracticeSession) {
     this.db.prepare(`
       INSERT INTO practice_sessions (
-        id, user_id, song_id, song_title, mode, started_at, ended_at, active_seconds,
+        id, user_id, song_id, song_title, mode, hand, started_at, ended_at, active_seconds,
         correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         song_id = excluded.song_id,
         song_title = excluded.song_title,
         mode = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.mode ELSE practice_sessions.mode END,
+        hand = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.hand ELSE practice_sessions.hand END,
         started_at = excluded.started_at,
         ended_at = MAX(practice_sessions.ended_at, excluded.ended_at),
         active_seconds = MAX(practice_sessions.active_seconds, excluded.active_seconds),
@@ -342,7 +349,7 @@ export class SouffletDatabase {
         updated_at = CURRENT_TIMESTAMP
       WHERE practice_sessions.user_id = excluded.user_id
     `).run(
-      session.id, userId, session.songId, session.songTitle, session.mode, session.startedAt, session.endedAt,
+      session.id, userId, session.songId, session.songTitle, session.mode, session.hand, session.startedAt, session.endedAt,
       session.activeSeconds, session.correctCount, session.earlyCount, session.lateCount, session.wrongCount,
       session.completionPercent, session.tempoPercent, Number(session.flagged),
     );
@@ -351,13 +358,13 @@ export class SouffletDatabase {
 
   listPracticeSessions(userId: string): StoredPracticeSession[] {
     const rows = this.db.prepare(`
-      SELECT id, song_id, song_title, mode, started_at, ended_at, active_seconds,
+      SELECT id, song_id, song_title, mode, hand, started_at, ended_at, active_seconds,
              correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged
       FROM practice_sessions
       WHERE user_id = ? AND active_seconds > 0
       ORDER BY ended_at DESC
     `).all(userId) as Array<{
-      id: string; song_id: string; song_title: string; mode: string; started_at: string; ended_at: string;
+      id: string; song_id: string; song_title: string; mode: string; hand: 'right' | 'left' | 'both'; started_at: string; ended_at: string;
       active_seconds: number; correct_count: number; early_count: number; late_count: number; wrong_count: number;
       completion_percent: number; tempo_percent: number; flagged: number;
     }>;
@@ -366,6 +373,7 @@ export class SouffletDatabase {
       songId: row.song_id,
       songTitle: row.song_title,
       mode: row.mode,
+      hand: row.hand,
       startedAt: row.started_at,
       endedAt: row.ended_at,
       activeSeconds: row.active_seconds,

@@ -1,4 +1,4 @@
-import { BookOpen, ChevronDown, Gauge, Home, Library, LogOut, Menu, Mic2, Music2, Settings, Sparkles, UserRound, Wrench, X } from 'lucide-react';
+import { BookOpen, ChevronDown, Gamepad2, Gauge, Home, Library, LogOut, Menu, Mic2, Music2, Settings, Sparkles, UserRound, Wrench, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { Page, PracticeStats, UserAccount } from '../types';
 
@@ -14,6 +14,7 @@ interface AppShellProps {
 const NAV: Array<{ id: Page; label: string; icon: typeof Home }> = [
   { id: 'home', label: 'Accueil', icon: Home },
   { id: 'learn', label: 'Apprendre', icon: BookOpen },
+  { id: 'game', label: 'Jeu', icon: Gamepad2 },
   { id: 'library', label: 'Bibliothèque', icon: Library },
   { id: 'studio', label: 'Studio', icon: Music2 },
   { id: 'tuner', label: 'Accordeur', icon: Gauge },

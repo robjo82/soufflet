@@ -15,8 +15,9 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - fondation 3D WebGL du Hohner Club I : asset GLB contractuel, soufflet continu, 29 boutons interactifs, repli HTML et laboratoire de validation isolé ;
 - décompte visuel et sonore d’une mesure avant un nouveau départ, désactivable dans les réglages ;
 - tablature centrée automatiquement sur la note active pendant la lecture et les modes guidés ;
-- modes démonstration, lecture guidée, attente de la bonne note, notes, rythme, soufflet, chaque main et performance ;
-- jeu « Défi des touches » sur web et Android : tuiles rythmiques, trois niveaux progressifs, pousser/tirer explicite, réponse au micro ou au toucher et bilan fiable ;
+- quatre modes principaux compréhensibles — démonstration, lecture guidée, attente de la bonne note et performance — adaptés séparément à la mélodie, aux basses ou aux deux mains ;
+- ateliers rythme et soufflet conservés à part pour ne pas encombrer le parcours débutant ;
+- jeu « Défi des touches » accessible depuis la navigation principale sur web et Android : tuiles rythmiques, trois niveaux progressifs, pousser/tirer explicite, réponse au micro ou au toucher et bilan fiable ;
 - accordeur monophonique réel avec fréquence, cents, confiance, localisation et correction guidée de chaque bouton ;
 - tutoriel joué sur l’instrument réel : détection de hauteur, attaques rythmiques, basses monophoniques et calibration acoustique pousser/tirer sur un bouton de référence ;
 - évaluation automatique pendant l’entraînement et conseils de note et de rythme ;
