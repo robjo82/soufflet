@@ -1,4 +1,5 @@
 export type Direction = 'push' | 'pull';
+export type BellowsStyle = 'balanced' | 'push-pull' | 'cross-row';
 export type Hand = 'right' | 'left' | 'both';
 export type Notation = 'french' | 'english' | 'button' | 'tablature';
 export type PrimaryPracticeMode = 'demo' | 'guided' | 'wait' | 'performance';
@@ -51,6 +52,36 @@ export interface SongEvent {
   bassButtonId?: string;
   bassLabel?: string;
   confidence?: number;
+  mappingSource?: 'authorial' | 'optimized';
+}
+
+export interface BellowsAirAction {
+  fromAmount: number;
+  toAmount: number;
+  reason: 'reserve-low' | 'reserve-high' | 'phrase-breath';
+}
+
+export interface BellowsPlanStep {
+  eventId: string;
+  beat: number;
+  direction: Direction;
+  beforeAmount: number;
+  afterAmount: number;
+  airBefore?: BellowsAirAction;
+}
+
+export interface BellowsPlan {
+  style: BellowsStyle;
+  startAmount: number;
+  comfortableMin: number;
+  comfortableMax: number;
+  minAmount: number;
+  maxAmount: number;
+  directionChanges: number;
+  rowChanges: number;
+  airActions: number;
+  needsReview: boolean;
+  steps: BellowsPlanStep[];
 }
 
 export interface AccompanimentEvent {
@@ -88,6 +119,7 @@ export interface Song {
   builtIn?: boolean;
   license?: string;
   provenance?: string;
+  bellowsPlan?: BellowsPlan;
 }
 
 export interface UserAccount {
@@ -118,6 +150,7 @@ export interface PracticeSettings {
   loopStart: number;
   loopEnd: number;
   notation: Notation;
+  bellowsStyle: BellowsStyle;
 }
 
 export interface PracticeSessionInput {

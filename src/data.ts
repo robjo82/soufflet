@@ -1,4 +1,5 @@
-import type { AccompanimentEvent, AccordionButton, AccordionConfig, SkillProgress, Song, SongEvent } from './types';
+import { planBellowsStrategy } from './bellowsStrategy';
+import type { AccompanimentEvent, AccordionButton, AccordionConfig, BellowsStyle, SkillProgress, Song, SongEvent } from './types';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -186,27 +187,8 @@ export function displayNote(note: string, notation: 'french' | 'english' | 'butt
   return note;
 }
 
-export function adaptSongToAccordion(song: Song, accordion: AccordionConfig): Song {
-  let previousDirection: 'push' | 'pull' | undefined;
-  const events = song.events.map((event) => {
-    const existing = accordion.buttons.find((button) => button.id === event.buttonId);
-    if (existing && (event.direction === 'push' ? existing.pushMidi : existing.pullMidi) === event.midi) {
-      previousDirection = event.direction;
-      return event;
-    }
-    const choices = accordion.buttons.flatMap((button) => [
-      ...(button.pushMidi === event.midi ? [{ button, direction: 'push' as const }] : []),
-      ...(button.pullMidi === event.midi ? [{ button, direction: 'pull' as const }] : []),
-    ]).sort((left, right) => {
-      const leftContinuity = left.direction === previousDirection ? 0 : 1;
-      const rightContinuity = right.direction === previousDirection ? 0 : 1;
-      return leftContinuity - rightContinuity || left.button.row - right.button.row || left.button.index - right.button.index;
-    });
-    const choice = choices[0];
-    if (!choice) return { ...event, buttonId: '', confidence: Math.min(event.confidence ?? 1, .45) };
-    previousDirection = choice.direction;
-    return { ...event, buttonId: choice.button.id, direction: choice.direction, finger: choice.button.finger ?? event.finger };
-  });
+export function adaptSongToAccordion(song: Song, accordion: AccordionConfig, bellowsStyle: BellowsStyle = 'balanced'): Song {
+  const { events, plan } = planBellowsStrategy(song, accordion, bellowsStyle);
   const accompaniment = song.accompaniment?.map((item) => {
     let melody = events[0];
     for (const event of events) {
@@ -236,5 +218,5 @@ export function adaptSongToAccordion(song: Song, accordion: AccordionConfig): So
       chord: NOTES[((choice.midi % 12) + 12) % 12],
     };
   });
-  return { ...song, events, accompaniment };
+  return { ...song, events, accompaniment, bellowsPlan: plan };
 }

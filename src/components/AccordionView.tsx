@@ -13,6 +13,8 @@ interface AccordionViewProps {
   selectedButtonId?: string;
   compact?: boolean;
   depressActive?: boolean;
+  bellowsAmount?: number;
+  airValveActive?: boolean;
   onButtonPress?: (buttonId: string, direction: Direction) => void;
 }
 
@@ -32,6 +34,8 @@ export function AccordionView({
   selectedButtonId,
   compact = false,
   depressActive = false,
+  bellowsAmount,
+  airValveActive = false,
   onButtonPress,
 }: AccordionViewProps) {
   const { playMidi } = useSynth();
@@ -43,17 +47,19 @@ export function AccordionView({
       .filter((button) => button.pushMidi === detectedMidi || button.pullMidi === detectedMidi)
       .map((button) => button.id),
   );
-  const expanded = direction === 'pull';
+  const amount = Math.max(0, Math.min(1, bellowsAmount ?? (direction === 'pull' ? .58 : .34)));
+  const expanded = amount >= .5;
+  const bellowsPercent = Math.round(amount * 100);
   const visualVariant = getAccordionVisualVariant(config);
   const isClubI = visualVariant === 'club-i';
 
   return (
     <div className={`accordion-wrap ${compact ? 'is-compact' : ''}`} aria-label={`Représentation du ${config.model}`}>
-      <div className={`direction-banner direction-${direction}`} role="status">
-        <span className="direction-icon">{direction === 'pull' ? <ArrowLeft /> : <ArrowRight />}</span>
+      <div className={`direction-banner direction-${direction} ${airValveActive ? 'is-air-valve' : ''}`} role="status">
+        <span className="direction-icon">{airValveActive ? <MoveHorizontal /> : direction === 'pull' ? <ArrowLeft /> : <ArrowRight />}</span>
         <span>
-          <small>{direction === 'pull' ? 'OUVRIR' : 'FERMER'}</small>
-          <strong>{direction === 'pull' ? 'Tirer le soufflet' : 'Pousser le soufflet'}</strong>
+          <small>{airValveActive ? 'SOUPAPE · SANS NOTE' : direction === 'pull' ? 'OUVRIR' : 'FERMER'}</small>
+          <strong>{airValveActive ? 'Recentrer avec la soupape' : direction === 'pull' ? 'Tirer le soufflet' : 'Pousser le soufflet'}</strong>
         </span>
         <MoveHorizontal aria-hidden="true" />
       </div>
@@ -63,6 +69,7 @@ export function AccordionView({
         style={{
           '--instrument': config.color,
           '--melody-button-size': `${melodyButtonSize}px`,
+          '--bellows-width': `clamp(120px, ${120 + amount * 200}px, 25vw)`,
         } as React.CSSProperties}
         data-longest-row={longestRow}
       >
@@ -94,10 +101,10 @@ export function AccordionView({
           </div>
         </section>
 
-        <div className={`bellows ${expanded ? 'is-open' : 'is-closed'}`} aria-label={expanded ? 'Soufflet ouvert' : 'Soufflet fermé'}>
+        <div className={`bellows ${expanded ? 'is-open' : 'is-closed'} ${airValveActive ? 'is-air-valve' : ''}`} aria-label={`Soufflet ouvert à ${bellowsPercent} %`}>
           <div className="bellows-edge" />
           {Array.from({ length: 15 }).map((_, index) => <i key={index} />)}
-          <div className="bellows-center"><span>{expanded ? 'TIRER' : 'POUSSER'}</span></div>
+          <div className="bellows-center"><span>{airValveActive ? 'SOUPAPE' : `${bellowsPercent} %`}</span></div>
           <div className="bellows-edge" />
         </div>
 

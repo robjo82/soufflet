@@ -2,19 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AudioLines, ChevronDown, CircleGauge, Expand, Flag, Gauge,
   Hand, Keyboard, Minimize, Music2, Pause, Play, Redo2, Repeat2, Settings2, SlidersHorizontal, TimerReset, Volume2, X,
+  Wind,
 } from 'lucide-react';
 import { AccordionView } from './AccordionView';
 import { ScoreStrip } from './ScoreStrip';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
 import type {
-  AccordionConfig, Hand as HandFocus, Notation, PracticeSessionInput, PracticeSettings,
+  AccordionConfig, BellowsStyle, Hand as HandFocus, Notation, PracticeSessionInput, PracticeSettings,
   PrimaryPracticeMode, Song, SupplementalPracticeMode,
 } from '../types';
 import { HAND_FOCUS_OPTIONS, PRACTICE_MODES, PRIMARY_PRACTICE_MODES, SUPPLEMENTAL_PRACTICE_MODES } from '../practiceModes';
 import { getCountInSequence, getPlaybackStartIndex, getWaitAdvance } from '../practiceProgress';
 import { midiMatches } from '../audioTraining';
 import { createPracticeTimeline } from '../practiceTimeline';
+import { adaptSongToAccordion } from '../data';
+import { BELLOWS_STYLE_OPTIONS, bellowsAmountLabel, bellowsStepAt } from '../bellowsStrategy';
 
 interface PracticePlayerProps {
   song: Song;
@@ -35,11 +38,15 @@ function accompanimentIndexAt(song: Song, beat: number) {
   return index;
 }
 
-export function PracticePlayer({ song, accordion, onClose, notation, countIn, onNotationChange, onSessionUpdate }: PracticePlayerProps) {
+export function PracticePlayer({ song: sourceSong, accordion, onClose, notation, countIn, onNotationChange, onSessionUpdate }: PracticePlayerProps) {
   const [settings, setSettings] = useState<PracticeSettings>({
     mode: 'guided', hand: 'right', tempo: 80, countIn, metronome: false, loop: false,
-    loopStart: 0, loopEnd: song.events.length - 1, notation,
+    loopStart: 0, loopEnd: sourceSong.events.length - 1, notation, bellowsStyle: 'balanced',
   });
+  const song = useMemo(
+    () => adaptSongToAccordion(sourceSong, accordion, settings.bellowsStyle),
+    [accordion, settings.bellowsStyle, sourceSong],
+  );
   const [playing, setPlaying] = useState(false);
   const [countInBeat, setCountInBeat] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -84,6 +91,10 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
   const practiceEvents = useMemo(() => createPracticeTimeline(song, settings.hand), [settings.hand, song]);
   const scoreSong = useMemo(() => settings.hand === 'left' ? { ...song, events: practiceEvents, accompaniment: undefined } : song, [practiceEvents, settings.hand, song]);
   const currentEvent = practiceEvents[activeIndex];
+  const currentBellowsStep = bellowsStepAt(song, currentEvent);
+  const bellowsAmount = currentBellowsStep
+    ? playing && countInBeat === null ? currentBellowsStep.afterAmount : currentBellowsStep.beforeAmount
+    : song.bellowsPlan?.startAmount ?? .38;
   const currentAccompaniment = song.accompaniment?.[activeAccompanimentIndex];
   const displayedEvent = useMemo(() => settings.hand === 'both' && currentEvent && currentAccompaniment ? {
     ...currentEvent,
@@ -279,6 +290,21 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
       setFeedback({ kind: 'neutral', title: 'La lecture t’attend', detail: 'Appuie sur Commencer, puis joue le geste éclairé. Chaque réussite affiche immédiatement le suivant.' });
     }
   }, [resetResults, resetSessionTracking, stop]);
+
+  const changeBellowsStyle = useCallback((style: BellowsStyle) => {
+    stop();
+    resetSessionTracking();
+    resetResults();
+    setSettings((value) => ({ ...value, bellowsStyle: style, loopStart: 0, loopEnd: sourceSong.events.length - 1 }));
+    setActiveIndex(0);
+    setActiveAccompanimentIndex(0);
+    const option = BELLOWS_STYLE_OPTIONS.find((item) => item.id === style);
+    setFeedback({
+      kind: 'neutral',
+      title: option?.label ?? 'Stratégie de soufflet',
+      detail: option?.description ?? 'Le plan de soufflet a été recalculé pour tout le morceau.',
+    });
+  }, [resetResults, resetSessionTracking, sourceSong.events.length, stop]);
 
   const startPlayback = useCallback((startIndex = activeIndex) => {
     clearCountIn();
@@ -593,6 +619,13 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
               })}
             </div>
           </div>
+          <label className="bellows-style-picker" title="Recalcule les boutons et les respirations pour tout le morceau">
+            <Wind size={17} />
+            <span><small>SOUFFLET</small><strong>{BELLOWS_STYLE_OPTIONS.find((item) => item.id === settings.bellowsStyle)?.label}</strong></span>
+            <select value={settings.bellowsStyle} disabled={playing || countInBeat !== null} onChange={(event) => changeBellowsStyle(event.target.value as BellowsStyle)} aria-label="Stratégie de soufflet">
+              {BELLOWS_STYLE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label} — {option.short}</option>)}
+            </select>
+          </label>
           <div className="notation-switch" aria-label="Convention de notation">
             {(['french', 'english', 'tablature'] as Notation[]).map((item) => (
               <button type="button" key={item} className={notation === item ? 'is-active' : ''} onClick={() => onNotationChange(item)}>
@@ -615,6 +648,8 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
               direction={currentEvent?.direction}
               notation={notation}
               detectedMidi={detectedReading?.midi}
+              bellowsAmount={bellowsAmount}
+              airValveActive={Boolean(currentBellowsStep?.airBefore) && !playing && countInBeat === null}
               depressActive={playing && countInBeat === null && !sessionFinished}
               onButtonPress={(buttonId, direction) => {
                 if (direction !== currentEvent?.direction) {
@@ -630,6 +665,14 @@ export function PracticePlayer({ song, accordion, onClose, notation, countIn, on
                 }
               }}
             />
+          )}
+          {settings.mode !== 'performance' && song.bellowsPlan && (
+            <div className={`bellows-reserve-status ${currentBellowsStep?.airBefore ? 'is-air-valve' : ''}`} aria-live="polite">
+              <Wind size={18} />
+              <span><small>RÉSERVE DU SOUFFLET</small><strong>{currentBellowsStep?.airBefore ? 'Soupape avant cette note' : bellowsAmountLabel(bellowsAmount)}</strong></span>
+              <i><b style={{ width: `${bellowsAmount * 100}%` }} /></i>
+              <em>{Math.round(bellowsAmount * 100)} %</em>
+            </div>
           )}
         </section>
 

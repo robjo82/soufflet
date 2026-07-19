@@ -42,6 +42,23 @@ L’accordeur sépare la mesure acoustique de la cartographie. La dernière haut
 
 Le parcours ordonne chaque bouton en deux gestes : pousser, puis tirer. Une note conforme peut être validée avant de continuer ; une note différente demande une correction explicite, crée si nécessaire une configuration personnelle et avance ensuite vers le geste suivant. Le bouton courant reçoit un contour distinct de la détection audio, et un sélecteur textuel garantit l’accès aux rangs intérieurs sur les petits écrans.
 
+## Respiration et stratégie de soufflet
+
+Chercher le plus petit nombre possible de changements de direction n’est pas une règle universelle. Le **poussé-tiré** exploite les changements pour articuler la pulsation et donner du rebond ; le **jeu croisé** cherche des notes alternatives sur plusieurs rangées pour lier une phrase. Les deux techniques font partie de l’apprentissage professionnel, aux côtés d’exercices dédiés à la soupape et à la gestion d’air ([cours Organetto](https://www.organetto.name/corso_base_eng.htm), [sommaire de la méthode Florence Pinvidic](https://www.florencepinvidic.com/fichiers/methode_sommaire.pdf)).
+
+Le principe commun est de préparer le soufflet comme une respiration : commencer avec une marge des deux côtés, anticiper les phrases, et placer si possible les changements ou reprises d’air à une articulation musicale. Plusieurs enseignants décrivent des plans réguliers de deux à quatre mesures, sans changement au milieu d’une phrase liée, et une ouverture en arc plutôt qu’une translation rigide ([recherche pédagogique de Kaat Vanhaverbeke](https://www.researchcatalogue.net/view/1465318/1715577)). La soupape sert à ouvrir ou fermer le soufflet sans produire de note ; elle permet donc un recentrage silencieux avant la phrase suivante ([fiche instrumentale du COMDT](https://maleta.occitanica.eu/files/13261/original/comdt-acordeon-accordeon_oc-fr.pdf)).
+
+Soufflet applique ces conclusions avec un planificateur sur le morceau entier :
+
+- **Équilibré** conserve une réserve confortable et place les respirations aux limites de phrases ;
+- **Poussé-tiré** accepte davantage de changements de direction et limite les sauts de rangée ;
+- **Jeu croisé** favorise la continuité du sens et accepte davantage d’alternatives entre rangées ;
+- la quantité d’air consommée dépend de la durée et augmente lorsque l’accompagnement main gauche est actif ;
+- une soupape n’est proposée qu’à une frontière de phrase ou un silence, jamais arbitrairement au milieu d’une note ;
+- une tablature vérifiée manuellement reste prioritaire et n’est pas réécrite par l’optimiseur.
+
+La jauge de réserve, le mouvement 2D/3D et la tablature utilisent le même plan. La position affichée reste une estimation pédagogique : sans capteur physique, le microphone seul ne peut pas connaître l’ouverture réelle du soufflet. L’élève apprend donc où respirer et pourquoi, sans que l’interface prétende mesurer un état mécanique invisible.
+
 ## Modèle adaptatif prévu
 
 Chaque tentative produit des observations :

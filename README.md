@@ -10,7 +10,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - onboarding, tutoriel et préférences synchronisés par compte entre le web, Android et les nouveaux appareils ;
 - migrations SQLite incrémentales et données persistantes dans un volume Docker ;
 - configurations SQLite préchargées : variante Hohner Club I C/F 10+9+2 (P1 = F♯5) avec Gleichton, G/C 21+8 et D/G 21+8 ;
-- lecteur animé au tempo avec partition interactive, synthèse locale, soufflet plissé synchronisé et boutons réellement enfoncés ;
+- lecteur animé au tempo avec partition interactive, synthèse locale, plan de soufflet calculé sur le morceau entier, réserve d’air et soupapes aux respirations, soufflet plissé synchronisé et boutons réellement enfoncés ;
 - profil visuel en volume dédié au Hohner Club I (bois, ferrures, plaques et implantation 10+9+2), avec rendu générique en volume pour les autres modèles ;
 - fondation 3D WebGL du Hohner Club I : bois veiné contrasté, soufflet sombre en vague asymétrique avec inertie, 29 boutons pressés et éclairés en rythme, guides pédagogiques bleus, repli HTML et laboratoire en pupitre capable de jouer la bibliothèque ;
 - décompte visuel et sonore d’une mesure avant un nouveau départ, désactivable dans les réglages ;
