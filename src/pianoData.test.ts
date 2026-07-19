@@ -12,22 +12,25 @@ describe('piano V1', () => {
     expect(arrangements).toHaveLength(3);
     expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Simple', 'Modéré']);
     expect(arrangements.map((item) => item.artist)).toEqual(['Frank Sinatra', 'Frank Sinatra', 'Frank Sinatra']);
-    expect(arrangements.map((item) => item.notes.length)).toEqual([27, 62, 131]);
+    expect(arrangements.map((item) => item.notes.length)).toEqual([74, 200, 424]);
     expect(arrangements[2]).toMatchObject({ hand: 'both', bpm: 72 });
     expect(arrangements[2].notes.some((note) => note.midi < 60)).toBe(true);
     expect(new Set(arrangements[2].notes.map((note) => note.beat)).size).toBeLessThan(arrangements[2].notes.length);
-    expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(69);
+    expect(pianoExerciseEndBeat(arrangements[0].notes)).toBe(216);
+    expect(pianoExerciseEndBeat(arrangements[1].notes)).toBe(216);
+    expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(216.5);
+    expect(arrangements[1].notes.some((note) => note.beat === 108 && note.midi === 60)).toBe(true);
   });
   it('offers Se Canta at three progressive levels', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Se Canta');
     expect(arrangements).toHaveLength(3);
     expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Simple', 'Modéré']);
     expect(arrangements.map((item) => item.artist)).toEqual(['Traditionnel occitan', 'Traditionnel occitan', 'Traditionnel occitan']);
-    expect(arrangements.map((item) => item.notes.length)).toEqual([14, 23, 55]);
+    expect(arrangements.map((item) => item.notes.length)).toEqual([16, 25, 61]);
     expect(arrangements[2]).toMatchObject({ hand: 'both', bpm: 72 });
-    expect(pianoNotesForHand(arrangements[2].notes, 'left')).toHaveLength(32);
-    expect(pianoNotesForHand(arrangements[2].notes, 'right')).toHaveLength(23);
-    expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(24);
+    expect(pianoNotesForHand(arrangements[2].notes, 'left')).toHaveLength(36);
+    expect(pianoNotesForHand(arrangements[2].notes, 'right')).toHaveLength(25);
+    expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(28);
   });
   it('groups arrangements by song before the level choice', () => {
     expect(PIANO_SONGS).toHaveLength(6);
@@ -39,9 +42,11 @@ describe('piano V1', () => {
     const myWay = pianoChordExerciseForSong('My Way', 'Frank Sinatra')!;
     const seCanta = pianoChordExerciseForSong('Se Canta', 'Traditionnel occitan')!;
     expect(PIANO_CHORD_EXERCISES).toHaveLength(2);
-    expect(myWay.progression).toHaveLength(17);
-    expect(new Set(myWay.progression.map((step) => step.name))).toHaveLength(10);
-    expect(seCanta.progression).toHaveLength(8);
+    expect(myWay.progression).toHaveLength(54);
+    expect(new Set(myWay.progression.map((step) => step.name))).toHaveLength(12);
+    expect(myWay.progression.at(-1)).toMatchObject({ beat: 213, name: 'Fa majeur' });
+    expect(seCanta.progression).toHaveLength(9);
+    expect(seCanta.progression.at(-1)).toMatchObject({ beat: 25, name: 'Do majeur' });
     expect(new Set(seCanta.progression.map((step) => step.name))).toEqual(new Set(['Do majeur', 'Sol majeur', 'Fa majeur']));
     for (const exercise of PIANO_CHORD_EXERCISES) for (const step of exercise.progression) {
       expect(step.fingers).toHaveLength(step.midis.length);

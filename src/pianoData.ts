@@ -49,7 +49,12 @@ const phrase = (midis: number[], durations?: number[]) => {
 
 const timedNotes = (entries: Array<[midi: number, beat: number, duration: number]>): PianoNote[] => entries.map(([midi, beat, duration]) => ({ midi, beat, duration }));
 
-const MY_WAY_EASY = timedNotes([
+const shiftNotes = (notes: PianoNote[], beats: number) => notes.map((note) => ({ ...note, beat: note.beat + beats }));
+const shiftHarmony = (steps: PianoHarmonyStep[], beats: number) => steps.map((step) => ({ ...step, beat: step.beat + beats }));
+
+// The supplied score repeats the complete 26-measure form. The first ending
+// contains the pickup into the repeat; the second ending closes on F.
+const MY_WAY_EASY_COMMON = timedNotes([
   [60, 0, 1],
   [69, 1, 3], [69, 5, 3], [69, 9, 3],
   [67, 13, 1], [66, 14, 2], [62, 16, 1],
@@ -58,10 +63,21 @@ const MY_WAY_EASY = timedNotes([
   [70, 37, 3], [70, 41, 1], [69, 42, 2], [67, 44, 1],
   [69, 45, 3], [67, 49, 3], [65, 53, 4],
   [65, 57, 2], [69, 59, 2], [69, 61, 2],
-  [72, 63.5, .5], [70, 64, .5], [68, 64.5, .5], [65, 65, 4],
+  [72, 63.5, .5], [70, 64, .5], [68, 64.5, .5],
+  [69, 65, 3], [74, 69, 3], [74, 73, 3],
+  [76, 77, 3], [76, 81, 3], [79, 85, 3], [76, 89, 3],
+  [76, 93, 3], [76, 97, 3], [79, 101, 4],
 ]);
 
-const MY_WAY_MELODY = timedNotes([
+const MY_WAY_EASY = [
+  ...MY_WAY_EASY_COMMON,
+  { midi: 77, beat: 105, duration: 3 },
+  { midi: 60, beat: 108, duration: 1 },
+  ...shiftNotes(MY_WAY_EASY_COMMON.filter((note) => note.beat >= 1), 108),
+  { midi: 77, beat: 213, duration: 3 },
+];
+
+const MY_WAY_COMMON_MELODY = timedNotes([
   [60, 0, 1],
   [69, 1, 2], [60, 3.5, .5], [69, 4, .5], [67, 4.5, .5],
   [69, 5, 2], [60, 7.5, .5], [69, 8, .5], [67, 8.5, .5],
@@ -79,10 +95,27 @@ const MY_WAY_MELODY = timedNotes([
   [65, 53, 4],
   [65, 57, 2], [67, 59, .5], [69, 59.5, .5], [70, 60, .5], [72, 60.5, .5],
   [69, 61, 2], [72, 63.5, .5], [70, 64, .5], [68, 64.5, .5],
-  [65, 65, 4],
+  [69, 65, 2], [69, 67.5, .5], [70, 68, .5], [72, 68.5, .5],
+  [74, 69, 2], [72, 71, .5], [72, 71.5, .5], [74, 72, .5], [72, 72.5, .5],
+  [74, 73, 2], [72, 75.5, .5], [75, 76, .5], [77, 76.5, .5],
+  [76, 77, 2], [72, 79.5, .5], [79, 80, .5], [72, 80.5, .5],
+  [76, 81, 2], [76, 83.5, .5], [77, 84, .5], [79, 84.5, .5],
+  [79, 85, 2], [81, 87.5, .5], [76, 88, .5], [79, 88.5, .5],
+  [76, 89, 2], [72, 91.5, .5], [76, 92, .5], [77, 92.5, .5],
+  [76, 93, 2], [72, 95.5, .5], [77, 96, .5], [72, 96.5, .5],
+  [76, 97, 2], [76, 99.5, .5], [77, 100, .5], [79, 100.5, .5],
+  [79, 101, 4],
 ]);
 
-const MY_WAY_HARMONY: PianoHarmonyStep[] = [
+const MY_WAY_MELODY = [
+  ...MY_WAY_COMMON_MELODY,
+  { midi: 77, beat: 105, duration: 3 },
+  { midi: 60, beat: 108, duration: 1 },
+  ...shiftNotes(MY_WAY_COMMON_MELODY.filter((note) => note.beat >= 1), 108),
+  { midi: 77, beat: 213, duration: 3 },
+];
+
+const MY_WAY_COMMON_HARMONY: PianoHarmonyStep[] = [
   { beat: 1, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
   { beat: 5, name: 'La mineur', root: 45, intervals: [0, 3, 7], fingers: [5, 3, 1] },
   { beat: 9, name: 'Do mineur', root: 48, intervals: [0, 3, 7], fingers: [5, 3, 1] },
@@ -98,8 +131,24 @@ const MY_WAY_HARMONY: PianoHarmonyStep[] = [
   { beat: 49, name: 'Do 7', root: 48, intervals: [0, 4, 10], fingers: [5, 2, 1] },
   { beat: 53, name: 'Si♭ mineur', root: 46, intervals: [0, 3, 7], fingers: [5, 3, 1] },
   { beat: 57, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
-  { beat: 61, name: 'Fa 7', root: 41, intervals: [0, 4, 10], fingers: [5, 2, 1] },
-  { beat: 65, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 61, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 65, name: 'Fa 7', root: 41, intervals: [0, 4, 10], fingers: [5, 2, 1] },
+  { beat: 69, name: 'Si♭ majeur', root: 46, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 73, name: 'Si♭ majeur', root: 46, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 77, name: 'Sol mineur 7', root: 43, intervals: [0, 3, 7, 10], fingers: [5, 3, 2, 1] },
+  { beat: 81, name: 'Do 7', root: 48, intervals: [0, 4, 10], fingers: [5, 2, 1] },
+  { beat: 85, name: 'La mineur 7', root: 45, intervals: [0, 3, 7, 10], fingers: [5, 3, 2, 1] },
+  { beat: 89, name: 'Ré mineur', root: 50, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  { beat: 93, name: 'Sol mineur 7', root: 43, intervals: [0, 3, 7, 10], fingers: [5, 3, 2, 1] },
+  { beat: 97, name: 'Do 7', root: 48, intervals: [0, 4, 10], fingers: [5, 2, 1] },
+  { beat: 101, name: 'Si♭ mineur', root: 46, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+];
+
+const MY_WAY_HARMONY: PianoHarmonyStep[] = [
+  ...MY_WAY_COMMON_HARMONY,
+  { beat: 105, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  ...shiftHarmony(MY_WAY_COMMON_HARMONY, 108),
+  { beat: 213, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
 ];
 
 const MY_WAY_TWO_HANDS = [
@@ -121,7 +170,7 @@ const SE_CANTA_EASY = timedNotes([
   [77, 13, 3],
   [76, 16, 2], [72, 18, 1],
   [74, 19, 2], [67, 21, 1],
-  [72, 22, 2],
+  [72, 22, 1.5], [67, 24, 1], [72, 25, 3],
 ]);
 
 const SE_CANTA_MELODY = timedNotes([
@@ -133,7 +182,7 @@ const SE_CANTA_MELODY = timedNotes([
   [77, 13, 2], [77, 15, 1],
   [76, 16, 1], [76, 17, 1], [72, 18, .5], [76, 18.5, .5],
   [74, 19, 2], [67, 21, 1],
-  [72, 22, 2],
+  [72, 22, 1.5], [67, 24, 1], [72, 25, 3],
 ]);
 
 const SE_CANTA_HARMONY: PianoHarmonyStep[] = [
@@ -145,6 +194,7 @@ const SE_CANTA_HARMONY: PianoHarmonyStep[] = [
   { beat: 16, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
   { beat: 19, name: 'Sol majeur', root: 43, intervals: [0, 4, 7], fingers: [5, 3, 1] },
   { beat: 22, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  { beat: 25, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
 ];
 
 const SE_CANTA_TWO_HANDS = [
