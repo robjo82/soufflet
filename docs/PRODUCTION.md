@@ -9,7 +9,7 @@
 - profil visuel procédural dédié au Hohner Club I, sans réutilisation des photographies de référence ;
 - lecture/synthèse au tempo, boucle, reprise en une action et raccourcis découvrables avec `Ctrl` ;
 - accordeur monophonique navigateur ;
-- tutoriel microphone-first : notes, attaques rythmiques, basses monophoniques et profil acoustique pousser/tirer local ;
+- première leçon microphone-first : trois notes guidées, mini-mélodie en attente de la bonne note et performance de mémoire ;
 - SQLite, API, validation d’entrée, limite d’upload et conteneur non-root ;
 - import de tablature simple et pipeline Gemini réel ;
 - correction et autosauvegarde locale ;

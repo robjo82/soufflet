@@ -19,7 +19,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - ateliers rythme et soufflet conservés à part pour ne pas encombrer le parcours débutant ;
 - jeu « Défi des touches » accessible depuis la navigation principale sur web et Android : tuiles rythmiques, trois niveaux progressifs, pousser/tirer explicite, réponse au micro ou au toucher et bilan fiable ;
 - accordeur monophonique réel avec fréquence, cents, confiance, localisation et correction guidée de chaque bouton ;
-- tutoriel joué sur l’instrument réel : détection de hauteur, attaques rythmiques, basses monophoniques et calibration acoustique pousser/tirer sur un bouton de référence ;
+- première leçon jouée sur l’instrument réel : écoute de trois notes, réussite automatique avec arrêt du micro, mini-mélodie de sept notes en attente de la bonne note, puis rappel de mémoire ;
 - évaluation automatique pendant l’entraînement, avec stabilisation des hauteurs parasites et conseils de note et de rythme ;
 - suivi personnel persistant : temps actif, séances, séries, notes et rythme évalués, tempo, tendances, répertoire, historique et insights sans données de démonstration ;
 - bibliothèque commune de 12 airs du domaine public ou traditionnels, dont le Brise-pieds en 12 mesures, plus une référence protégée sans transcription ;
@@ -29,6 +29,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - studio de correction des notes, boutons, directions, doigtés et durées avec annulation et autosauvegarde locale ;
 - interface responsive, priorité tablette paysage, plein écran et raccourcis complets (`Espace`, `R`, `L`, `M`, `S`, `P`, `F`, flèches et modes `1` à `4`) rappelés en maintenant `Ctrl` ;
 - microphone automatiquement arrêté en mode démonstration ;
+- brouillon de première leçon isolé par compte sur chaque appareil, sans reprise accidentelle du tutoriel d’un autre utilisateur ;
 - image Docker non-root, healthcheck, volume SQLite persistant.
 - CI de qualité, Semantic Release, images immuables et déploiement Portainer suivi par Watchtower.
 

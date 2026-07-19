@@ -14,15 +14,15 @@ L’interface expose quatre modes principaux seulement : démonstration, lecture
 
 ## Premier tutoriel instrument en main
 
-Les exercices actifs se réalisent sur l’accordéon. La représentation à l’écran sert à écouter la consigne, repérer le bouton et comprendre le mouvement ; elle ne valide un geste par clic qu’en solution de repli si le microphone est indisponible.
+La première leçon réutilise les composants et le vocabulaire de la future interface d’entraînement. Elle ne présente que les quatre modes principaux et fait vivre leur progression dans l’ordre : observer en démonstration, rejouer trois notes en lecture guidée, avancer note par note dans une mini-mélodie, puis rappeler trois notes sans aide visuelle en performance.
 
-- le rythme est validé à partir de quatre attaques réellement entendues, avec un retour sur leur régularité ;
-- la main droite est validée par la hauteur de la note ;
-- la main gauche compare la basse attendue et accepte son équivalent à l’octave ;
-- les mains combinées demandent d’abord la basse puis la note mélodique ;
-- le soufflet utilise un bouton de référence dont les sons pousser et tirer sont enregistrés successivement sous forme de caractéristiques acoustiques agrégées.
+- les exercices actifs se réalisent sur l’accordéon ; le dessin ne valide un clic qu’en solution de repli si le microphone est indisponible ;
+- après les trois premières notes justes, une animation confirme la réussite, le microphone est arrêté et le tutoriel passe automatiquement à la suite ;
+- le mode « attendre la bonne note » emploie une phrase de sept notes inspirée du début d’« Au clair de la lune » et ignore volontairement le rythme ;
+- la frise, le clavier, la direction de soufflet et le conseil contextuel sont ceux que l’élève retrouvera ensuite en séance ;
+- démonstration et lecture guidée sont considérées comme expérimentées dans les deux premières étapes ; attente et performance doivent être réellement réussies avant de continuer.
 
-Le profil de soufflet reste lié à l’instrument dans le navigateur. Aucun son brut n’est conservé. La détection n’infère pas un mouvement silencieux : elle distingue les deux sons calibrés pendant que le bouton indiqué est tenu.
+Le tutoriel ne prétend pas déduire la direction mécanique du soufflet à partir du son seul : la hauteur valide la note tandis que le mouvement pousser/tirer reste indiqué explicitement. Aucun son brut n’est conservé.
 
 ## Défi des touches
 
