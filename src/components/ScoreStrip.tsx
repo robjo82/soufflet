@@ -1,16 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { displayNote } from '../data';
-import type { Notation, Song, SongEvent } from '../types';
+import type { Hand, Notation, Song, SongEvent } from '../types';
 
 interface ScoreStripProps {
   song: Song;
   activeIndex: number;
   notation: Notation;
+  hand?: Hand;
   onSelect: (event: SongEvent, index: number) => void;
 }
 
-export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStripProps) {
+export function ScoreStrip({ song, activeIndex, notation, hand = 'right', onSelect }: ScoreStripProps) {
   const stripRef = useRef<HTMLDivElement>(null);
   const eventRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -38,7 +39,7 @@ export function ScoreStrip({ song, activeIndex, notation, onSelect }: ScoreStrip
       <div className="score-labels">
         <span>Mesure</span>
         <span>Soufflet</span>
-        <span>Notes</span>
+        <span>{hand === 'left' ? 'Basses' : 'Notes'}</span>
       </div>
       <div className="score-strip" aria-label="Partition interactive" ref={stripRef}>
         {song.events.map((event, index) => {

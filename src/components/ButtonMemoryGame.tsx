@@ -231,6 +231,7 @@ export function ButtonMemoryGame({ accordion, notation, onClose, onSessionUpdate
       songId: 'button-memory-game',
       songTitle: `Défi des touches · niveau ${level.id}`,
       mode: 'game',
+      hand: 'right',
       startedAt: sessionStartedAtRef.current || endedAt,
       endedAt,
       activeSeconds: Math.max(1, Math.round(elapsedMs / 1000)),

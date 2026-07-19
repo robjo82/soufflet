@@ -734,6 +734,16 @@ svg { stroke-width: 1.8; }
 .mode-menu button:hover, .mode-menu button.is-selected { color: var(--green); background: var(--green-soft); }
 .mode-menu button span { font-size: 11px; font-weight: 800; }
 .mode-menu button small { color: var(--muted); font-size: 9px; }
+.mode-group-label { padding: 7px 10px 4px; display: block; color: var(--green); font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.mode-group-label.is-supplemental { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); }
+.hand-focus-switch { display: flex; align-items: center; gap: 7px; }
+.hand-focus-switch > span { color: var(--muted); font-size: 7px; font-weight: 900; letter-spacing: .08em; }
+.hand-focus-switch > div { padding: 3px; display: flex; border-radius: 9px; background: #e8e3da; }
+.hand-focus-switch button { height: 30px; padding: 0 9px; border: 0; border-radius: 7px; display: flex; align-items: center; gap: 5px; color: var(--muted); background: none; cursor: pointer; }
+.hand-focus-switch button svg { width: 13px; }
+.hand-focus-switch button b { font-size: 8px; }
+.hand-focus-switch button.is-active { color: var(--ink); background: white; box-shadow: 0 2px 5px rgba(0,0,0,.08); }
+.hand-focus-switch button:disabled { opacity: .35; cursor: not-allowed; }
 .notation-switch { padding: 3px; border-radius: 9px; background: #e8e3da; display: flex; }
 .notation-switch button { height: 30px; padding: 0 11px; border: 0; border-radius: 7px; background: none; color: var(--muted); cursor: pointer; font-size: 9px; font-weight: 800; }
 .notation-switch button.is-active { color: var(--ink); background: white; box-shadow: 0 2px 5px rgba(0,0,0,.08); }
@@ -1421,6 +1431,9 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .practice-toolbar { flex-wrap: wrap; padding: 8px 0; }
   .mode-picker { flex: 1; }
   .mode-trigger { width: 100%; }
+  .hand-focus-switch { width: 100%; order: 2; justify-content: space-between; }
+  .hand-focus-switch > div { flex: 1; }
+  .hand-focus-switch button { flex: 1; justify-content: center; }
   .notation-switch { order: 3; }
   .instrument-stage { min-height: 390px; padding-inline: 2px; }
   .instrument-stage .direction-banner { min-height: 44px; padding-block: 5px; margin-bottom: 0; transform: scale(.86); }
@@ -1465,7 +1478,7 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   html.native-android .topbar { box-sizing: border-box; height: calc(62px + var(--safe-top)); padding: var(--safe-top) calc(15px + var(--safe-right)) 0 calc(15px + var(--safe-left)); backdrop-filter: none; }
   html.native-android .topbar > .brand-lockup { justify-content: flex-start; }
   html.native-android .topbar > nav,
-  html.native-android .topbar > nav.is-open { height: calc(67px + var(--safe-bottom)); padding: 5px calc(4px + var(--safe-right)) var(--safe-bottom) calc(4px + var(--safe-left)); position: fixed; z-index: 100; inset: auto 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: rgba(250,248,243,.97); box-shadow: 0 -7px 24px rgba(44,38,32,.09); backdrop-filter: blur(18px); display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; }
+  html.native-android .topbar > nav.is-open { height: calc(67px + var(--safe-bottom)); padding: 5px calc(4px + var(--safe-right)) var(--safe-bottom) calc(4px + var(--safe-left)); position: fixed; z-index: 100; inset: auto 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: rgba(250,248,243,.97); box-shadow: 0 -7px 24px rgba(44,38,32,.09); backdrop-filter: blur(18px); display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; }
   html.native-android .topbar > nav button { min-height: 56px; padding: 4px 2px; border-radius: 10px; flex-direction: column; justify-content: center; gap: 2px; font-size: 9px; }
   html.native-android .topbar > nav button svg { width: 20px; height: 20px; }
   html.native-android .topbar > nav button.is-active { background: var(--green-soft); }
@@ -1489,6 +1502,7 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .auth-story > div p { font-size: 14px; }
   .auth-card { padding: 26px 20px; }
   .hero-copy h1 { font-size: 43px; }
+  .hand-focus-switch > span, .hand-focus-switch button svg { display: none; }
   .hero-actions, .hero-reassurance { flex-direction: column; align-items: stretch; }
   .lesson-roadmap, .song-grid, .skill-grid { grid-template-columns: 1fr; }
   .dashboard-grid { padding-bottom: 45px; }

@@ -3,6 +3,7 @@ export interface StoredPracticeSession {
   songId: string;
   songTitle: string;
   mode: string;
+  hand: 'right' | 'left' | 'both';
   startedAt: string;
   endedAt: string;
   activeSeconds: number;
@@ -16,6 +17,13 @@ export interface StoredPracticeSession {
 }
 
 const DAY_MS = 86_400_000;
+
+export function inferSessionHand(mode: string, hand?: 'right' | 'left' | 'both') {
+  if (hand) return hand;
+  if (mode === 'left') return 'left' as const;
+  if (mode === 'demo' || mode === 'combined') return 'both' as const;
+  return 'right' as const;
+}
 
 function shiftedDate(value: string | Date, timezoneOffset: number) {
   const date = value instanceof Date ? value : new Date(value);

@@ -1,18 +1,14 @@
 export type Direction = 'push' | 'pull';
 export type Hand = 'right' | 'left' | 'both';
 export type Notation = 'french' | 'english' | 'button' | 'tablature';
+export type PrimaryPracticeMode = 'demo' | 'guided' | 'wait' | 'performance';
+export type SupplementalPracticeMode = 'rhythm' | 'bellows';
+export type LegacyPracticeMode = 'notes' | 'right' | 'left' | 'combined';
 export type PracticeMode =
-  | 'demo'
-  | 'guided'
-  | 'wait'
-  | 'notes'
-  | 'rhythm'
-  | 'bellows'
-  | 'right'
-  | 'left'
-  | 'combined'
-  | 'game'
-  | 'performance';
+  | PrimaryPracticeMode
+  | SupplementalPracticeMode
+  | LegacyPracticeMode
+  | 'game';
 
 export interface AccordionButton {
   id: string;
@@ -114,6 +110,7 @@ export interface SkillProgress {
 
 export interface PracticeSettings {
   mode: PracticeMode;
+  hand: Hand;
   tempo: number;
   countIn: boolean;
   metronome: boolean;
@@ -128,6 +125,7 @@ export interface PracticeSessionInput {
   songId: string;
   songTitle: string;
   mode: PracticeMode;
+  hand: Hand;
   startedAt: string;
   endedAt: string;
   activeSeconds: number;
@@ -197,4 +195,4 @@ export interface TranscriptionResult {
   }>;
 }
 
-export type Page = 'home' | 'learn' | 'library' | 'studio' | 'tuner' | 'settings' | 'account';
+export type Page = 'home' | 'learn' | 'game' | 'library' | 'studio' | 'tuner' | 'settings' | 'account';

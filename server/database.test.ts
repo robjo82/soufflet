@@ -6,6 +6,7 @@ import { SouffletDatabase } from './database.js';
 import { hashPassword, sessionHash, verifyPassword } from './auth.js';
 import { SONG_SEEDS } from './songSeed.js';
 import { findVerifiedSongByTitle, parseTablature, transcriptionFromVerifiedSong } from './transcription.js';
+import { inferSessionHand } from './progress.js';
 
 const directories: string[] = [];
 const makeDatabase = () => {
@@ -17,6 +18,13 @@ const makeDatabase = () => {
 afterEach(() => directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true, force: true })));
 
 describe('production data migrations', () => {
+  it('keeps old mobile session payloads compatible with the new hand focus', () => {
+    expect(inferSessionHand('guided')).toBe('right');
+    expect(inferSessionHand('left')).toBe('left');
+    expect(inferSessionHand('demo')).toBe('both');
+    expect(inferSessionHand('wait', 'both')).toBe('both');
+  });
+
   it('creates an account and retrieves it from a hashed session', async () => {
     const db = makeDatabase();
     const passwordHash = await hashPassword('un-mot-de-passe-solide');
@@ -54,6 +62,7 @@ describe('production data migrations', () => {
     db.saveAccordion({ id: 'custom-delete', maker: 'Test', model: 'Privé', tuning: 'Do/Fa' }, 'usr_delete');
     db.savePracticeSession('usr_delete', {
       id: '065f8f4b-d1ae-4bb1-9c13-a2db57f42f96', songId: 'first-breath', songTitle: 'Premier souffle', mode: 'guided',
+      hand: 'right',
       startedAt: '2026-07-16T18:00:00.000Z', endedAt: '2026-07-16T18:01:00.000Z', activeSeconds: 60,
       correctCount: 2, earlyCount: 0, lateCount: 0, wrongCount: 0, completionPercent: 100, tempoPercent: 80, flagged: false,
     });
@@ -103,7 +112,7 @@ describe('production data migrations', () => {
     db.createUser({ id: 'usr_empty', email: 'empty@example.fr', displayName: 'Nouveau', passwordHash: 'test' });
 
     const base = {
-      songId: 'first-breath', songTitle: 'Premier souffle', mode: 'guided', completionPercent: 100,
+      songId: 'first-breath', songTitle: 'Premier souffle', mode: 'guided', hand: 'right' as const, completionPercent: 100,
       tempoPercent: 80, flagged: false, earlyCount: 0, lateCount: 0, wrongCount: 0,
     };
     db.savePracticeSession('usr_stats', { ...base, id: 'session-1', startedAt: '2026-07-13T20:00:00.000Z', endedAt: '2026-07-13T20:10:00.000Z', activeSeconds: 600, correctCount: 8, earlyCount: 1, lateCount: 1, wrongCount: 2 });
@@ -131,15 +140,16 @@ describe('production data migrations', () => {
     db.createUser({ id: 'usr_upsert', email: 'upsert@example.fr', displayName: 'Upsert', passwordHash: 'test' });
     const session = {
       id: 'session-upsert', songId: 'first-breath', songTitle: 'Premier souffle', mode: 'wait',
+      hand: 'right' as const,
       startedAt: '2026-07-16T18:00:00.000Z', endedAt: '2026-07-16T18:02:00.000Z', activeSeconds: 120,
       correctCount: 4, earlyCount: 1, lateCount: 0, wrongCount: 1, completionPercent: 60, tempoPercent: 80, flagged: true,
     };
     db.savePracticeSession('usr_upsert', session);
-    db.savePracticeSession('usr_upsert', { ...session, mode: 'demo', endedAt: '2026-07-16T18:01:00.000Z', activeSeconds: 60, correctCount: 2, flagged: false });
-    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 120, correctCount: 4, mode: 'wait', flagged: true }]);
+    db.savePracticeSession('usr_upsert', { ...session, mode: 'demo', hand: 'both', endedAt: '2026-07-16T18:01:00.000Z', activeSeconds: 60, correctCount: 2, flagged: false });
+    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 120, correctCount: 4, mode: 'wait', hand: 'right', flagged: true }]);
 
-    db.savePracticeSession('usr_upsert', { ...session, mode: 'guided', endedAt: '2026-07-16T18:03:00.000Z', activeSeconds: 130, correctCount: 5, flagged: false });
-    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 130, correctCount: 5, mode: 'guided', flagged: false }]);
+    db.savePracticeSession('usr_upsert', { ...session, mode: 'guided', hand: 'both', endedAt: '2026-07-16T18:03:00.000Z', activeSeconds: 130, correctCount: 5, flagged: false });
+    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 130, correctCount: 5, mode: 'guided', hand: 'both', flagged: false }]);
   });
 });
 

@@ -10,6 +10,8 @@
 
 Chaque nouveau départ peut être précédé d’une mesure de décompte adaptée à la signature rythmique. Une reprise après pause repart immédiatement. La tablature recentre progressivement la note active pour rester lisible à distance sans demander d’action manuelle.
 
+L’interface expose quatre modes principaux seulement : démonstration, lecture guidée, attente de la bonne note et performance. La partie de l’instrument est un réglage orthogonal — mélodie, basses ou deux mains — qui reconstruit la frise à partir des événements réellement disponibles. Les exercices de rythme et de soufflet restent des ateliers ciblés, accessibles sans être imposés pendant la découverte. Le jeu des touches est un accès principal au même titre que le parcours et la bibliothèque.
+
 ## Premier tutoriel instrument en main
 
 Les exercices actifs se réalisent sur l’accordéon. La représentation à l’écran sert à écouter la consigne, repérer le bouton et comprendre le mouvement ; elle ne valide un geste par clic qu’en solution de repli si le microphone est indisponible.
