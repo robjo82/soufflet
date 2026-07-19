@@ -11,7 +11,11 @@ Cette première fondation transforme le Hohner Club Modell I en asset applicatif
 - 21 commandes de mélodie reliées aux identifiants `c1-out-*`, `c1-in-*` et `c1-help-*` ;
 - 8 commandes main gauche reliées aux identifiants `bass-*` et `chord-*` ;
 - positions fermées et ouvertes enregistrées dans les extras glTF ;
+- ouverture symétrique de type « feuillet » : translation, éventail, légère inclinaison et torsion ;
 - axe et profondeur de pression enregistrés sur chaque bouton ;
+- retour visuel applicatif des boutons actifs : course physique, léger grossissement et émission corail ;
+- veinage de noyer empaqueté dans le fichier Blender et exporté dans le GLB, sans dépendance à une photo externe ;
+- soufflet noir mat plus proche du modèle de référence ;
 - page de validation manuelle : `/dev/accordion-3d`.
 
 Le rendu 3D est chargé dynamiquement. Si WebGL ou le modèle échoue, l’interface HTML `AccordionView` reste disponible et fonctionnelle.
@@ -20,16 +24,30 @@ Le rendu 3D est chargé dynamiquement. Si WebGL ou le modèle échoue, l’inter
 
 Le fichier de travail contenait plusieurs générations de la scène. La version sélectionnée possédait déjà une base solide : 21 commandes mélodiques, 8 commandes de basses, 18 plis pilotables et des matériaux dédiés. Avant normalisation, elle comptait 546 objets dans l’ensemble du fichier, dont des collections historiques et un studio de rendu.
 
-La scène canonique exporte uniquement 375 objets utiles. Les corrections automatiques couvrent :
+La scène canonique exporte uniquement les objets utiles. Les corrections automatiques couvrent :
 
 - suppression des anciennes itérations et des éléments de studio dans la copie canonique ;
 - noms stables et métadonnées compatibles avec les identifiants de la base ;
 - UV manquants ;
 - transformations négatives ;
 - capture réelle des frames fermée et ouverte de l’action Blender ;
+- mouvement de soufflet reproductible de type `book-fan`, contrôlé par les propriétés de la racine ;
+- matériau bois bitmap procédural empaqueté, lisible par le moteur glTF ;
+- matériaux de soufflet assombris et moins brillants ;
 - exclusion des drivers Blender au runtime au profit de valeurs continues explicites.
 
-Budget mesuré lors de cette livraison : 4,4 Mo et environ 129 000 triangles. Le seuil CI est de 5 Mo et 150 000 triangles.
+Budget mesuré lors de cette livraison : 4,6 Mo et environ 129 000 triangles. Le seuil CI est de 5 Mo et 150 000 triangles. Le validateur refuse aussi un modèle dont les corps s'écartent sans rotation, afin d'éviter le retour à une ouverture purement latérale.
+
+## Laboratoire de lecture
+
+Une session connectée charge tous les morceaux prêts de la bibliothèque commune dans `/dev/accordion-3d`. Le lecteur adapte d'abord la tablature au Club I, puis synchronise :
+
+- les boutons de mélodie et leurs notes synthétisées ;
+- les basses ou accords de la main gauche ;
+- la direction et l'amplitude du soufflet ;
+- la durée de pression et le signal lumineux de chaque touche.
+
+Sans session ou en cas d'indisponibilité de l'API, le laboratoire conserve un exercice local explicite au lieu de simuler une bibliothèque chargée.
 
 ## Commandes
 
@@ -70,6 +88,5 @@ Si l’animation Blender du soufflet change, recalculer d’abord les états ext
 1. valider les proportions et matériaux sur téléphone Android, tablette et ordinateur ;
 2. profiler la cadence et la mémoire GPU sur les appareils bas de gamme ;
 3. produire un niveau de détail plus léger pour le mobile ;
-4. brancher `bellowsAmount` sur le moteur musical continu, sans le confondre avec `direction` ;
-5. synchroniser les pressions main droite et main gauche avec les événements du morceau ;
-6. conduire une validation pédagogique et visuelle avant d’activer le feature flag en production.
+4. profiler la lecture d'un morceau complet avec plusieurs niveaux de détail ;
+5. conduire une validation pédagogique et visuelle avant d’activer le feature flag dans le lecteur principal.

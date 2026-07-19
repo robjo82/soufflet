@@ -8,6 +8,7 @@ import { getCountInSequence, getPlaybackStartIndex, getWaitAdvance } from './pra
 import { createPracticeTimeline } from './practiceTimeline';
 import { createTunerTargets, findTunerTargetIndex, nextTunerTarget } from './tunerWorkflow';
 import { classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, type AudioFeatureFrame, type BellowsProfile } from './audioTraining';
+import { createAccordion3DPlayback } from './accordion3dPlayback';
 
 describe('accordion configurations', () => {
   it('ships the Hohner Club I 10 + 9 + 2 layout', () => {
@@ -212,5 +213,19 @@ describe('left-hand accompaniment', () => {
     expect(timeline.every((event) => event.hand === 'left' && event.buttonId === '' && Boolean(event.bassButtonId))).toBe(true);
     expect(createPracticeTimeline(song, 'right')).toBe(song.events);
     expect(createPracticeTimeline(song, 'both')).toBe(song.events);
+  });
+});
+
+describe('accordion 3D demonstration', () => {
+  it('synchronizes the adapted melody, accompaniment and bellows direction', () => {
+    const accordion = FALLBACK_ACCORDIONS.find((item) => item.id === 'hohner-club-i-cf-10-9-2')!;
+    const song = adaptSongToAccordion(DEMO_SONG, accordion);
+    const playback = createAccordion3DPlayback(song);
+
+    expect(playback.cues.length).toBe(song.events.length + (song.accompaniment?.length ?? 0));
+    expect(playback.cues.every((cue) => accordion.buttons.concat(accordion.basses).some((button) => button.id === cue.buttonId))).toBe(true);
+    expect(new Set(playback.cues.map((cue) => cue.hand))).toEqual(new Set(['left', 'right']));
+    expect(playback.cues.map((cue) => cue.atMs)).toEqual([...playback.cues].map((cue) => cue.atMs).sort((left, right) => left - right));
+    expect(playback.durationMs).toBeGreaterThan(15_000);
   });
 });

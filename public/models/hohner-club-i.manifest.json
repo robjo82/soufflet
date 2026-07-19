@@ -31,7 +31,8 @@
       "BellowsFold_18"
     ],
     "minimum": 0,
-    "maximum": 1
+    "maximum": 1,
+    "motionStyle": "book-fan"
   },
   "melodyButtons": [
     {

@@ -31,7 +31,14 @@ for (const name of [manifest.bodyNodes.left, manifest.bodyNodes.right]) {
   } else if (extras.closedPosition.every((value, index) => Math.abs(value - extras.openPosition[index]) < 0.0001)) {
     fail(`${name} does not move between the closed and open states`);
   }
+  if (!Array.isArray(extras?.closedRotation) || !Array.isArray(extras?.openRotation)) {
+    fail(`${name} is missing bellows rotation metadata`);
+  } else if (extras.closedRotation.every((value, index) => Math.abs(value - extras.openRotation[index]) < 0.001)) {
+    fail(`${name} opens laterally without the required book-like rotation`);
+  }
 }
+
+if (manifest.bellows.motionStyle !== 'book-fan') fail('the bellows motion style must be book-fan');
 
 const buttons = [...manifest.melodyButtons, ...manifest.bassButtons];
 if (manifest.melodyButtons.length !== 21) fail(`expected 21 melody buttons, found ${manifest.melodyButtons.length}`);

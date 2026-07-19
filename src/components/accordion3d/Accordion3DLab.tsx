@@ -1,8 +1,9 @@
-import { ArrowLeft, ArrowRight, Box, RotateCcw } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { FALLBACK_ACCORDIONS, FRENCH_NOTES } from '../../data';
+import { ArrowLeft, ArrowRight, Box, Music2, Pause, Play, RotateCcw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createAccordion3DPlayback } from '../../accordion3dPlayback';
+import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, FRENCH_NOTES } from '../../data';
 import { useSynth } from '../../hooks/useSynth';
-import type { AccordionButton, Direction } from '../../types';
+import type { AccordionButton, Direction, Song } from '../../types';
 import { AccordionView } from '../AccordionView';
 import { Accordion3D } from './Accordion3D';
 import { Accordion3DErrorBoundary } from './Accordion3DErrorBoundary';
@@ -14,21 +15,109 @@ function buttonLabel(button: AccordionButton, direction: Direction) {
 }
 export default function Accordion3DLab() {
   const accordion = useMemo(() => FALLBACK_ACCORDIONS.find((item) => item.id === 'hohner-club-i-cf-10-9-2')!, []);
+  const fallbackSong = useMemo(() => adaptSongToAccordion(DEMO_SONG, accordion), [accordion]);
   const [bellowsAmount, setBellowsAmount] = useState(0.28);
   const [direction, setDirection] = useState<Direction>('pull');
-  const [activeButtonId, setActiveButtonId] = useState<string>();
+  const [activeButtonIds, setActiveButtonIds] = useState<string[]>([]);
+  const [songs, setSongs] = useState<Song[]>([fallbackSong]);
+  const [selectedSongId, setSelectedSongId] = useState(fallbackSong.id);
+  const [libraryState, setLibraryState] = useState<'loading' | 'ready' | 'fallback'>('loading');
+  const [demoPlaying, setDemoPlaying] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
-  const { playMidi } = useSynth();
+  const timers = useRef<number[]>([]);
+  const activeCounts = useRef(new Map<string, number>());
+  const { playMidi, playLeftHand } = useSynth();
+
+  const selectedSong = useMemo(
+    () => songs.find((song) => song.id === selectedSongId) ?? songs[0],
+    [selectedSongId, songs],
+  );
+
+  const clearTimers = useCallback(() => {
+    timers.current.forEach((timer) => window.clearTimeout(timer));
+    timers.current = [];
+    activeCounts.current.clear();
+    setActiveButtonIds([]);
+  }, []);
+
+  const stopDemo = useCallback(() => {
+    clearTimers();
+    setDemoPlaying(false);
+  }, [clearTimers]);
+
+  const activateButton = useCallback((buttonId: string, durationMs: number) => {
+    activeCounts.current.set(buttonId, (activeCounts.current.get(buttonId) ?? 0) + 1);
+    setActiveButtonIds([...activeCounts.current.keys()]);
+    const timer = window.setTimeout(() => {
+      const count = (activeCounts.current.get(buttonId) ?? 1) - 1;
+      if (count <= 0) activeCounts.current.delete(buttonId);
+      else activeCounts.current.set(buttonId, count);
+      setActiveButtonIds([...activeCounts.current.keys()]);
+    }, durationMs);
+    timers.current.push(timer);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/library', { signal: controller.signal }).then(async (response) => {
+      if (!response.ok) throw new Error('library-unavailable');
+      const payload = await response.json() as { songs: Song[] };
+      const compatible = payload.songs
+        .filter((song) => song.status === 'ready' && song.events.length > 0)
+        .map((song) => adaptSongToAccordion(song, accordion));
+      const byId = new Map<string, Song>([[fallbackSong.id, fallbackSong]]);
+      compatible.forEach((song) => byId.set(song.id, song));
+      const nextSongs = [...byId.values()];
+      setSongs(nextSongs);
+      setSelectedSongId((current) => nextSongs.some((song) => song.id === current) ? current : nextSongs[0].id);
+      setLibraryState('ready');
+    }).catch((error: unknown) => {
+      if ((error as { name?: string }).name !== 'AbortError') setLibraryState('fallback');
+    });
+    return () => controller.abort();
+  }, [accordion, fallbackSong]);
+
+  useEffect(() => () => {
+    timers.current.forEach((timer) => window.clearTimeout(timer));
+    activeCounts.current.clear();
+  }, []);
 
   const press = (buttonId: string) => {
     const button = [...accordion.buttons, ...accordion.basses].find((item) => item.id === buttonId);
     if (!button) return;
-    setActiveButtonId(buttonId);
+    activateButton(buttonId, 280);
     playMidi(direction === 'push' ? button.pushMidi : button.pullMidi, 0.65, 0.08);
-    window.setTimeout(() => setActiveButtonId((current) => current === buttonId ? undefined : current), 240);
   };
 
-  const fallback = <AccordionView config={accordion} notation="french" direction={direction} compact onButtonPress={press} />;
+  const playDemo = () => {
+    if (!selectedSong) return;
+    stopDemo();
+    const playback = createAccordion3DPlayback(selectedSong);
+    setDemoPlaying(true);
+    playback.cues.forEach((cue) => {
+      const timer = window.setTimeout(() => {
+        setDirection(cue.direction);
+        activateButton(cue.buttonId, cue.durationMs);
+        if (cue.hand === 'right') {
+          setBellowsAmount((current) => cue.direction === 'pull' ? Math.min(.9, current + .075) : Math.max(.1, current - .075));
+          playMidi(cue.midi, cue.durationMs / 1000, .08);
+        } else if (cue.role !== 'melody') {
+          playLeftHand(cue.midi, cue.role, cue.chord, cue.durationMs / 1000);
+        }
+      }, cue.atMs);
+      timers.current.push(timer);
+    });
+    const endTimer = window.setTimeout(() => {
+      activeCounts.current.clear();
+      setActiveButtonIds([]);
+      setDemoPlaying(false);
+      timers.current = [];
+    }, playback.durationMs + 80);
+    timers.current.push(endTimer);
+  };
+
+  const activeEvent = selectedSong?.events.find((event) => activeButtonIds.includes(event.buttonId));
+  const fallback = <AccordionView config={accordion} activeEvent={activeEvent} notation="french" direction={direction} compact depressActive onButtonPress={press} />;
 
   return (
     <main className="accordion-3d-lab">
@@ -36,7 +125,7 @@ export default function Accordion3DLab() {
         <div>
           <span className="eyebrow"><Box size={16} /> Laboratoire interne</span>
           <h1>Hohner Club Modell I · contrat 3D</h1>
-          <p>Teste le mouvement continu du soufflet, chaque bouton et le repli 2D avant intégration au lecteur.</p>
+          <p>Teste le mouvement du soufflet, la visibilité des boutons et la synchronisation avec les morceaux de la bibliothèque.</p>
         </div>
         <a className="secondary-button" href="/"><ArrowLeft size={18} /> Revenir à Soufflet</a>
       </header>
@@ -46,7 +135,7 @@ export default function Accordion3DLab() {
           {showFallback ? fallback : (
             <Accordion3D
               bellowsAmount={bellowsAmount}
-              activeButtonIds={activeButtonId ? [activeButtonId] : []}
+              activeButtonIds={activeButtonIds}
               onButtonPress={press}
             />
           )}
@@ -54,6 +143,28 @@ export default function Accordion3DLab() {
       </section>
 
       <section className="accordion-3d-controls" aria-label="Commandes de test du modèle 3D">
+        <div className="accordion-3d-demo">
+          <label htmlFor="accordion-3d-song">
+            <Music2 aria-hidden="true" />
+            <span><small>MÉLODIE DE LA BIBLIOTHÈQUE</small><strong>{songs.length} morceau{songs.length > 1 ? 'x' : ''} compatible{songs.length > 1 ? 's' : ''}</strong></span>
+          </label>
+          <select
+            id="accordion-3d-song"
+            value={selectedSongId}
+            onChange={(event) => { stopDemo(); setSelectedSongId(event.target.value); }}
+            disabled={libraryState === 'loading'}
+          >
+            {songs.map((song) => <option key={song.id} value={song.id}>{song.title} · {song.artist}</option>)}
+          </select>
+          <button type="button" className={demoPlaying ? 'is-playing' : ''} onClick={demoPlaying ? stopDemo : playDemo}>
+            {demoPlaying ? <><Pause fill="currentColor" /> Arrêter</> : <><Play fill="currentColor" /> Voir jouer</>}
+          </button>
+          <small className="accordion-3d-library-state">
+            {libraryState === 'loading' && 'Chargement de la bibliothèque…'}
+            {libraryState === 'ready' && 'Mélodie, accompagnement et soufflet sont synchronisés.'}
+            {libraryState === 'fallback' && 'Bibliothèque privée indisponible : exercice de démonstration chargé.'}
+          </small>
+        </div>
         <div className="accordion-3d-control-row">
           <label htmlFor="bellows-amount">
             <span>Ouverture du soufflet</span>
@@ -64,7 +175,7 @@ export default function Accordion3DLab() {
         <div className="accordion-3d-toolbar">
           <button type="button" className={direction === 'push' ? 'is-active' : ''} onClick={() => setDirection('push')}><ArrowRight /> Pousser</button>
           <button type="button" className={direction === 'pull' ? 'is-active' : ''} onClick={() => setDirection('pull')}><ArrowLeft /> Tirer</button>
-          <button type="button" onClick={() => { setBellowsAmount(0); setActiveButtonId(undefined); }}><RotateCcw /> Fermer</button>
+          <button type="button" onClick={() => { stopDemo(); setBellowsAmount(0); }}><RotateCcw /> Fermer</button>
           <button type="button" onClick={() => setShowFallback((value) => !value)}>{showFallback ? 'Afficher la 3D' : 'Tester le repli 2D'}</button>
         </div>
       </section>
@@ -74,7 +185,7 @@ export default function Accordion3DLab() {
           <h2>Main droite · 10 + 9 + 2</h2>
           <div className="accordion-3d-button-grid">
             {accordion.buttons.map((button) => (
-              <button type="button" className={activeButtonId === button.id ? 'is-active' : ''} key={button.id} onClick={() => press(button.id)}>
+              <button type="button" className={activeButtonIds.includes(button.id) ? 'is-active' : ''} key={button.id} onClick={() => press(button.id)}>
                 <small>{button.id}</small><strong>{buttonLabel(button, direction)}</strong>
               </button>
             ))}
@@ -84,7 +195,7 @@ export default function Accordion3DLab() {
           <h2>Main gauche · basses et accords</h2>
           <div className="accordion-3d-button-grid is-bass">
             {accordion.basses.map((button) => (
-              <button type="button" className={activeButtonId === button.id ? 'is-active' : ''} key={button.id} onClick={() => press(button.id)}>
+              <button type="button" className={activeButtonIds.includes(button.id) ? 'is-active' : ''} key={button.id} onClick={() => press(button.id)}>
                 <small>{button.id}</small><strong>{button.role === 'bass' ? 'Basse' : 'Accord'}</strong>
               </button>
             ))}

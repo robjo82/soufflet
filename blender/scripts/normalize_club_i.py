@@ -73,6 +73,89 @@ def smart_uv(obj: bpy.types.Object) -> None:
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
+def configure_book_motion(root: bpy.types.Object, closed_frame: int, open_frame: int) -> None:
+    """Give the historical instrument a restrained, symmetric book-like opening."""
+    values = {
+        "bellows_yaw": (0.0, 0.82),
+        "bellows_pitch": (0.0, 0.14),
+        "bellows_twist": (0.0, 0.10),
+    }
+    for property_name, (closed_value, open_value) in values.items():
+        root[property_name] = closed_value
+        root.keyframe_insert(data_path=f'["{property_name}"]', frame=closed_frame)
+        root[property_name] = open_value
+        root.keyframe_insert(data_path=f'["{property_name}"]', frame=open_frame)
+    root["bellows_motion_style"] = "book-fan: symmetric yaw with restrained pitch and twist"
+
+
+def configure_web_materials() -> None:
+    """Bake readable walnut grain and darken the folds for the glTF renderer."""
+    width = height = 512
+    image = bpy.data.images.get("CI_Wood_Grain_Web") or bpy.data.images.new(
+        "CI_Wood_Grain_Web", width=width, height=height, alpha=True
+    )
+    if image.size[0] != width or image.size[1] != height:
+        image.scale(width, height)
+    pixels = [0.0] * (width * height * 4)
+    for y in range(height):
+        vertical = y / (height - 1)
+        for x in range(width):
+            horizontal = x / (width - 1)
+            grain = (
+                math.sin(horizontal * 94 + math.sin(vertical * 8) * 3.2) * 0.5
+                + math.sin(horizontal * 227 + vertical * 19) * 0.23
+                + math.sin(horizontal * 41 - vertical * 37) * 0.14
+            )
+            knot = math.exp(-(((horizontal - 0.32) / 0.10) ** 2 + ((vertical - 0.63) / 0.18) ** 2))
+            streak = 0.62 + grain * 0.16 - knot * 0.19
+            index = (y * width + x) * 4
+            pixels[index:index + 4] = (
+                max(0.055, streak * 0.48),
+                max(0.018, streak * 0.20),
+                max(0.010, streak * 0.095),
+                1.0,
+            )
+    image.pixels.foreach_set(pixels)
+    image.update()
+    image.pack()
+
+    for material_name in ("CI_Wood_Red_Mahogany", "CI_Wood_Dark_Stained"):
+        material = bpy.data.materials.get(material_name)
+        if material is None:
+            continue
+        material.use_nodes = True
+        nodes = material.node_tree.nodes
+        links = material.node_tree.links
+        shader = next((node for node in nodes if node.type == "BSDF_PRINCIPLED"), None)
+        if shader is None:
+            continue
+        texture = nodes.get("CI_Web_Wood_Texture") or nodes.new("ShaderNodeTexImage")
+        texture.name = "CI_Web_Wood_Texture"
+        texture.label = "Packed walnut grain for web export"
+        texture.image = image
+        for link in list(shader.inputs["Base Color"].links):
+            links.remove(link)
+        links.new(texture.outputs["Color"], shader.inputs["Base Color"])
+        shader.inputs["Roughness"].default_value = 0.44
+        if shader.inputs.get("Coat Weight"):
+            shader.inputs["Coat Weight"].default_value = 0.12
+        if shader.inputs.get("Coat Roughness"):
+            shader.inputs["Coat Roughness"].default_value = 0.26
+
+    bellows = {
+        "CI_Bellows_Aged_Paper": ((0.010, 0.006, 0.003, 1.0), 0.82),
+        "CI_Bellows_Black_Cloth": ((0.0015, 0.0012, 0.0010, 1.0), 0.86),
+    }
+    for material_name, (color, roughness) in bellows.items():
+        material = bpy.data.materials.get(material_name)
+        if material is None or not material.use_nodes:
+            continue
+        shader = next((node for node in material.node_tree.nodes if node.type == "BSDF_PRINCIPLED"), None)
+        if shader is not None:
+            shader.inputs["Base Color"].default_value = color
+            shader.inputs["Roughness"].default_value = roughness
+
+
 def normalize() -> dict:
     source_collection = bpy.data.collections.get(SOURCE_COLLECTION)
     source_root = bpy.data.objects.get(SOURCE_ROOT)
@@ -104,6 +187,7 @@ def normalize() -> dict:
     root["contractVersion"] = "1.0.0"
     root["coordinateSystem"] = "Blender Z-up, glTF Y-up"
     root["unit"] = "meter"
+    configure_web_materials()
 
     body_left = bpy.data.objects.get("CTRL_Bass_End")
     body_right = bpy.data.objects.get("CTRL_Treble_End")
@@ -187,6 +271,7 @@ def normalize() -> dict:
         bellows_frames.append((float(root["bellows_open"]), frame))
     closed_frame = min(bellows_frames)[1]
     open_frame = max(bellows_frames)[1]
+    configure_book_motion(root, closed_frame, open_frame)
     scene.frame_set(closed_frame)
     for obj in motion_nodes:
         set_vector_property(obj, "closedPosition", obj.location)
@@ -223,6 +308,7 @@ def normalize() -> dict:
             "folds": [fold.name for fold in folds],
             "minimum": 0,
             "maximum": 1,
+            "motionStyle": "book-fan",
         },
         "melodyButtons": melody,
         "bassButtons": bass,
