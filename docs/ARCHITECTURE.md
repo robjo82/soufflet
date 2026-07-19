@@ -4,7 +4,7 @@
 
 ```text
 Navigateur React
-├── moteur de lecture / synthèse Web Audio
+├── moteur de lecture Web Audio à échantillons réels
 ├── détection monophonique locale par autocorrélation
 ├── préférences et autosauvegarde locale
 └── API HTTPS
@@ -27,6 +27,10 @@ Le front détecte `Capacitor.getPlatform() === 'android'` pour activer la naviga
 Le flavor `github` ajoute l’autorisation d’installer un paquet et `SouffletUpdaterPlugin`. Celui-ci accepte uniquement une URL HTTPS sur `github.com` et un nom `soufflet-android-vX.Y.Z.apk`. Android contrôle ensuite que la signature de la mise à jour correspond à celle de l’application installée. L’identifiant DownloadManager en cours est conservé dans les préférences natives : si Android recrée l’activité ou si Soufflet redémarre pendant le téléchargement, l’installation reprend dès que l’APK est prêt. Le flavor `play`, construit en AAB, ne compile ni ce plugin ni cette autorisation : les mises à jour sont entièrement confiées à Google Play. `SouffletDistributionPlugin` expose le canal au front afin qu’il n’interroge jamais GitHub dans la version Play. Un repli explicite vers `github` préserve la mise à jour des APK antérieurs à cette séparation.
 
 ## Audio local
+
+Les sons produits par l’application utilisent la banque **Button Accordion HN** de FreePats : 17 notes stéréo enregistrées sur un véritable accordéon Hohner, publiées sous CC0. Le manifeste TypeScript reprend les régions, corrections d’accordage et points de boucle du fichier SFZ original. Web Audio choisit l’échantillon le plus proche, le transpose à la hauteur demandée et applique une attaque, un maintien en boucle et un relâchement courts. Une compression légère protège le mix lorsque la mélodie, une basse et un accord se superposent.
+
+Les 5,5 Mo de WAV sont préchargés dans le cache HTTP, puis décodés localement au premier contexte audio. Ils sont servis par la même origine que l’application et mis en cache par la WebView Android ; le mode Android demeure néanmoins connecté à la production, comme le reste de l’interface. Si un fichier ne peut exceptionnellement pas être chargé, un repli par table d’harmoniques reste disponible ; il est volontairement secondaire et ne doit pas masquer une erreur de livraison de la banque. Cette architecture permet d’ajouter plus tard des profils sonores par modèle et des couches pousser/tirer sans modifier le lecteur pédagogique.
 
 `usePitchDetector` demande un flux `getUserMedia` mono sans annulation d’écho, réduction de bruit ni gain automatique, calcule le RMS, puis estime la période avec YIN entre 55 et 2 500 Hz. La première période acoustiquement plausible est privilégiée afin d'éviter les erreurs d'octave produites par les multiples de période. Une note n’est publiée qu’au-dessus d’un seuil de clarté et après deux trames cohérentes ; un changement de hauteur exige trois trames cohérentes. Pendant cette confirmation, l’interface ne publie rien : un harmonique fugitif ne peut donc ni éclairer un faux bouton ni produire une fausse erreur. Les caractéristiques brutes restent disponibles séparément pour les attaques rythmiques et la calibration du soufflet. Le flux n’est ni enregistré, ni uploadé, et ses pistes sont arrêtées à la fermeture de l’écran ou dès qu’un exercice est terminé. Dans l’application Android, `SouffletMicrophonePlugin` demande d’abord explicitement l’autorisation native `RECORD_AUDIO`; la WebView dispose aussi de `MODIFY_AUDIO_SETTINGS`, nécessaire à la ressource de capture audio de Capacitor. En cas de refus persistant, le tutoriel permet d’ouvrir la fiche de l’application dans les réglages Android puis de relancer l’écoute.
 

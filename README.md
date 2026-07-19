@@ -10,7 +10,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - onboarding, tutoriel et préférences synchronisés par compte entre le web, Android et les nouveaux appareils ;
 - migrations SQLite incrémentales et données persistantes dans un volume Docker ;
 - configurations SQLite préchargées : variante Hohner Club I C/F 10+9+2 (P1 = F♯5) avec Gleichton, G/C 21+8 et D/G 21+8 ;
-- lecteur animé au tempo avec partition interactive, synthèse locale, plan de soufflet calculé sur le morceau entier, réserve d’air et soupapes aux respirations, soufflet plissé synchronisé et boutons réellement enfoncés ;
+- lecteur animé au tempo avec partition interactive, échantillons d’un véritable accordéon Hohner joués localement, plan de soufflet calculé sur le morceau entier, réserve d’air et soupapes aux respirations, soufflet plissé synchronisé et boutons réellement enfoncés ;
 - profil visuel en volume dédié au Hohner Club I (bois, ferrures, plaques et implantation 10+9+2), avec rendu générique en volume pour les autres modèles ;
 - fondation 3D WebGL du Hohner Club I : bois veiné contrasté, soufflet sombre en vague asymétrique avec inertie, 29 boutons pressés et éclairés en rythme, guides pédagogiques bleus, repli HTML et laboratoire en pupitre capable de jouer la bibliothèque ;
 - décompte visuel et sonore d’une mesure avant un nouveau départ, désactivable dans les réglages ;
@@ -104,4 +104,4 @@ Le build local requiert Java 21, le SDK Android 36 et `ANDROID_HOME`. Le build d
 
 ## Licence et contenu
 
-Le code ne contient aucun audio tiers. Les mélodies jouables incluses sont traditionnelles ou dans le domaine public et portent une provenance. Les œuvres protégées, comme *Vesoul*, ne sont présentes que sous forme de référence sans notes ni partition. Avant une diffusion commerciale, faire valider les éditions musicales, choisir une licence de code et publier les conditions d’utilisation ainsi que la politique de confidentialité.
+La banque **Button Accordion HN** de FreePats a été enregistrée sur un véritable accordéon Hohner par Jeff Stauffer, préparée par michael02022 et publiée sous la dédicace domaine public [CC0 1.0](https://freepats.zenvoid.org/Organ/accordion.html). Les fichiers sources et leur licence sont conservés dans `public/audio/accordion/freepats-hn-20240329`. Les mélodies jouables incluses sont traditionnelles ou dans le domaine public et portent une provenance. Les œuvres protégées, comme *Vesoul*, ne sont présentes que sous forme de référence sans notes ni partition. Avant une diffusion commerciale, faire valider les éditions musicales, choisir une licence de code et publier les conditions d’utilisation ainsi que la politique de confidentialité.
