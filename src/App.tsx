@@ -168,7 +168,7 @@ export function App() {
   const startPractice = useCallback((song: Song) => {
     if (selectedAccordion) {
       window.scrollTo({ top: 0 });
-      setPracticeSong(adaptSongToAccordion(song, selectedAccordion));
+      setPracticeSong(song);
     }
   }, [selectedAccordion]);
 

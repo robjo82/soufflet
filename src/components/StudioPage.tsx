@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, ChevronDown, Clock3, Cloud, History, Music2, Play, Redo2, Save, Scissors, Sparkles, Undo2, WandSparkles } from 'lucide-react';
 import type { AccordionConfig, Song, SongEvent } from '../types';
 import { AccordionView } from './AccordionView';
+import { adaptSongToAccordion } from '../data';
+import { bellowsAmountLabel, bellowsStepAt } from '../bellowsStrategy';
 
 interface StudioPageProps {
   songs: Song[];
@@ -18,6 +20,10 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
   const [saved, setSaved] = useState(true);
   const [history, setHistory] = useState<Song[]>([]);
   const active = song?.events[activeIndex];
+  const deferredSong = useDeferredValue(song);
+  const plannedSong = useMemo(() => deferredSong ? adaptSongToAccordion(deferredSong, accordion) : undefined, [accordion, deferredSong]);
+  const plannedActive = plannedSong?.events[activeIndex];
+  const bellowsStep = plannedSong ? bellowsStepAt(plannedSong, plannedActive) : undefined;
 
   useEffect(() => { if (initialSong) { setSong(initialSong); setActiveIndex(0); } }, [initialSong]);
   useEffect(() => {
@@ -62,7 +68,7 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
       </section>
 
       <section className="studio-inspector">
-        <div className="studio-preview"><div className="card-title-row"><div><small>APERÇU SUR TON INSTRUMENT</small><h2>{active ? `Temps ${active.beat + 1}` : 'Sélectionne une note'}</h2></div><span className={`status-pill ${(active?.confidence ?? 1) < 0.7 ? 'status-needs-review' : 'status-ready'}`}>{Math.round((active?.confidence ?? 1) * 100)} % de confiance</span></div>{active && <AccordionView config={accordion} activeEvent={active} direction={active.direction} notation="tablature" compact />}</div>
+        <div className="studio-preview"><div className="card-title-row"><div><small>APERÇU SUR TON INSTRUMENT</small><h2>{active ? `Temps ${active.beat + 1}` : 'Sélectionne une note'}</h2></div><span className={`status-pill ${(active?.confidence ?? 1) < 0.7 ? 'status-needs-review' : 'status-ready'}`}>{Math.round((active?.confidence ?? 1) * 100)} % de confiance</span></div>{plannedActive && <><AccordionView config={accordion} activeEvent={plannedActive} direction={plannedActive.direction} notation="tablature" compact bellowsAmount={bellowsStep?.afterAmount} airValveActive={Boolean(bellowsStep?.airBefore)} />{bellowsStep && <p className="studio-bellows-advice"><b>{bellowsStep.airBefore ? 'Respiration : utilise la soupape avant cette note.' : bellowsAmountLabel(bellowsStep.afterAmount)}</b><span>Ouverture prévue : {Math.round(bellowsStep.afterAmount * 100)} % · plan équilibré sur le morceau entier</span></p>}</>}</div>
         {active && <aside className="event-inspector"><span className="eyebrow">Propriétés de la note</span><h2>{active.note}</h2><div className="inspector-grid"><label>Note<input value={active.note} onChange={(event) => updateEvent({ note: event.target.value })} /></label><label>MIDI<input type="number" value={active.midi} onChange={(event) => updateEvent({ midi: Number(event.target.value) })} /></label><label>Bouton<select value={active.buttonId} onChange={(event) => updateEvent({ buttonId: event.target.value })}>{active.buttonId === 'unmapped' && <option value="unmapped">Non assigné</option>}{accordion.buttons.map((button) => <option key={button.id} value={button.id}>Rang {button.row} · bouton {button.index}</option>)}</select></label><label>Direction<select value={active.direction} onChange={(event) => updateEvent({ direction: event.target.value as 'push' | 'pull' })}><option value="push">Pousser</option><option value="pull">Tirer</option></select></label><label>Doigt<select value={active.finger} onChange={(event) => updateEvent({ finger: Number(event.target.value) })}>{[2, 3, 4, 5].map((finger) => <option key={finger} value={finger}>{finger}</option>)}</select></label><label>Durée (temps)<input type="number" min="0.25" step="0.25" value={active.duration} onChange={(event) => updateEvent({ duration: Number(event.target.value) })} /></label></div>{(active.confidence ?? 1) < 0.7 && <div className="uncertain-note"><AlertTriangle /><span><strong>Passage incertain</strong>L’IA n’a pas trouvé cette note avec assez de certitude. Écoute la source et corrige-la avant de jouer.</span></div>}<button type="button" className="validate-event" onClick={() => updateEvent({ confidence: 1 })}><Check /> Valider cette note</button></aside>}
       </section>
     </main>

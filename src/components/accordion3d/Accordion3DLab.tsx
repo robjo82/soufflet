@@ -1,9 +1,10 @@
-import { ArrowLeft, ArrowRight, Box, Music2, Pause, Play, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Box, Music2, Pause, Play, RotateCcw, Sparkles, Wind } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createAccordion3DPlayback } from '../../accordion3dPlayback';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, FRENCH_NOTES } from '../../data';
 import { useSynth } from '../../hooks/useSynth';
-import type { AccordionButton, Direction, Song } from '../../types';
+import type { AccordionButton, BellowsStyle, Direction, Song } from '../../types';
+import { BELLOWS_STYLE_OPTIONS, bellowsAmountLabel } from '../../bellowsStrategy';
 import { AccordionView } from '../AccordionView';
 import { Accordion3D } from './Accordion3D';
 import { Accordion3DErrorBoundary } from './Accordion3DErrorBoundary';
@@ -17,6 +18,8 @@ export default function Accordion3DLab() {
   const accordion = useMemo(() => FALLBACK_ACCORDIONS.find((item) => item.id === 'hohner-club-i-cf-10-9-2')!, []);
   const fallbackSong = useMemo(() => adaptSongToAccordion(DEMO_SONG, accordion), [accordion]);
   const [bellowsAmount, setBellowsAmount] = useState(0.28);
+  const [bellowsStyle, setBellowsStyle] = useState<BellowsStyle>('balanced');
+  const [airValveActive, setAirValveActive] = useState(false);
   const [direction, setDirection] = useState<Direction>('pull');
   const [activeButtonIds, setActiveButtonIds] = useState<string[]>([]);
   const [songs, setSongs] = useState<Song[]>([fallbackSong]);
@@ -30,8 +33,8 @@ export default function Accordion3DLab() {
   const { playMidi, playLeftHand } = useSynth();
 
   const selectedSong = useMemo(
-    () => songs.find((song) => song.id === selectedSongId) ?? songs[0],
-    [selectedSongId, songs],
+    () => adaptSongToAccordion(songs.find((song) => song.id === selectedSongId) ?? songs[0], accordion, bellowsStyle),
+    [accordion, bellowsStyle, selectedSongId, songs],
   );
 
   const clearTimers = useCallback(() => {
@@ -39,6 +42,7 @@ export default function Accordion3DLab() {
     timers.current = [];
     activeCounts.current.clear();
     setActiveButtonIds([]);
+    setAirValveActive(false);
   }, []);
 
   const stopDemo = useCallback(() => {
@@ -94,13 +98,23 @@ export default function Accordion3DLab() {
     if (!selectedSong) return;
     stopDemo();
     const playback = createAccordion3DPlayback(selectedSong);
+    setBellowsAmount(selectedSong.bellowsPlan?.startAmount ?? .38);
     setDemoPlaying(true);
+    playback.airCues.forEach((cue) => {
+      const timer = window.setTimeout(() => {
+        setAirValveActive(true);
+        setBellowsAmount(cue.toAmount);
+        const releaseTimer = window.setTimeout(() => setAirValveActive(false), cue.durationMs);
+        timers.current.push(releaseTimer);
+      }, cue.atMs);
+      timers.current.push(timer);
+    });
     playback.cues.forEach((cue) => {
       const timer = window.setTimeout(() => {
         setDirection(cue.direction);
         activateButton(cue.buttonId, cue.durationMs);
         if (cue.hand === 'right') {
-          setBellowsAmount((current) => cue.direction === 'pull' ? Math.min(.9, current + .075) : Math.max(.1, current - .075));
+          if (cue.bellowsAfter !== undefined) setBellowsAmount(cue.bellowsAfter);
           playMidi(cue.midi, cue.durationMs / 1000, .08);
         } else if (cue.role !== 'melody') {
           playLeftHand(cue.midi, cue.role, cue.chord, cue.durationMs / 1000);
@@ -118,7 +132,7 @@ export default function Accordion3DLab() {
   };
 
   const activeEvent = selectedSong?.events.find((event) => activeButtonIds.includes(event.buttonId));
-  const fallback = <AccordionView config={accordion} activeEvent={activeEvent} notation="french" direction={direction} compact depressActive onButtonPress={press} />;
+  const fallback = <AccordionView config={accordion} activeEvent={activeEvent} notation="french" direction={direction} compact depressActive bellowsAmount={bellowsAmount} airValveActive={airValveActive} onButtonPress={press} />;
 
   return (
     <main className="accordion-3d-lab">
@@ -140,6 +154,7 @@ export default function Accordion3DLab() {
                 bellowsAmount={bellowsAmount}
                 activeButtonIds={activeButtonIds}
                 direction={direction}
+                airValveActive={airValveActive}
                 showLearningGuides={showLearningGuides}
                 onButtonPress={press}
               />
@@ -175,6 +190,13 @@ export default function Accordion3DLab() {
                 {libraryState === 'ready' && 'Mélodie, accompagnement et soufflet sont synchronisés.'}
                 {libraryState === 'fallback' && 'Bibliothèque privée indisponible : exercice de démonstration chargé.'}
               </small>
+            </div>
+            <div className="accordion-3d-strategy">
+              <label htmlFor="accordion-3d-strategy"><Wind /><span><small>STRATÉGIE DE SOUFFLET</small><strong>{BELLOWS_STYLE_OPTIONS.find((option) => option.id === bellowsStyle)?.short}</strong></span></label>
+              <select id="accordion-3d-strategy" value={bellowsStyle} disabled={demoPlaying} onChange={(event) => { stopDemo(); setBellowsStyle(event.target.value as BellowsStyle); }}>
+                {BELLOWS_STYLE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label} — {option.short}</option>)}
+              </select>
+              {selectedSong.bellowsPlan && <p><b>{selectedSong.bellowsPlan.directionChanges}</b> changements · <b>{selectedSong.bellowsPlan.airActions}</b> soupapes · {bellowsAmountLabel(bellowsAmount)}</p>}
             </div>
             <div className="accordion-3d-control-row">
               <label htmlFor="bellows-amount">

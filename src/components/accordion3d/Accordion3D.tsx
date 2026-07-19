@@ -23,6 +23,7 @@ interface Accordion3DProps {
   direction?: Direction;
   onButtonPress?: (buttonId: string) => void;
   showLearningGuides?: boolean;
+  airValveActive?: boolean;
 }
 
 interface MotionNode {
@@ -319,6 +320,7 @@ export function Accordion3D(props: Accordion3DProps) {
           </span>
         </div>
       )}
+      {props.airValveActive && <div className="accordion-3d-air-guide" role="status"><b>Soupape</b><span>Recentrer sans jouer</span></div>}
     </div>
   );
 }
