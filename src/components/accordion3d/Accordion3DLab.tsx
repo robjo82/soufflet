@@ -131,6 +131,7 @@ export default function Accordion3DLab() {
       </header>
 
       <section className="accordion-3d-stage">
+        <span className="accordion-3d-revision">Vague organique · modèle v2</span>
         <Accordion3DErrorBoundary fallback={fallback}>
           {showFallback ? fallback : (
             <Accordion3D

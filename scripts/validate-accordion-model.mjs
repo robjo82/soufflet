@@ -19,6 +19,11 @@ const jsonType = model.readUInt32LE(16);
 if (jsonType !== 0x4e4f534a) fail('the first GLB chunk is not JSON');
 const gltf = JSON.parse(model.subarray(20, 20 + jsonLength).toString('utf8'));
 const nodes = new Map((gltf.nodes ?? []).map((node) => [node.name, node]));
+const rootNode = nodes.get(manifest.rootNode);
+
+if (rootNode?.extras?.contractVersion !== manifest.contractVersion) {
+  fail('the GLB and manifest contract versions differ');
+}
 
 for (const name of [manifest.rootNode, manifest.bodyNodes.left, manifest.bodyNodes.right, manifest.bellows.root, ...manifest.bellows.folds]) {
   if (!nodes.has(name)) fail(`missing node ${name}`);
@@ -38,7 +43,33 @@ for (const name of [manifest.bodyNodes.left, manifest.bodyNodes.right]) {
   }
 }
 
-if (manifest.bellows.motionStyle !== 'book-fan') fail('the bellows motion style must be book-fan');
+if (manifest.bellows.motionStyle !== 'organic-wave') fail('the bellows motion style must be organic-wave');
+if (!manifest.bellows.modelRevision) fail('the model revision is required for cache invalidation');
+
+const skinNode = nodes.get(manifest.bellows.skin?.node);
+const skinMesh = skinNode?.mesh === undefined ? undefined : gltf.meshes?.[skinNode.mesh];
+const targetNames = skinMesh?.extras?.targetNames ?? [];
+const skinTargetIndex = targetNames.indexOf(manifest.bellows.skin?.morphTarget);
+if (!skinNode || !skinMesh) fail('the continuous bellows skin is missing');
+if (skinNode?.extras?.bellowsRole !== 'continuous-skin') fail('the bellows skin role is missing');
+if (skinTargetIndex < 0) fail('the organic bellows morph target is missing');
+if (skinMesh?.primitives?.some((primitive) => !primitive.targets?.[skinTargetIndex])) {
+  fail('the organic bellows morph target is incomplete');
+}
+const skinPositionAccessors = skinMesh?.primitives
+  ?.map((primitive) => primitive.targets?.[skinTargetIndex]?.POSITION)
+  .filter((accessor) => accessor !== undefined) ?? [];
+const skinExtension = Math.max(0, ...skinPositionAccessors.flatMap((accessor) => {
+  const definition = gltf.accessors?.[accessor];
+  return [...(definition?.min ?? []), ...(definition?.max ?? [])].map(Math.abs);
+}));
+if (skinExtension < 0.05) fail(`the bellows skin barely deforms (${skinExtension.toFixed(4)} m)`);
+
+const foldNodes = manifest.bellows.folds.map((name) => nodes.get(name));
+const waveAmplitude = Math.max(...foldNodes.map((node) => Math.abs((node?.extras?.openPosition?.[2] ?? 0) - (node?.extras?.closedPosition?.[2] ?? 0))));
+const depthAmplitude = Math.max(...foldNodes.map((node) => Math.abs((node?.extras?.openPosition?.[1] ?? 0) - (node?.extras?.closedPosition?.[1] ?? 0))));
+if (waveAmplitude < 0.01) fail(`bellows vertical wave is too flat (${waveAmplitude.toFixed(4)} m)`);
+if (depthAmplitude < 0.004) fail(`bellows depth curve is too flat (${depthAmplitude.toFixed(4)} m)`);
 
 const buttons = [...manifest.melodyButtons, ...manifest.bassButtons];
 if (manifest.melodyButtons.length !== 21) fail(`expected 21 melody buttons, found ${manifest.melodyButtons.length}`);
