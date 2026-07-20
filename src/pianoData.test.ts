@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('ships right-hand pieces and a first two-hand piece', () => {
@@ -73,6 +73,10 @@ describe('piano V1', () => {
   });
   it('runs practice in real time with one hand and never counts its score', () => {
     const myWay = PIANO_EXERCISES.find((item) => item.id === 'my-way-advanced')!;
+    expect(pianoHandChoicesForMode(myWay, 'learning')).toEqual(['right', 'left']);
+    expect(pianoHandChoicesForMode(myWay, 'practice')).toEqual(['right', 'left']);
+    expect(pianoHandChoicesForMode(myWay, 'game')).toEqual(['both']);
+    expect(pianoNotesForMode(myWay, 'learning', 'both')).toEqual(pianoNotesForHand(myWay.notes, 'right'));
     expect(pianoNotesForMode(myWay, 'practice', 'right')).toEqual(pianoNotesForHand(myWay.notes, 'right'));
     expect(pianoNotesForMode(myWay, 'practice', 'left')).toEqual(pianoNotesForHand(myWay.notes, 'left'));
     expect(pianoNotesForMode(myWay, 'game', 'right')).toHaveLength(myWay.notes.length);
@@ -80,6 +84,13 @@ describe('piano V1', () => {
     expect(isPianoSessionCounted('learning')).toBe(true);
     expect(isPianoSessionCounted('game')).toBe(true);
     expect(pianoSessionCounts(5, [-301, -300, 0, 300, 301], 300)).toEqual({ correctCount: 3, earlyCount: 1, lateCount: 1 });
+  });
+  it('adds a playable finger number to every falling note', () => {
+    expect(PIANO_EXERCISES.every((exercise) => exercise.notes.every((note) => Number.isInteger(note.finger) && note.finger! >= 1 && note.finger! <= 5))).toBe(true);
+    const seCanta = PIANO_EXERCISES.find((item) => item.id === 'se-canta-intermediate')!;
+    expect(seCanta.notes.slice(0, 3).map((note) => [note.midi, note.finger])).toEqual([[67, 5], [72, 1], [72, 1]]);
+    const myWay = PIANO_EXERCISES.find((item) => item.id === 'my-way-advanced')!;
+    expect(myWay.notes.filter((note) => note.hand === 'left' && note.beat === 3).map((note) => note.finger)).toEqual([5, 3, 1]);
   });
   it('centers compact keyboards around middle C', () => {
     expect(pianoRange(25)).toContain(60);

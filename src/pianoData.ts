@@ -8,7 +8,7 @@ export interface PianoExercise {
   level: 'Très simple' | 'Simple' | 'Modéré';
   bpm: number;
   hand: 'right' | 'both';
-  notes: Array<{ midi: number; beat: number; duration: number; hand?: 'right' | 'left' }>;
+  notes: Array<{ midi: number; beat: number; duration: number; hand?: 'right' | 'left'; finger?: PianoFinger }>;
 }
 
 export interface PianoSong {
@@ -33,7 +33,8 @@ export interface PianoChordExercise {
 }
 
 type PianoNote = PianoExercise['notes'][number];
-type PianoHarmonyStep = { beat: number; name: string; root: number; intervals: number[]; fingers: number[] };
+export type PianoFinger = 1 | 2 | 3 | 4 | 5;
+type PianoHarmonyStep = { beat: number; name: string; root: number; intervals: number[]; fingers: PianoFinger[] };
 export type PianoPracticeHand = 'right' | 'left' | 'both';
 export type PianoPlayMode = 'learning' | 'practice' | 'game';
 
@@ -48,6 +49,18 @@ const phrase = (midis: number[], durations?: number[]) => {
 };
 
 const timedNotes = (entries: Array<[midi: number, beat: number, duration: number]>): PianoNote[] => entries.map(([midi, beat, duration]) => ({ midi, beat, duration }));
+
+const C_POSITION_FINGERS: Record<number, PianoFinger> = { 0: 1, 1: 1, 2: 2, 3: 2, 4: 3, 5: 4, 6: 4, 7: 5, 8: 5, 9: 5, 10: 5, 11: 5 };
+const MY_WAY_FINGERS: Record<number, PianoFinger> = {
+  60: 1, 62: 2, 64: 3,
+  65: 1, 66: 1, 67: 2, 68: 3, 69: 3, 70: 4,
+  72: 1, 74: 2, 75: 3, 76: 3, 77: 4, 79: 5, 81: 5,
+};
+
+const withRightHandFingerings = (notes: PianoNote[], profile: 'c-position' | 'my-way' = 'c-position') => notes.map((note) => ({
+  ...note,
+  finger: profile === 'my-way' ? MY_WAY_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : C_POSITION_FINGERS[note.midi % 12],
+}));
 
 const shiftNotes = (notes: PianoNote[], beats: number) => notes.map((note) => ({ ...note, beat: note.beat + beats }));
 const shiftHarmony = (steps: PianoHarmonyStep[], beats: number) => steps.map((step) => ({ ...step, beat: step.beat + beats }));
@@ -152,10 +165,10 @@ const MY_WAY_HARMONY: PianoHarmonyStep[] = [
 ];
 
 const MY_WAY_TWO_HANDS = [
-  ...MY_WAY_MELODY.map((note) => ({ ...note, hand: 'right' as const })),
-  ...MY_WAY_HARMONY.flatMap(({ beat, root, intervals }) => [
-    { midi: root, beat, duration: 1.5, hand: 'left' as const },
-    ...intervals.map((interval) => ({ midi: root + interval, beat: beat + 2, duration: 1.5, hand: 'left' as const })),
+  ...withRightHandFingerings(MY_WAY_MELODY, 'my-way').map((note) => ({ ...note, hand: 'right' as const })),
+  ...MY_WAY_HARMONY.flatMap(({ beat, root, intervals, fingers }) => [
+    { midi: root, beat, duration: 1.5, hand: 'left' as const, finger: 5 as const },
+    ...intervals.map((interval, index) => ({ midi: root + interval, beat: beat + 2, duration: 1.5, hand: 'left' as const, finger: fingers[index] })),
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
@@ -198,10 +211,10 @@ const SE_CANTA_HARMONY: PianoHarmonyStep[] = [
 ];
 
 const SE_CANTA_TWO_HANDS = [
-  ...SE_CANTA_MELODY.map((note) => ({ ...note, hand: 'right' as const })),
-  ...SE_CANTA_HARMONY.flatMap(({ beat, root, intervals }) => [
-    { midi: root, beat, duration: 1, hand: 'left' as const },
-    ...intervals.map((interval) => ({ midi: root + interval, beat: beat + 1, duration: beat === 22 ? 1 : 2, hand: 'left' as const })),
+  ...withRightHandFingerings(SE_CANTA_MELODY).map((note) => ({ ...note, hand: 'right' as const })),
+  ...SE_CANTA_HARMONY.flatMap(({ beat, root, intervals, fingers }) => [
+    { midi: root, beat, duration: 1, hand: 'left' as const, finger: 5 as const },
+    ...intervals.map((interval, index) => ({ midi: root + interval, beat: beat + 1, duration: beat === 22 ? 1 : 2, hand: 'left' as const, finger: fingers[index] })),
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
@@ -217,15 +230,15 @@ export function pianoChordExerciseForSong(title: string, artist?: string) {
 }
 
 export const PIANO_EXERCISES: PianoExercise[] = [
-  { id: 'piano-three-steps', title: 'Trois petits pas', level: 'Très simple', bpm: 60, hand: 'right', notes: phrase([60, 62, 64, 62, 60, 62, 64, 60], [.5, .5, 1, 1.5, .5, 2, 1, .5]) },
-  { id: 'piano-five-lights', title: 'Cinq lumières', level: 'Simple', bpm: 72, hand: 'right', notes: phrase([60, 62, 64, 65, 67, 65, 64, 62, 60, 62, 64, 65, 67, 60]) },
-  { id: 'piano-morning-walk', title: 'Promenade du matin', level: 'Modéré', bpm: 80, hand: 'right', notes: phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2]) },
-  { id: 'piano-two-hands', title: 'Dialogue des deux mains', level: 'Simple', bpm: 64, hand: 'both', notes: phrase([48, 60, 50, 62, 52, 64, 53, 65, 55, 67, 53, 65, 52, 64, 50, 62, 48, 60]).map((note) => ({ ...note, hand: note.midi < 60 ? 'left' as const : 'right' as const })) },
-  { id: 'my-way-beginner', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', notes: MY_WAY_EASY },
-  { id: 'my-way-intermediate', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: MY_WAY_MELODY },
+  { id: 'piano-three-steps', title: 'Trois petits pas', level: 'Très simple', bpm: 60, hand: 'right', notes: withRightHandFingerings(phrase([60, 62, 64, 62, 60, 62, 64, 60], [.5, .5, 1, 1.5, .5, 2, 1, .5])) },
+  { id: 'piano-five-lights', title: 'Cinq lumières', level: 'Simple', bpm: 72, hand: 'right', notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 65, 64, 62, 60, 62, 64, 65, 67, 60])) },
+  { id: 'piano-morning-walk', title: 'Promenade du matin', level: 'Modéré', bpm: 80, hand: 'right', notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2])) },
+  { id: 'piano-two-hands', title: 'Dialogue des deux mains', level: 'Simple', bpm: 64, hand: 'both', notes: phrase([48, 60, 50, 62, 52, 64, 53, 65, 55, 67, 53, 65, 52, 64, 50, 62, 48, 60]).map((note) => ({ ...note, hand: note.midi < 60 ? 'left' as const : 'right' as const, finger: (note.midi < 60 ? 6 - C_POSITION_FINGERS[note.midi % 12] : C_POSITION_FINGERS[note.midi % 12]) as PianoFinger })) },
+  { id: 'my-way-beginner', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(MY_WAY_EASY, 'my-way') },
+  { id: 'my-way-intermediate', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(MY_WAY_MELODY, 'my-way') },
   { id: 'my-way-advanced', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: MY_WAY_TWO_HANDS },
-  { id: 'se-canta-beginner', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', notes: SE_CANTA_EASY },
-  { id: 'se-canta-intermediate', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: SE_CANTA_MELODY },
+  { id: 'se-canta-beginner', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(SE_CANTA_EASY) },
+  { id: 'se-canta-intermediate', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(SE_CANTA_MELODY) },
   { id: 'se-canta-advanced', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: SE_CANTA_TWO_HANDS },
 ];
 
@@ -248,7 +261,13 @@ export function pianoNotesForHand(notes: PianoExercise['notes'], hand: PianoPrac
 }
 
 export function pianoNotesForMode(exercise: PianoExercise, mode: PianoPlayMode, hand: PianoPracticeHand) {
-  return exercise.hand === 'both' && mode !== 'game' ? pianoNotesForHand(exercise.notes, hand) : exercise.notes;
+  if (exercise.hand !== 'both' || mode === 'game') return exercise.notes;
+  return pianoNotesForHand(exercise.notes, hand === 'left' ? 'left' : 'right');
+}
+
+export function pianoHandChoicesForMode(exercise: PianoExercise, mode: PianoPlayMode): PianoPracticeHand[] {
+  if (exercise.hand !== 'both') return ['right'];
+  return mode === 'game' ? ['both'] : ['right', 'left'];
 }
 
 export function isPianoSessionCounted(mode: PianoPlayMode) {

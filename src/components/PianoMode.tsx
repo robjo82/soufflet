@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, BarChart3, Check, ChevronLeft, ChevronRight, Clock3, Hand, Mic2, Pause, Piano, Play, Repeat2, RotateCcw, Target, Volume2, X } from 'lucide-react';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import { classifyPianoAttempt, frenchNote, hasPianoNoteReachedHitLine, isPianoSessionCounted, PIANO_CHORDS, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_PIXELS_PER_BEAT, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoKeyGeometry, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForMode, pianoScore, pianoSessionCounts, resumeTimeline, type PianoChordExercise, type PianoExercise, type PianoPlayMode, type PianoPracticeHand, type PianoSong } from '../pianoData';
+import { classifyPianoAttempt, frenchNote, hasPianoNoteReachedHitLine, isPianoSessionCounted, PIANO_CHORDS, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_PIXELS_PER_BEAT, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForMode, pianoScore, pianoSessionCounts, resumeTimeline, type PianoChordExercise, type PianoExercise, type PianoPlayMode, type PianoPracticeHand, type PianoSong } from '../pianoData';
 import type { Page, PianoInput, PianoKeyboardSize, PracticeSessionInput, PracticeStats } from '../types';
 
 interface PianoModeProps {
@@ -218,7 +218,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   const expected = screen === 'chords' ? PIANO_CHORDS[chordIndex].midis : screen === 'exercise' ? [notes[activeIndex].midi] : [];
   const keyGeometry = pianoKeyGeometry(keyboardSize);
   const inputMessage = input === 'midi' && midiStatus !== 'connected' ? 'Aucun clavier MIDI détecté : utilise le clavier PC ou le micro.' : input === 'microphone' && detector.status !== 'listening' ? 'Teste et autorise le micro avant de jouer.' : 'Entrée prête.';
-  const openExercise = (nextExercise: PianoExercise) => { setExercise(nextExercise); setPracticeHand(nextExercise.hand === 'both' ? 'both' : 'right'); setScreen('prepare'); window.scrollTo({ top: 0, behavior: 'auto' }); };
+  const openExercise = (nextExercise: PianoExercise) => { setExercise(nextExercise); setPracticeHand(nextExercise.hand === 'both' && playMode === 'game' ? 'both' : 'right'); setScreen('prepare'); window.scrollTo({ top: 0, behavior: 'auto' }); };
   const openSong = (song: PianoSong) => openExercise(song.levels[0]);
   const openSongChordExercise = async (nextExercise: PianoChordExercise) => {
     if (input === 'microphone' && !await detector.start()) return;
@@ -244,13 +244,11 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   };
   const selectExerciseLevel = (nextExercise: PianoExercise) => {
     setExercise(nextExercise);
-    if (nextExercise.hand !== 'both' || playMode === 'practice') setPracticeHand('right');
-    else setPracticeHand('both');
+    setPracticeHand(nextExercise.hand === 'both' && playMode === 'game' ? 'both' : 'right');
   };
   const selectPlayMode = (mode: PianoPlayMode) => {
     setPlayMode(mode);
-    if (mode === 'practice' || exercise.hand !== 'both') setPracticeHand('right');
-    else if (mode === 'game') setPracticeHand('both');
+    setPracticeHand(exercise.hand === 'both' && mode === 'game' ? 'both' : 'right');
   };
 
   if (screen === 'home' && view === 'home') return <main className="page-content piano-page piano-dashboard">
@@ -278,7 +276,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
     const totalSessions = allLevelStats.reduce((sum, item) => sum + item.sessions, 0);
     const totalSeconds = allLevelStats.reduce((sum, item) => sum + item.activeSeconds, 0);
     const lastPracticedAt = allLevelStats.map((item) => item.lastPracticedAt).sort().at(-1);
-    const handChoices: PianoPracticeHand[] = playMode === 'practice' ? exercise.hand === 'both' ? ['right', 'left'] : ['right'] : playMode === 'learning' && exercise.hand === 'both' ? ['right', 'left', 'both'] : [];
+    const handChoices = pianoHandChoicesForMode(exercise, playMode);
     return <main className="page-content piano-page piano-preparation">
       <button className="piano-back" type="button" onClick={() => setScreen('home')}><ChevronLeft /> Retour</button>
       <section role="dialog" aria-labelledby="piano-song-title">
@@ -291,7 +289,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
         </section>
         {chordExercise && <aside className="preparation-chord-callout"><span><Hand /></span><div><small>MAIN GAUCHE · DOIGTÉS</small><strong>Les accords de {exercise.title}</strong><p>{new Set(chordExercise.progression.map((step) => step.name)).size} positions à apprendre, dans l’ordre complet du morceau.</p></div><button type="button" onClick={() => void openSongChordExercise(chordExercise)}>Travailler les accords <ChevronRight /></button></aside>}
         <div className="preparation-modes"><button type="button" className={playMode === 'learning' ? 'is-selected' : ''} onClick={() => selectPlayMode('learning')}><Target /><span><strong>Apprentissage</strong><small>Le défilement attend chaque bonne note.</small></span>{playMode === 'learning' && <Check />}</button><button type="button" className={playMode === 'practice' ? 'is-selected' : ''} onClick={() => selectPlayMode('practice')}><Repeat2 /><span><strong>Entraînement</strong><small>Tempo réel, une seule main, sans score.</small></span>{playMode === 'practice' && <Check />}</button><button type="button" className={playMode === 'game' ? 'is-selected' : ''} onClick={() => selectPlayMode('game')}><Play /><span><strong>Jeu</strong><small>Tempo continu et score comptabilisé.</small></span>{playMode === 'game' && <Check />}</button></div>
-        {handChoices.length > 1 && <fieldset className="preparation-hand-choice"><legend>{playMode === 'practice' ? 'Main à entraîner' : 'Main à travailler'}</legend><div>{handChoices.map((hand) => <button type="button" key={hand} className={practiceHand === hand ? 'is-selected' : ''} aria-pressed={practiceHand === hand} onClick={() => setPracticeHand(hand)}><span><strong>{PIANO_HAND_LABELS[hand]}</strong><small>{PIANO_HAND_DETAILS[hand]}</small></span>{practiceHand === hand && <Check />}</button>)}</div></fieldset>}
+        {handChoices.length > 1 && <fieldset className="preparation-hand-choice"><legend>{playMode === 'practice' ? 'Main à entraîner' : 'Main à apprendre'}</legend><div>{handChoices.map((hand) => <button type="button" key={hand} className={practiceHand === hand ? 'is-selected' : ''} aria-pressed={practiceHand === hand} onClick={() => setPracticeHand(hand)}><span><strong>{PIANO_HAND_LABELS[hand]}</strong><small>{PIANO_HAND_DETAILS[hand]}</small></span>{practiceHand === hand && <Check />}</button>)}</div></fieldset>}
         {playMode === 'practice' && handChoices.length === 1 && <p className="preparation-practice-note"><Repeat2 /> Ce niveau se travaille en temps réel avec la main droite uniquement. La séance ne modifiera pas tes statistiques.</p>}
         <label className="preparation-tempo"><span>Vitesse du morceau</span><strong>{tempoPercent} % · {Math.round(exercise.bpm * tempoPercent / 100)} BPM</strong><input type="range" min="50" max="100" step="10" value={tempoPercent} onChange={(event) => setTempoPercent(Number(event.target.value))} /></label>
         {input === 'microphone' && (detector.status === 'denied' || detector.status === 'error') && <div className="account-message is-error"><AlertTriangle /><span>{detector.error}</span></div>}
@@ -328,7 +326,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   return <main className="piano-player">
     <header><button type="button" className="piano-player-close" aria-label="Quitter le morceau" title="Quitter" onClick={() => { detector.stop(); stopAll(); setPlaying(false); setScreen('home'); }}><X /></button><div className="piano-player-title"><small>{exercise.artist ? `${exercise.artist} · ` : ''}{exercise.level}{exercise.hand === 'both' && playMode !== 'game' ? ` · ${PIANO_HAND_LABELS[practiceHand]}` : playMode === 'practice' ? ' · Main droite' : ''}</small><strong>{exercise.title}</strong></div><div className="piano-player-controls">{!result && <><button type="button" className="piano-player-pause" onClick={togglePause}>{playing ? <><Pause /> Pause</> : <><Play /> Reprendre</>}</button><button type="button" className="piano-player-restart" onClick={restart}><RotateCcw /> Recommencer</button></>}<span>{playMode === 'practice' ? 'Entraînement · non comptabilisé · ' : ''}{correct} juste{correct > 1 ? 's' : ''} · {missed} ratée{missed > 1 ? 's' : ''}</span><progress value={activeIndex + 1} max={notes.length} /></div></header>
     {result ? <section className={`piano-results ${playMode === 'practice' ? 'is-practice' : ''}`}><Check /><h1>{playMode === 'practice' ? 'Entraînement terminé' : 'Exercice terminé'}</h1><div><article><strong>{result.correct}</strong><span>correctes</span></article><article><strong>{result.missed}</strong><span>ratées</span></article><article><strong>{result.averageDelay} ms</strong><span>retard moyen</span></article><article><strong>{result.rhythmAccuracy} %</strong><span>précision rythme</span></article></div>{playMode === 'practice' ? <p>Cette séance d’entraînement n’a pas modifié ton meilleur score ni tes statistiques.</p> : <><b>{result.global} / 100</b><p>{result.advice}</p></>}<button type="button" className="primary-button" onClick={start}><RotateCcw /> Recommencer</button></section> : <>
-      <section className="piano-roll"><div className="piano-roll-lanes">{keyGeometry.filter((key) => !key.black).map((key) => <span key={key.midi} style={{ left: `${key.left}%`, width: `${key.width}%` }} />)}</div><div className="hit-line" />{notes.map((note, index) => { const elapsed = playMode === 'learning' ? notes[activeIndex].beat : elapsedBeats; const offset = pianoNoteOffsetPx(note.beat, elapsed); const key = keyGeometry.find((item) => item.midi === note.midi); const visibleFeedback = hasPianoNoteReachedHitLine(offset) ? noteFeedback[index] : undefined; if (!key) return null; return <i key={index} className={visibleFeedback ? `is-${visibleFeedback}` : ''} style={{ '--duration': note.duration, '--note-left': `${key.left}%`, '--note-width': `${key.width}%`, '--note-offset': `${offset}px` } as React.CSSProperties}><span>{frenchNote(note.midi).replace(/\d$/, '')}</span></i>; })}</section>
+      <section className="piano-roll"><div className="piano-roll-lanes">{keyGeometry.filter((key) => !key.black).map((key) => <span key={key.midi} style={{ left: `${key.left}%`, width: `${key.width}%` }} />)}</div><div className="hit-line" />{notes.map((note, index) => { const elapsed = playMode === 'learning' ? notes[activeIndex].beat : elapsedBeats; const offset = pianoNoteOffsetPx(note.beat, elapsed); const key = keyGeometry.find((item) => item.midi === note.midi); const visibleFeedback = hasPianoNoteReachedHitLine(offset) ? noteFeedback[index] : undefined; if (!key) return null; return <i key={index} className={visibleFeedback ? `is-${visibleFeedback}` : ''} aria-label={`${frenchNote(note.midi)}, doigt ${note.finger ?? '?'}`} style={{ '--duration': note.duration, '--note-left': `${key.left}%`, '--note-width': `${key.width}%`, '--note-offset': `${offset}px` } as React.CSSProperties}><span><b>{note.finger}</b><small>{frenchNote(note.midi).replace(/\d$/, '')}</small></span></i>; })}</section>
       <PianoKeyboard size={keyboardSize} played={played} error={errorKey} onPlay={judge} />
     </>}
   </main>;
