@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getScoreScrollTarget } from './scoreScroll';
+import { getScoreItemContentLeft, getScoreScrollTarget } from './scoreScroll';
 
 const geometry = (overrides: Partial<Parameters<typeof getScoreScrollTarget>[0]> = {}) => ({
   activeLeft: 0,
@@ -11,6 +11,20 @@ const geometry = (overrides: Partial<Parameters<typeof getScoreScrollTarget>[0]>
 });
 
 describe('score auto-scroll', () => {
+  it('removes the centered player offset from windowed viewport coordinates', () => {
+    expect(getScoreItemContentLeft({
+      activeViewportLeft: 550,
+      currentScrollLeft: 3870,
+      stripViewportLeft: 203,
+    })).toBe(4217);
+  });
+
+  it('keeps the same content coordinate when fullscreen changes the page offset', () => {
+    const windowed = getScoreItemContentLeft({ activeViewportLeft: 550, currentScrollLeft: 3870, stripViewportLeft: 203 });
+    const fullscreen = getScoreItemContentLeft({ activeViewportLeft: 466, currentScrollLeft: 3870, stripViewportLeft: 119 });
+    expect(fullscreen).toBe(windowed);
+  });
+
   it('keeps the opening notes in the initial viewport', () => {
     expect(getScoreScrollTarget(geometry({ activeLeft: 360 }))).toBe(0);
   });

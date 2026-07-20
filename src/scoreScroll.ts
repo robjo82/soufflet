@@ -6,6 +6,12 @@ export interface ScoreScrollGeometry {
   viewportWidth: number;
 }
 
+export interface ScoreItemViewportGeometry {
+  activeViewportLeft: number;
+  currentScrollLeft: number;
+  stripViewportLeft: number;
+}
+
 const FORWARD_TRIGGER_RATIO = 0.58;
 const FORWARD_ANCHOR_RATIO = 0.36;
 const BACKWARD_TRIGGER_RATIO = 0.16;
@@ -14,6 +20,20 @@ const BACKWARD_ANCHOR_RATIO = 0.28;
 const clamp = (value: number, minimum: number, maximum: number) => (
   Math.min(maximum, Math.max(minimum, value))
 );
+
+/**
+ * Converts a note position from viewport coordinates to score-content
+ * coordinates. `offsetLeft` cannot be used here because the note and the
+ * scrolling strip do not share an offset parent: it would include the page
+ * margin of the centered player in windowed mode.
+ */
+export function getScoreItemContentLeft({
+  activeViewportLeft,
+  currentScrollLeft,
+  stripViewportLeft,
+}: ScoreItemViewportGeometry): number {
+  return activeViewportLeft - stripViewportLeft + currentScrollLeft;
+}
 
 /**
  * Keeps the current note inside a stable reading window.
