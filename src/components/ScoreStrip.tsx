@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { displayNote } from '../data';
-import { getScoreScrollTarget } from '../scoreScroll';
+import { getScoreItemContentLeft, getScoreScrollTarget } from '../scoreScroll';
 import type { Hand, Notation, Song, SongEvent } from '../types';
 
 interface ScoreStripProps {
@@ -21,9 +21,15 @@ export function ScoreStrip({ song, activeIndex, notation, hand = 'right', comple
     const strip = stripRef.current;
     const active = eventRefs.current[activeIndex];
     if (!strip || !active) return;
+    const stripRect = strip.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
     const target = getScoreScrollTarget({
-      activeLeft: active.offsetLeft,
-      activeWidth: active.offsetWidth,
+      activeLeft: getScoreItemContentLeft({
+        activeViewportLeft: activeRect.left,
+        currentScrollLeft: strip.scrollLeft,
+        stripViewportLeft: stripRect.left,
+      }),
+      activeWidth: activeRect.width,
       contentWidth: strip.scrollWidth,
       currentScrollLeft: strip.scrollLeft,
       viewportWidth: strip.clientWidth,
