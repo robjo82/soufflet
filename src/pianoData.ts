@@ -392,12 +392,70 @@ const BREL_TWO_HANDS = [
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
+// Traditional French melody in C major. Each of the four verses keeps the
+// complete 16-measure form in 4/4, preceded by an eight-beat introduction.
+const AU_CLAIR_VERSE = timedNotes([
+  [60, 0, 1], [60, 1, 1], [60, 2, 1], [62, 3, 1], [64, 4, 2], [62, 6, 2],
+  [60, 8, 1], [64, 9, 1], [62, 10, 1], [62, 11, 1], [60, 12, 4],
+  [60, 16, 1], [60, 17, 1], [60, 18, 1], [62, 19, 1], [64, 20, 2], [62, 22, 2],
+  [60, 24, 1], [64, 25, 1], [62, 26, 1], [62, 27, 1], [60, 28, 4],
+  [62, 32, 1], [62, 33, 1], [62, 34, 1], [62, 35, 1], [69, 36, 2], [69, 38, 2],
+  [62, 40, 1], [60, 41, 1], [59, 42, 1], [57, 43, 1], [55, 44, 4],
+  [60, 48, 1], [60, 49, 1], [60, 50, 1], [62, 51, 1], [64, 52, 2], [62, 54, 2],
+  [60, 56, 1], [64, 57, 1], [62, 58, 1], [62, 59, 1], [60, 60, 4],
+]);
+const AU_CLAIR_EASY_VERSE = AU_CLAIR_VERSE.filter((note) => note.beat % 4 === 0 || note.beat % 4 === 2).map((note) => ({ ...note, duration: note.duration === 4 ? 4 : 2 }));
+const AU_CLAIR_MELODY = [8, 72, 136, 200].flatMap((beat) => shiftNotes(AU_CLAIR_VERSE, beat));
+const AU_CLAIR_EASY = [8, 72, 136, 200].flatMap((beat) => shiftNotes(AU_CLAIR_EASY_VERSE, beat));
+const AU_CLAIR_LYRICS_1 = [
+  'Au clair de la lune', 'Mon ami Pierrot', 'Prête-moi ta plume', 'Pour écrire un mot',
+  'Ma chandelle est morte', 'Je n’ai plus de feu', 'Ouvre-moi ta porte', 'Pour l’amour de Dieu',
+];
+const AU_CLAIR_LYRICS_2 = [
+  'Au clair de la lune', 'Pierrot répondit', 'Je n’ai pas de plume', 'Je suis dans mon lit',
+  'Va chez la voisine', 'Je crois qu’elle y est', 'Car dans sa cuisine', 'On bat le briquet',
+];
+const AU_CLAIR_LYRICS_3 = [
+  'Au clair de la lune', 'L’aimable Lubin', 'Frappe chez la brune', 'Elle répond soudain',
+  'Qui frappe de la sorte ?', 'Il dit à son tour', 'Ouvrez votre porte', 'Pour le Dieu d’amour',
+];
+const AU_CLAIR_LYRICS_4 = [
+  'Au clair de la lune', 'On n’y voit qu’un peu', 'On chercha la plume', 'On chercha du feu',
+  'En cherchant de la sorte', 'Je n’sais ce qu’on trouva', 'Mais je sais que la porte', 'Sur eux se ferma',
+];
+const AU_CLAIR_LYRICS: PianoLyricLine[] = [AU_CLAIR_LYRICS_1, AU_CLAIR_LYRICS_2, AU_CLAIR_LYRICS_3, AU_CLAIR_LYRICS_4].flatMap((verse, verseIndex) => verse.map((text, lineIndex) => ({
+  beat: 8 + verseIndex * 64 + lineIndex * 8,
+  text,
+  section: `Couplet ${verseIndex + 1}`,
+})));
+
+type AuClairChordName = 'c-major' | 'g-seven' | 'd-minor';
+const AU_CLAIR_CHORDS: Record<AuClairChordName, Omit<PianoHarmonyStep, 'beat'>> = {
+  'c-major': { name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'g-seven': { name: 'Sol 7', root: 43, intervals: [0, 4, 7, 10], fingers: [5, 3, 2, 1] },
+  'd-minor': { name: 'Ré mineur', root: 50, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+};
+const AU_CLAIR_CHORD_SEQUENCE: AuClairChordName[] = [
+  'c-major', 'g-seven', 'c-major', 'c-major', 'c-major', 'g-seven', 'c-major', 'c-major',
+  'g-seven', 'd-minor', 'g-seven', 'g-seven', 'c-major', 'g-seven', 'c-major', 'c-major',
+];
+const auClairHarmonyVerse = (startBeat: number): PianoHarmonyStep[] => AU_CLAIR_CHORD_SEQUENCE.map((chord, index) => ({ beat: startBeat + index * 4, ...AU_CLAIR_CHORDS[chord] }));
+const AU_CLAIR_HARMONY = [8, 72, 136, 200].flatMap(auClairHarmonyVerse);
+const AU_CLAIR_TWO_HANDS = [
+  ...withRightHandFingerings(AU_CLAIR_MELODY).map((note) => ({ ...note, hand: 'right' as const })),
+  ...AU_CLAIR_HARMONY.flatMap(({ beat, root, intervals, fingers }) => [
+    { midi: root, beat, duration: 2, hand: 'left' as const, finger: 5 as const },
+    ...intervals.map((interval, index) => ({ midi: root + interval, beat: beat + 2, duration: 2, hand: 'left' as const, finger: fingers[index] })),
+  ]),
+].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
+
 const harmonyToChordProgression = (steps: PianoHarmonyStep[]): PianoChordStep[] => steps.map(({ beat, name, root, intervals, fingers }) => ({ beat, name, midis: intervals.map((interval) => root + interval), fingers }));
 
 export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'my-way-chords', songTitle: 'My Way', artist: 'Frank Sinatra', progression: harmonyToChordProgression(MY_WAY_HARMONY) },
   { id: 'se-canta-chords', songTitle: 'Se Canta', artist: 'Traditionnel occitan', progression: harmonyToChordProgression(SE_CANTA_HARMONY) },
   { id: 'ne-me-quitte-pas-chords', songTitle: 'Ne me quitte pas', artist: 'Jacques Brel', progression: harmonyToChordProgression(BREL_HARMONY) },
+  { id: 'au-clair-de-la-lune-chords', songTitle: 'Au clair de la lune', artist: 'Traditionnel français', progression: harmonyToChordProgression(AU_CLAIR_HARMONY) },
 ];
 
 export function pianoChordExerciseForSong(title: string, artist?: string) {
@@ -415,6 +473,9 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 52, hand: 'right', notes: withRightHandFingerings(BREL_EASY, 'brel'), lyrics: BREL_LYRICS },
   { id: 'ne-me-quitte-pas-intermediate', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 62, hand: 'right', notes: withRightHandFingerings(BREL_MELODY, 'brel'), lyrics: BREL_LYRICS },
   { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', notes: BREL_TWO_HANDS, lyrics: BREL_LYRICS },
+  { id: 'au-clair-de-la-lune-beginner', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 56, hand: 'right', notes: withRightHandFingerings(AU_CLAIR_EASY), lyrics: AU_CLAIR_LYRICS },
+  { id: 'au-clair-de-la-lune-intermediate', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 72, hand: 'right', notes: withRightHandFingerings(AU_CLAIR_MELODY), lyrics: AU_CLAIR_LYRICS },
+  { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
