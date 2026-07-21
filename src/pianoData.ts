@@ -10,6 +10,13 @@ export interface PianoExercise {
   bpm: number;
   hand: 'right' | 'both';
   notes: Array<{ midi: number; beat: number; duration: number; hand?: 'right' | 'left'; finger?: PianoFinger }>;
+  lyrics?: PianoLyricLine[];
+}
+
+export interface PianoLyricLine {
+  beat: number;
+  text: string;
+  section: string;
 }
 
 export interface PianoSong {
@@ -283,6 +290,73 @@ const BREL_EASY = [
   ...shiftNotes(BREL_A_EASY, 201),
 ];
 
+const BREL_VERSE_1 = [
+  'Il faut oublier', 'Tout peut s’oublier', 'Qui s’enfuit déjà', 'Oublier le temps',
+  'Des malentendus', 'Et le temps perdu', 'À savoir comment', 'Oublier ces heures',
+  'Qui tuaient parfois', 'À coups de pourquoi', 'Le cœur du bonheur',
+  'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas',
+];
+const BREL_VERSE_2 = [
+  'Moi, je t’offrirai', 'Des perles de pluie', 'Venues de pays', 'Où il ne pleut pas',
+  'Je creuserai la terre', 'Jusqu’après ma mort', 'Pour couvrir ton corps', 'D’or et de lumière',
+  ['Je ferai', 'un domaine'].join(' '),
+  ['Où l’amour', 'sera roi'].join(' '),
+  ['Où l’amour', 'sera loi'].join(' '),
+  'Où tu seras reine',
+  'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas',
+];
+const BREL_VERSE_3 = [
+  'Je t’inventerai', 'Des mots insensés', 'Que tu comprendras', 'Je te parlerai',
+  'De ces amants-là',
+  'Qui ont vu deux fois',
+  'Leurs cœurs s’embraser',
+  'Je te raconterai',
+  'L’histoire de ce roi',
+  'Mort de n’avoir pas',
+  'Pu te rencontrer',
+  'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas',
+];
+const BREL_VERSE_4 = [
+  'On a vu souvent', 'Rejaillir le feu', 'De l’ancien volcan', 'Qu’on croyait trop vieux',
+  'Il est paraît-il',
+  'Des terres brûlées',
+  'Donnant plus de blé',
+  'Qu’un meilleur avril',
+  'Et quand vient le soir',
+  'Pour qu’un ciel flamboie',
+  'Le rouge et le noir',
+  'Ne s’épousent-ils pas',
+  'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas',
+];
+const BREL_VERSE_5_PARTS = [
+  'Je n’vais plus pleurer', 'Je n’vais plus parler', 'Je me cacherai là', 'À te regarder',
+  'Danser', 'et sourire',
+  'Et à t’écouter',
+  'Chanter et puis rire',
+  'Laisse-moi devenir',
+  'L’ombre de ton ombre',
+  'L’ombre de ta main',
+  'L’ombre de ton chien',
+  'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas', 'Ne me quitte pas',
+];
+const BREL_VERSE_5 = [...BREL_VERSE_5_PARTS.slice(0, 4), BREL_VERSE_5_PARTS.slice(4, 6).join(' '), ...BREL_VERSE_5_PARTS.slice(6)];
+
+const brelLyricMeasures = (startBeat: number, section: string, lines: string[], pickup = false): PianoLyricLine[] => lines.map((text, index) => ({
+  beat: startBeat + (pickup && index === 0 ? 1 : index * 3),
+  text,
+  section,
+}));
+const BREL_LYRICS: PianoLyricLine[] = [
+  { beat: 7, text: 'Ne me quitte pas', section: 'Couplet 1' },
+  ...brelLyricMeasures(9, 'Couplet 1', BREL_VERSE_1),
+  ...brelLyricMeasures(54, 'Couplet 2', BREL_VERSE_2, true),
+  { beat: 102, text: 'Ne me quitte pas', section: 'Couplet 3' },
+  ...brelLyricMeasures(105, 'Couplet 3', BREL_VERSE_3),
+  ...brelLyricMeasures(150, 'Couplet 4', BREL_VERSE_4, true),
+  { beat: 198, text: 'Ne me quitte pas', section: 'Couplet 5' },
+  ...brelLyricMeasures(201, 'Couplet 5', BREL_VERSE_5),
+];
+
 type BrelChordName = 'c-minor' | 'b-flat-major' | 'f-minor-over-a-flat' | 'a-flat-major' | 'g-seven' | 'e-flat-major' | 'f-minor';
 const BREL_CHORDS: Record<BrelChordName, Omit<PianoHarmonyStep, 'beat'>> = {
   'c-minor': { name: 'Do mineur', root: 48, intervals: [0, 3, 7], fingers: [5, 3, 1] },
@@ -338,9 +412,9 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'se-canta-beginner', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(SE_CANTA_EASY) },
   { id: 'se-canta-intermediate', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(SE_CANTA_MELODY) },
   { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: SE_CANTA_TWO_HANDS },
-  { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 52, hand: 'right', notes: withRightHandFingerings(BREL_EASY, 'brel') },
-  { id: 'ne-me-quitte-pas-intermediate', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 62, hand: 'right', notes: withRightHandFingerings(BREL_MELODY, 'brel') },
-  { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', notes: BREL_TWO_HANDS },
+  { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 52, hand: 'right', notes: withRightHandFingerings(BREL_EASY, 'brel'), lyrics: BREL_LYRICS },
+  { id: 'ne-me-quitte-pas-intermediate', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 62, hand: 'right', notes: withRightHandFingerings(BREL_MELODY, 'brel'), lyrics: BREL_LYRICS },
+  { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', notes: BREL_TWO_HANDS, lyrics: BREL_LYRICS },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -356,6 +430,15 @@ export function groupPianoExercises(exercises: PianoExercise[]) {
 
 export const PIANO_TECHNIQUE_EXERCISES = PIANO_EXERCISES.filter((exercise) => exercise.kind === 'exercise');
 export const PIANO_SONGS = groupPianoExercises(PIANO_EXERCISES.filter((exercise) => exercise.kind === 'song'));
+
+export function pianoLyricCueAtBeat(lyrics: PianoLyricLine[], beat: number) {
+  let currentIndex = -1;
+  for (let index = 0; index < lyrics.length && lyrics[index].beat <= beat; index += 1) currentIndex = index;
+  return {
+    current: currentIndex >= 0 ? lyrics[currentIndex] : null,
+    next: lyrics[currentIndex + 1] ?? null,
+  };
+}
 
 export function pianoNotesForHand(notes: PianoExercise['notes'], hand: PianoPracticeHand) {
   if (hand === 'both') return notes;
