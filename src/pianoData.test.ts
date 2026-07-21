@@ -5,7 +5,7 @@ describe('piano V1', () => {
   it('keeps Promenade du matin as an exercise and removes the placeholder pieces', () => {
     expect(PIANO_TECHNIQUE_EXERCISES.map((item) => item.title)).toEqual(['Promenade du matin']);
     expect(PIANO_EXERCISES.some((item) => ['Trois petits pas', 'Cinq lumières', 'Dialogue des deux mains'].includes(item.title))).toBe(false);
-    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(2);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(3);
     expect(PIANO_EXERCISES.filter((item) => item.hand !== 'both').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
   });
   it('offers the supplied My Way score at three progressive levels', () => {
@@ -33,22 +33,42 @@ describe('piano V1', () => {
     expect(pianoNotesForHand(arrangements[2].notes, 'right')).toHaveLength(25);
     expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(28);
   });
+  it('offers the complete supplied Ne me quitte pas form at three progressive levels', () => {
+    const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Ne me quitte pas');
+    expect(arrangements).toHaveLength(3);
+    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Simple', 'Modéré']);
+    expect(arrangements.map((item) => item.artist)).toEqual(['Jacques Brel', 'Jacques Brel', 'Jacques Brel']);
+    expect(arrangements.map((item) => item.notes.length)).toEqual([156, 385, 715]);
+    expect(arrangements[2]).toMatchObject({ hand: 'both', bpm: 70 });
+    expect(pianoNotesForHand(arrangements[2].notes, 'left')).toHaveLength(330);
+    expect(pianoNotesForHand(arrangements[2].notes, 'right')).toHaveLength(385);
+    expect(arrangements.map((item) => pianoExerciseEndBeat(item.notes))).toEqual([246, 246, 246]);
+    expect(arrangements[1].notes.filter((note) => note.midi === 60 && [9, 105, 201].includes(note.beat))).toHaveLength(3);
+    expect(arrangements[1].notes.some((note) => note.beat === 55)).toBe(true);
+    expect(arrangements[1].notes.some((note) => note.beat === 151)).toBe(true);
+  });
   it('groups arrangements by song before the level choice', () => {
-    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta']);
+    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas']);
     expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-beginner', 'my-way-intermediate', 'my-way-advanced']);
     expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(3);
+    expect(PIANO_SONGS.find((song) => song.title === 'Ne me quitte pas')?.levels).toHaveLength(3);
     expect(groupPianoExercises([PIANO_EXERCISES[0], { ...PIANO_EXERCISES[0], id: 'same-title-other-artist', artist: 'Autre artiste' }])).toHaveLength(2);
   });
   it('provides complete left-hand chord exercises with beginner fingerings', () => {
     const myWay = pianoChordExerciseForSong('My Way', 'Frank Sinatra')!;
     const seCanta = pianoChordExerciseForSong('Se Canta', 'Traditionnel occitan')!;
-    expect(PIANO_CHORD_EXERCISES).toHaveLength(2);
+    const brel = pianoChordExerciseForSong('Ne me quitte pas', 'Jacques Brel')!;
+    expect(PIANO_CHORD_EXERCISES).toHaveLength(3);
     expect(myWay.progression).toHaveLength(54);
     expect(new Set(myWay.progression.map((step) => step.name))).toHaveLength(12);
     expect(myWay.progression.at(-1)).toMatchObject({ beat: 213, name: 'Fa majeur' });
     expect(seCanta.progression).toHaveLength(9);
     expect(seCanta.progression.at(-1)).toMatchObject({ beat: 25, name: 'Do majeur' });
     expect(new Set(seCanta.progression.map((step) => step.name))).toEqual(new Set(['Do majeur', 'Sol majeur', 'Fa majeur']));
+    expect(brel.progression).toHaveLength(79);
+    expect(brel.progression.at(0)).toMatchObject({ beat: 9, name: 'Do mineur' });
+    expect(brel.progression.at(-1)).toMatchObject({ beat: 243, name: 'Do mineur' });
+    expect(new Set(brel.progression.map((step) => step.name))).toHaveLength(7);
     for (const exercise of PIANO_CHORD_EXERCISES) for (const step of exercise.progression) {
       expect(step.fingers).toHaveLength(step.midis.length);
       expect(step.fingers.every((finger) => finger >= 1 && finger <= 5)).toBe(true);

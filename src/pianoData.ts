@@ -57,10 +57,14 @@ const MY_WAY_FINGERS: Record<number, PianoFinger> = {
   65: 1, 66: 1, 67: 2, 68: 3, 69: 3, 70: 4,
   72: 1, 74: 2, 75: 3, 76: 3, 77: 4, 79: 5, 81: 5,
 };
+const BREL_FINGERS: Record<number, PianoFinger> = {
+  58: 1, 59: 1, 60: 1, 61: 1, 62: 2, 63: 2, 64: 3, 65: 4,
+  66: 4, 67: 5, 69: 2, 70: 3, 71: 4, 72: 1, 74: 2,
+};
 
-const withRightHandFingerings = (notes: PianoNote[], profile: 'c-position' | 'my-way' = 'c-position') => notes.map((note) => ({
+const withRightHandFingerings = (notes: PianoNote[], profile: 'c-position' | 'my-way' | 'brel' = 'c-position') => notes.map((note) => ({
   ...note,
-  finger: profile === 'my-way' ? MY_WAY_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : C_POSITION_FINGERS[note.midi % 12],
+  finger: profile === 'my-way' ? MY_WAY_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : profile === 'brel' ? BREL_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : C_POSITION_FINGERS[note.midi % 12],
 }));
 
 const shiftNotes = (notes: PianoNote[], beats: number) => notes.map((note) => ({ ...note, beat: note.beat + beats }));
@@ -219,11 +223,107 @@ const SE_CANTA_TWO_HANDS = [
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
+// Complete pedagogical form from the supplied two-page score: A-B-A-B-A.
+// Every measure keeps the score's 3/4 pulse (quarter note, then four eighths).
+// The melody uses the supplied score's compact C-minor teaching range; the
+// advanced harmony transposes the supplied TuneScribers progression to match it.
+type WaltzMeasure = number[];
+
+const BREL_A_MEASURES: WaltzMeasure[] = [
+  [60, 60, 60, 62, 60], [60, 60, 60, 62, 60], [60, 60, 60, 62, 60],
+  [60, 60, 60, 62, 60], [60, 60, 60, 62, 60], [60, 60, 60, 62, 60],
+  [60, 60, 60, 62, 60], [60, 60, 60, 62, 60], [59, 59, 59, 60, 59],
+  [59, 59, 59, 60, 59], [60, 60, 60, 62, 60], [60, 60, 60, 62, 60],
+  [60, 60, 60, 62, 60], [59, 59, 59, 60, 59], [60, 60, 60, 62, 60],
+];
+
+const BREL_B_MEASURES: WaltzMeasure[] = [
+  [60, 60, 62, 64], [65, 65, 65, 67, 65], [69, 69, 69, 67, 65],
+  [67, 67, 67, 64, 60], [65, 60, 60, 62, 64], [67, 67, 67, 69, 67],
+  [71, 71, 71, 69, 67], [65, 65, 60, 65, 64], [62, 62, 65, 67, 69],
+  [60, 60, 60, 64, 60], [59, 59, 59, 62, 59], [57, 57, 57, 55, 57],
+  [57, 57, 57, 57, 59], [60, 60, 60, 62, 60], [59, 59, 59, 60, 59],
+  [57, 57, 57, 59, 57], [57],
+];
+
+const waltzMelody = (measures: WaltzMeasure[]) => measures.flatMap((measure, measureIndex) => {
+  if (measure.length === 1) return [{ midi: measure[0], beat: measureIndex * 3, duration: 3 }];
+  const pickup = measure.length === 4;
+  return measure.map((midi, noteIndex) => ({
+    midi,
+    beat: measureIndex * 3 + (pickup ? 1 + noteIndex * .5 : noteIndex === 0 ? 0 : 1 + (noteIndex - 1) * .5),
+    duration: pickup || noteIndex > 0 ? .5 : 1,
+  }));
+});
+
+const simplifiedWaltzMelody = (measures: WaltzMeasure[]) => measures.flatMap((measure, measureIndex) => {
+  if (measure.length === 1) return [{ midi: measure[0], beat: measureIndex * 3, duration: 3 }];
+  if (measure.length === 4) return [
+    { midi: measure[0], beat: measureIndex * 3 + 1, duration: 1 },
+    { midi: measure[2], beat: measureIndex * 3 + 2, duration: 1 },
+  ];
+  return [
+    { midi: measure[0], beat: measureIndex * 3, duration: 1.5 },
+    { midi: measure[2], beat: measureIndex * 3 + 1.5, duration: 1.5 },
+  ];
+});
+
+const BREL_A_MELODY = waltzMelody(BREL_A_MEASURES);
+const BREL_B_MELODY = waltzMelody(BREL_B_MEASURES);
+const BREL_A_EASY = simplifiedWaltzMelody(BREL_A_MEASURES);
+const BREL_B_EASY = simplifiedWaltzMelody(BREL_B_MEASURES);
+const BREL_MELODY = [
+  ...shiftNotes(BREL_A_MELODY, 9), ...shiftNotes(BREL_B_MELODY, 54),
+  ...shiftNotes(BREL_A_MELODY, 105), ...shiftNotes(BREL_B_MELODY, 150),
+  ...shiftNotes(BREL_A_MELODY, 201),
+];
+const BREL_EASY = [
+  ...shiftNotes(BREL_A_EASY, 9), ...shiftNotes(BREL_B_EASY, 54),
+  ...shiftNotes(BREL_A_EASY, 105), ...shiftNotes(BREL_B_EASY, 150),
+  ...shiftNotes(BREL_A_EASY, 201),
+];
+
+type BrelChordName = 'c-minor' | 'b-flat-major' | 'f-minor-over-a-flat' | 'a-flat-major' | 'g-seven' | 'e-flat-major' | 'f-minor';
+const BREL_CHORDS: Record<BrelChordName, Omit<PianoHarmonyStep, 'beat'>> = {
+  'c-minor': { name: 'Do mineur', root: 48, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  'b-flat-major': { name: 'Si♭ majeur', root: 46, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'f-minor-over-a-flat': { name: 'Fa mineur / La♭', root: 44, intervals: [0, 4, 9], fingers: [5, 3, 1] },
+  'a-flat-major': { name: 'La♭ majeur', root: 44, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'g-seven': { name: 'Sol 7', root: 43, intervals: [0, 4, 7, 10], fingers: [5, 3, 2, 1] },
+  'e-flat-major': { name: 'Mi♭ majeur', root: 51, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'f-minor': { name: 'Fa mineur', root: 41, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+};
+const BREL_A_CHORDS: BrelChordName[] = [
+  'c-minor', 'b-flat-major', 'f-minor-over-a-flat', 'b-flat-major', 'a-flat-major',
+  'g-seven', 'c-minor', 'c-minor', 'b-flat-major', 'f-minor-over-a-flat',
+  'b-flat-major', 'a-flat-major', 'g-seven', 'c-minor', 'c-minor',
+];
+const BREL_B_CHORDS: BrelChordName[] = [
+  'c-minor', 'c-minor', 'b-flat-major', 'b-flat-major', 'a-flat-major',
+  'a-flat-major', 'g-seven', 'g-seven', 'c-minor', 'e-flat-major',
+  'a-flat-major', 'f-minor', 'g-seven', 'c-minor', 'g-seven',
+  'c-minor', 'c-minor',
+];
+const brelHarmonyPhrase = (chords: BrelChordName[], startBeat: number): PianoHarmonyStep[] => chords.map((chord, index) => ({ beat: startBeat + index * 3, ...BREL_CHORDS[chord] }));
+const BREL_HARMONY = [
+  ...brelHarmonyPhrase(BREL_A_CHORDS, 9), ...brelHarmonyPhrase(BREL_B_CHORDS, 54),
+  ...brelHarmonyPhrase(BREL_A_CHORDS, 105), ...brelHarmonyPhrase(BREL_B_CHORDS, 150),
+  ...brelHarmonyPhrase(BREL_A_CHORDS, 201),
+];
+const BREL_TWO_HANDS = [
+  ...withRightHandFingerings(BREL_MELODY, 'brel').map((note) => ({ ...note, hand: 'right' as const })),
+  ...BREL_HARMONY.flatMap(({ beat, root, intervals, fingers }) => [
+    { midi: root, beat, duration: 1, hand: 'left' as const, finger: 5 as const },
+    ...intervals.map((interval, index) => ({ midi: root + interval, beat: beat + 1, duration: 2, hand: 'left' as const, finger: fingers[index] })),
+  ]),
+].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
+
 const harmonyToChordProgression = (steps: PianoHarmonyStep[]): PianoChordStep[] => steps.map(({ beat, name, root, intervals, fingers }) => ({ beat, name, midis: intervals.map((interval) => root + interval), fingers }));
 
 export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'my-way-chords', songTitle: 'My Way', artist: 'Frank Sinatra', progression: harmonyToChordProgression(MY_WAY_HARMONY) },
   { id: 'se-canta-chords', songTitle: 'Se Canta', artist: 'Traditionnel occitan', progression: harmonyToChordProgression(SE_CANTA_HARMONY) },
+  { id: 'ne-me-quitte-pas-chords', songTitle: 'Ne me quitte pas', artist: 'Jacques Brel', progression: harmonyToChordProgression(BREL_HARMONY) },
 ];
 
 export function pianoChordExerciseForSong(title: string, artist?: string) {
@@ -238,6 +338,9 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'se-canta-beginner', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(SE_CANTA_EASY) },
   { id: 'se-canta-intermediate', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(SE_CANTA_MELODY) },
   { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: SE_CANTA_TWO_HANDS },
+  { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 52, hand: 'right', notes: withRightHandFingerings(BREL_EASY, 'brel') },
+  { id: 'ne-me-quitte-pas-intermediate', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 62, hand: 'right', notes: withRightHandFingerings(BREL_MELODY, 'brel') },
+  { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', notes: BREL_TWO_HANDS },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
