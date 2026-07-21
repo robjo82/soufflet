@@ -9,12 +9,16 @@ const MIN_PITCH_HZ = 55;
 const MAX_PITCH_HZ = 2500;
 const YIN_THRESHOLD = 0.15;
 const MIN_PITCH_CLARITY = 0.62;
+const MIN_SIGNAL_RMS = 0.0045;
+const RESPONSIVE_WINDOW_SIZE = 1536;
+const ANALYSIS_WINDOW_SIZE = 3072;
+const ANALYSIS_INTERVAL_MS = 38;
 
 export function detectPitchFrequency(buffer: Float32Array, sampleRate: number) {
   let rms = 0;
   for (const sample of buffer) rms += sample * sample;
   rms = Math.sqrt(rms / buffer.length);
-  if (rms < 0.008) return { frequency: -1, clarity: 0, volume: rms };
+  if (rms < MIN_SIGNAL_RMS) return { frequency: -1, clarity: 0, volume: rms };
 
   const minLag = Math.max(2, Math.floor(sampleRate / MAX_PITCH_HZ));
   const maxLag = Math.min(Math.ceil(sampleRate / MIN_PITCH_HZ), Math.floor(buffer.length / 2));
@@ -71,6 +75,24 @@ export function detectPitchFrequency(buffer: Float32Array, sampleRate: number) {
   return { frequency: sampleRate / (selectedLag + shift), clarity, volume: rms };
 }
 
+export function detectResponsivePitchFrequency(buffer: Float32Array, sampleRate: number) {
+  const analysisBuffer = buffer.length > ANALYSIS_WINDOW_SIZE
+    ? buffer.subarray(buffer.length - ANALYSIS_WINDOW_SIZE)
+    : buffer;
+  const sustained = detectPitchFrequency(analysisBuffer, sampleRate);
+  if (analysisBuffer.length <= RESPONSIVE_WINDOW_SIZE || (sustained.frequency > 0 && sustained.frequency < 150)) return sustained;
+
+  // A long YIN window is reliable on held and low notes, but straddles two
+  // pitches for almost 90 ms at common mobile sample rates. The recent window
+  // isolates the new reed vibration. Temporal stabilization below still
+  // requires two coherent observations before exposing the change.
+  const recent = detectPitchFrequency(analysisBuffer.subarray(analysisBuffer.length - RESPONSIVE_WINDOW_SIZE), sampleRate);
+  if (recent.frequency <= 0 || recent.clarity < .72) return sustained;
+  if (sustained.frequency <= 0) return recent;
+  const distance = Math.abs(12 * Math.log2(recent.frequency / sustained.frequency));
+  return distance >= .35 ? recent : recent.clarity >= sustained.clarity - .06 ? recent : sustained;
+}
+
 export function frequencyToPitch(frequency: number, confidence = 1, volume = 1, concertA = 440): PitchReading {
   const exactMidi = 69 + 12 * Math.log2(frequency / concertA);
   const midi = Math.round(exactMidi);
@@ -105,7 +127,7 @@ export function stabilizePitchReading(state: PitchStabilityState, current: Pitch
     return { state: { stable: current, candidateMidi: null, candidateFrames: 0 }, reading: current as PitchReading | null };
   }
   const candidateFrames = state.candidateMidi === current.midi ? state.candidateFrames + 1 : 1;
-  const requiredFrames = state.stable ? 3 : 2;
+  const requiredFrames = 2;
   if (candidateFrames >= requiredFrames) {
     return { state: { stable: current, candidateMidi: null, candidateFrames: 0 }, reading: current as PitchReading | null };
   }
@@ -178,10 +200,10 @@ export function usePitchDetector() {
       setStatus('listening');
 
       const analyze = (timestamp: number) => {
-        if (timestamp - lastUpdateRef.current > 70) {
+        if (timestamp - lastUpdateRef.current > ANALYSIS_INTERVAL_MS) {
           lastUpdateRef.current = timestamp;
           analyser.getFloatTimeDomainData(buffer);
-          const result = detectPitchFrequency(buffer, context.sampleRate);
+          const result = detectResponsivePitchFrequency(buffer, context.sampleRate);
           const pitch = result.frequency > 0 ? frequencyToPitch(result.frequency, result.clarity, result.volume) : null;
           analyser.getFloatFrequencyData(frequencyData);
           let spectralEnergy = 0;
