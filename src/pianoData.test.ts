@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TECHNIQUE_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoLyricCueAtBeat, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TECHNIQUE_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoLyricCueAtBeat, pianoMeasureBeats, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('keeps Promenade du matin as an exercise and removes the placeholder pieces', () => {
@@ -161,6 +161,13 @@ describe('piano V1', () => {
     expect(hasPianoNoteReachedHitLine(1.01)).toBe(false);
     expect(hasPianoNoteReachedHitLine(1)).toBe(true);
     expect(hasPianoNoteReachedHitLine(-72)).toBe(true);
+  });
+  it('places measure lines on the musical grid, including pickup offsets', () => {
+    expect(pianoMeasureBeats(13, 4)).toEqual([0, 4, 8, 12]);
+    expect(pianoMeasureBeats(14, 3, 1)).toEqual([1, 4, 7, 10, 13]);
+    expect(pianoMeasureBeats(14, 0)).toEqual([]);
+    expect(PIANO_EXERCISES.filter((item) => item.title === 'My Way').every((item) => item.beatsPerMeasure === 4 && item.measureStartBeat === 1)).toBe(true);
+    expect(PIANO_EXERCISES.filter((item) => ['Se Canta', 'Ne me quitte pas'].includes(item.title)).every((item) => item.beatsPerMeasure === 3)).toBe(true);
   });
   it('converts varied rhythmic values to exact audio durations', () => {
     const promenade = PIANO_TECHNIQUE_EXERCISES[0];

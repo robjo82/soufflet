@@ -9,6 +9,8 @@ export interface PianoExercise {
   level: 'Très simple' | 'Simple' | 'Modéré';
   bpm: number;
   hand: 'right' | 'both';
+  beatsPerMeasure: number;
+  measureStartBeat?: number;
   notes: Array<{ midi: number; beat: number; duration: number; hand?: 'right' | 'left'; finger?: PianoFinger }>;
   lyrics?: PianoLyricLine[];
 }
@@ -463,19 +465,19 @@ export function pianoChordExerciseForSong(title: string, artist?: string) {
 }
 
 export const PIANO_EXERCISES: PianoExercise[] = [
-  { id: 'piano-morning-walk', title: 'Promenade du matin', kind: 'exercise', arrangement: 'Régularité et déplacements de la main droite', level: 'Modéré', bpm: 80, hand: 'right', notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2])) },
-  { id: 'my-way-beginner', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(MY_WAY_EASY, 'my-way') },
-  { id: 'my-way-intermediate', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(MY_WAY_MELODY, 'my-way') },
-  { id: 'my-way-advanced', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: MY_WAY_TWO_HANDS },
-  { id: 'se-canta-beginner', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(SE_CANTA_EASY) },
-  { id: 'se-canta-intermediate', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(SE_CANTA_MELODY) },
-  { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: SE_CANTA_TWO_HANDS },
-  { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 52, hand: 'right', notes: withRightHandFingerings(BREL_EASY, 'brel'), lyrics: BREL_LYRICS },
-  { id: 'ne-me-quitte-pas-intermediate', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 62, hand: 'right', notes: withRightHandFingerings(BREL_MELODY, 'brel'), lyrics: BREL_LYRICS },
-  { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', notes: BREL_TWO_HANDS, lyrics: BREL_LYRICS },
-  { id: 'au-clair-de-la-lune-beginner', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 56, hand: 'right', notes: withRightHandFingerings(AU_CLAIR_EASY), lyrics: AU_CLAIR_LYRICS },
-  { id: 'au-clair-de-la-lune-intermediate', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 72, hand: 'right', notes: withRightHandFingerings(AU_CLAIR_MELODY), lyrics: AU_CLAIR_LYRICS },
-  { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
+  { id: 'piano-morning-walk', title: 'Promenade du matin', kind: 'exercise', arrangement: 'Régularité et déplacements de la main droite', level: 'Modéré', bpm: 80, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2])) },
+  { id: 'my-way-beginner', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', beatsPerMeasure: 4, measureStartBeat: 1, notes: withRightHandFingerings(MY_WAY_EASY, 'my-way') },
+  { id: 'my-way-intermediate', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', beatsPerMeasure: 4, measureStartBeat: 1, notes: withRightHandFingerings(MY_WAY_MELODY, 'my-way') },
+  { id: 'my-way-advanced', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 4, measureStartBeat: 1, notes: MY_WAY_TWO_HANDS },
+  { id: 'se-canta-beginner', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', beatsPerMeasure: 3, measureStartBeat: 1, notes: withRightHandFingerings(SE_CANTA_EASY) },
+  { id: 'se-canta-intermediate', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', beatsPerMeasure: 3, measureStartBeat: 1, notes: withRightHandFingerings(SE_CANTA_MELODY) },
+  { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 3, measureStartBeat: 1, notes: SE_CANTA_TWO_HANDS },
+  { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 52, hand: 'right', beatsPerMeasure: 3, notes: withRightHandFingerings(BREL_EASY, 'brel'), lyrics: BREL_LYRICS },
+  { id: 'ne-me-quitte-pas-intermediate', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 62, hand: 'right', beatsPerMeasure: 3, notes: withRightHandFingerings(BREL_MELODY, 'brel'), lyrics: BREL_LYRICS },
+  { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', beatsPerMeasure: 3, notes: BREL_TWO_HANDS, lyrics: BREL_LYRICS },
+  { id: 'au-clair-de-la-lune-beginner', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 56, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_EASY), lyrics: AU_CLAIR_LYRICS },
+  { id: 'au-clair-de-la-lune-intermediate', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 72, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_MELODY), lyrics: AU_CLAIR_LYRICS },
+  { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 4, notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -559,6 +561,13 @@ export const PIANO_TIMING_TOLERANCE_PX = 54;
 
 export function pianoNoteOffsetPx(noteBeat: number, elapsedBeat: number, pixelsPerBeat = PIANO_PIXELS_PER_BEAT) {
   return (noteBeat - elapsedBeat) * pixelsPerBeat;
+}
+
+export function pianoMeasureBeats(endBeat: number, beatsPerMeasure: number, startBeat = 0) {
+  if (!Number.isFinite(endBeat) || !Number.isFinite(beatsPerMeasure) || !Number.isFinite(startBeat) || endBeat < startBeat || beatsPerMeasure <= 0) return [];
+  const beats: number[] = [];
+  for (let beat = startBeat; beat <= endBeat; beat += beatsPerMeasure) beats.push(beat);
+  return beats;
 }
 
 export function isPianoNoteAtHitLine(offsetPx: number, tolerancePx = 1) {
