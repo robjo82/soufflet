@@ -24,9 +24,9 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - suivi personnel persistant : temps actif, séances, séries, notes et rythme évalués, tempo, tendances, répertoire, historique et insights sans données de démonstration ;
 - bibliothèque commune de 12 airs du domaine public ou traditionnels, dont le Brise-pieds en 12 mesures, plus une référence protégée sans transcription ;
 - bibliothèque, import audio/vidéo/PDF/image/tablature, liens YouTube et références Spotify ;
-- transcription Gemini 3.5 Flash côté serveur avec scores de confiance ;
+- transcription YouTube Gemini 3.5 Flash en deux passes : recherche web et sources musicales, puis analyse audiovisuelle complète avec mélodie, main gauche, contrôle de couverture et scores de confiance ;
 - parseur déterministe des tablatures simples et structurées (`4P`, `4′T`, ornements, subdivisions, mesures et notes tenues) sans IA ;
-- studio de correction des notes, boutons, directions, doigtés et durées avec annulation et autosauvegarde locale ;
+- studio de correction des notes, boutons, directions, doigtés et durées avec annulation, autosauvegarde locale, rapport de couverture, provenance consultable et pistes séparées main droite/main gauche ;
 - interface responsive, priorité tablette paysage, plein écran et raccourcis complets (`Espace`, `R`, `L`, `M`, `S`, `P`, `F`, flèches et modes `1` à `4`) rappelés en maintenant `Ctrl` ;
 - microphone automatiquement arrêté en mode démonstration ;
 - brouillon de première leçon isolé par compte sur chaque appareil, sans reprise accidentelle du tutoriel d’un autre utilisateur ;
@@ -90,7 +90,7 @@ Le build local requiert Java 21, le SDK Android 36 et `ANDROID_HOME`. Le build d
 ## Import : règles importantes
 
 - **Spotify** : un lien est conservé comme référence seulement. La politique Spotify interdit l’analyse de son contenu, son ingestion dans une IA et la synchronisation d’un enregistrement Spotify avec un visuel. L’utilisateur doit fournir un fichier qu’il a le droit d’utiliser. Voir la [Spotify Developer Policy](https://developer.spotify.com/policy).
-- **YouTube** : l’app ne télécharge ni ne sépare la piste audio. Elle contrôle d’abord les métadonnées publiques et réutilise une édition vérifiée lorsqu’un titre de la bibliothèque correspond. Pour les autres vidéos, Gemini produit uniquement une ébauche marquée « à vérifier », dont la confiance est plafonnée à 60 %. Le lecteur YouTube devra rester conforme aux [YouTube Developer Policies](https://developers.google.com/youtube/terms/developer-policies) lors de son ajout.
+- **YouTube** : l’app ne télécharge ni ne sépare la piste audio. Elle contrôle les métadonnées publiques, réutilise une édition vérifiée lorsqu’elle existe, puis recherche des sources ABC, MIDI, MusicXML, tablatures ou partitions. Une seconde passe analyse toute la vidéo, déplie les reprises et produit mélodie et main gauche. La couverture est recalculée depuis les beats et le tempo côté serveur : l’IA ne peut pas la surévaluer. Sans notation réellement exploitée, la confiance globale reste plafonnée à 76 % ; chaque note conserve sa propre confiance. Le lecteur YouTube devra rester conforme aux [YouTube Developer Policies](https://developers.google.com/youtube/terms/developer-policies) lors de son ajout.
 - **Gemini** : le modèle par défaut est `gemini-3.5-flash`, qui accepte audio, vidéo et PDF et produit des sorties structurées. Voir la [documentation Gemini 3.5 Flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash) et [Video understanding](https://ai.google.dev/gemini-api/docs/video-understanding).
 
 ## Documentation technique

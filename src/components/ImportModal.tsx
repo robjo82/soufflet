@@ -11,7 +11,7 @@ interface ImportModalProps {
   onImported: (song: Song) => void;
 }
 
-const STEPS = ['Tempo et tonalité', 'Notes et accords', 'Adaptation au clavier', 'Stratégie de soufflet'];
+const STEPS = ['Identifier la version', 'Chercher partitions et tablatures', 'Analyser toute la vidéo', 'Construire les deux mains', 'Contrôler la couverture'];
 
 function youtubeId(url: string) {
   return url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([\w-]{11})/)?.[1];
@@ -36,7 +36,21 @@ function mapTranscription(result: TranscriptionResult, accordion: AccordionConfi
       confidence: candidate ? event.confidence : Math.min(event.confidence, 0.45),
     };
   });
-  const beats = Math.max(1, ...events.map((event) => event.beat + event.duration));
+  const accompaniment = result.accompaniment?.map((event, index) => ({
+    id: `import-left-${Date.now()}-${index}`,
+    beat: event.beat,
+    duration: event.duration,
+    rootMidi: event.rootMidi,
+    midi: event.midi,
+    note: event.note,
+    chord: event.chord,
+    role: event.role,
+    buttonId: '',
+    direction: 'push' as const,
+    confidence: event.confidence,
+  }));
+  const beats = Math.max(1, ...events.map((event) => event.beat + event.duration), ...(accompaniment ?? []).map((event) => event.beat + event.duration));
+  const coverageNeedsReview = Boolean(result.coverage && result.coverage.sourceDurationSeconds > 20 && result.coverage.ratio < .85);
   return {
     id: `song-${Date.now()}`,
     title: result.method === 'verified-library' && sourceType === 'youtube' ? `${result.title} — vidéo reconnue` : result.title || 'Morceau importé',
@@ -48,12 +62,15 @@ function mapTranscription(result: TranscriptionResult, accordion: AccordionConfi
     key: result.key,
     duration: Math.round(beats * 60 / result.bpm),
     difficulty: 2,
-    status: result.confidence < 0.75 || events.some((event) => (event.confidence ?? 0) < 0.65) ? 'needs-review' : 'ready',
+    status: result.confidence < 0.75 || coverageNeedsReview || events.some((event) => (event.confidence ?? 0) < 0.65) ? 'needs-review' : 'ready',
     confidence: result.confidence,
     uncertainBeats: events.filter((event) => (event.confidence ?? 0) < 0.65).map((event) => event.beat),
     transcriptionMethod: result.method,
     transcriptionWarnings: result.warnings,
+    transcriptionSources: result.sources,
+    transcriptionCoverage: result.coverage,
     events,
+    ...(accompaniment?.length ? { accompaniment } : {}),
   };
 }
 
@@ -116,8 +133,8 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
         {state === 'processing' ? (
           <div className="processing-view">
             <div className="analysis-orb"><LoaderCircle /><Music2 /></div>
-            <h3>Soufflet vérifie puis prépare ta leçon…</h3>
-            <p>Une édition connue sera réutilisée. Sinon, les passages estimés par l’IA seront signalés dans le studio.</p>
+            <h3>Soufflet enquête, écoute et vérifie…</h3>
+            <p>La vidéo entière est comparée aux partitions, tablatures ou fichiers musicaux publics trouvés. Cela peut prendre quelques minutes.</p>
             <div className="analysis-steps">{STEPS.map((step, index) => <span key={step} className={index < activeStep ? 'is-done' : index === activeStep ? 'is-active' : ''}>{index < activeStep ? <Check /> : <i>{index + 1}</i>}<strong>{step}</strong>{index === activeStep && <small>En cours…</small>}</span>)}</div>
           </div>
         ) : (
@@ -130,7 +147,7 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
 
             <div className="import-body">
               {kind === 'file' && <div className={`drop-zone ${file ? 'has-file' : ''}`} onClick={() => inputRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setFile(event.dataTransfer.files[0] ?? null); }}><input ref={inputRef} type="file" accept="audio/*,video/*,.pdf,.png,.jpg,.jpeg,.musicxml,.mxl,.mid,.midi" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><span>{file ? <FileMusic /> : <Upload />}</span><strong>{file ? file.name : 'Dépose ton fichier ici'}</strong><p>{file ? `${(file.size / 1024 / 1024).toFixed(1)} Mo · prêt pour l’analyse` : 'Audio, vidéo, PDF, photo, MusicXML ou MIDI · 25 Mo maximum'}</p><button type="button" className="secondary-button">{file ? 'Choisir un autre fichier' : 'Parcourir mes fichiers'}</button></div>}
-              {kind === 'youtube' && <div className="link-import"><Youtube /><h3>Vidéo YouTube publique</h3><p>Soufflet cherche d’abord une édition vérifiée dans la bibliothèque. Sinon, Gemini propose une ébauche obligatoirement marquée à vérifier.</p><label><span>Adresse de la vidéo</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=…" /></div></label>{url && !youtubeId(url) && <small className="field-error">Cette adresse ne ressemble pas à une vidéo YouTube.</small>}</div>}
+              {kind === 'youtube' && <div className="link-import"><Youtube /><h3>Vidéo YouTube publique</h3><p>Soufflet analyse toute la vidéo, recherche des sources musicales, puis confronte mélodie et main gauche à ce qui est réellement joué. Chaque estimation reste signalée.</p><label><span>Adresse de la vidéo</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=…" /></div></label>{url && !youtubeId(url) && <small className="field-error">Cette adresse ne ressemble pas à une vidéo YouTube.</small>}</div>}
               {kind === 'spotify' && <div className="link-import spotify-import"><Music2 /><h3>Lien Spotify</h3><p>Spotify interdit l’analyse et la synchronisation de ses enregistrements par des apps tierces. Le lien sera ajouté comme référence ; importe ensuite un fichier audio que tu as le droit d’utiliser.</p><label><span>Adresse Spotify</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://open.spotify.com/track/…" /></div></label><div className="legal-note"><AlertCircle /> Aucun audio Spotify n’est téléchargé, copié ou envoyé à une IA.</div></div>}
               {kind === 'tablature' && <div className="text-import"><FileText /><h3>Coller une tablature</h3><p>Formats simples acceptés : <code>4P 4T 5P</code>, noms de notes, ou texte libre. L’éditeur permettra de tout corriger.</p><textarea value={tabText} onChange={(event) => setTabText(event.target.value)} placeholder={'Titre: Ma mélodie\nTempo: 90\n\n4P 4T 5P 5T | 6P — 5T 4P'} rows={8} /></div>}
               {state === 'error' && <div className="error-banner"><AlertCircle /><span><strong>Import interrompu</strong>{error}</span></div>}
