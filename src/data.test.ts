@@ -85,7 +85,7 @@ describe('pitch and notation', () => {
     const switchTwo = stabilizePitchReading(switchOne.state, g);
     const switchThree = stabilizePitchReading(switchTwo.state, g);
     expect(switchOne.reading).toBeNull();
-    expect(switchTwo.reading).toBeNull();
+    expect(switchTwo.reading?.midi).toBe(67);
     expect(switchThree.reading?.midi).toBe(67);
   });
 

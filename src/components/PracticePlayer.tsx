@@ -18,6 +18,7 @@ import { midiMatches } from '../audioTraining';
 import { createPracticeTimeline } from '../practiceTimeline';
 import { adaptSongToAccordion } from '../data';
 import { BELLOWS_STYLE_OPTIONS, bellowsAmountLabel, bellowsStepAt } from '../bellowsStrategy';
+import { canAcceptWaitPitch, selectPitchAssessmentIndex } from '../practicePitchAssessment';
 
 interface PracticePlayerProps {
   song: Song;
@@ -74,6 +75,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   const ignoreMicrophoneUntilRef = useRef(0);
   const waitAdvanceTimerRef = useRef(0);
   const waitReleaseTimerRef = useRef(0);
+  const lastDetectedOnsetAtRef = useRef(0);
   const countInTimersRef = useRef<number[]>([]);
   const assessedRef = useRef(new Set<number>());
   const wrongRef = useRef(new Set<number>());
@@ -87,7 +89,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   const accumulatedActiveMsRef = useRef(0);
   const sessionCompletedRef = useRef(false);
   const { playMidi, playLeftHand, click } = useSynth();
-  const { reading: detectedReading, status: detectorStatus, start: startDetector, stop: stopDetector } = usePitchDetector();
+  const { reading: detectedReading, onset: detectedOnset, status: detectorStatus, start: startDetector, stop: stopDetector } = usePitchDetector();
   const practiceEvents = useMemo(() => createPracticeTimeline(song, settings.hand), [settings.hand, song]);
   const scoreSong = useMemo(() => settings.hand === 'left' ? { ...song, events: practiceEvents, accompaniment: undefined } : song, [practiceEvents, settings.hand, song]);
   const currentEvent = practiceEvents[activeIndex];
@@ -323,8 +325,12 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     setPlaying(true);
   }, [activeIndex, clearCountIn, practiceEvents, song]);
 
-  const begin = useCallback(() => {
+  const begin = useCallback(async () => {
     if (playing || countInBeat !== null) { stop(); return; }
+    if (practiceWithMic && detectorStatus === 'idle') {
+      setFeedback({ kind: 'neutral', title: 'Le micro se prépare', detail: 'L’écoute démarre avant la musique pour ne pas perdre la première note.' });
+      await startDetector();
+    }
     const startIndex = getPlaybackStartIndex(activeIndex, sessionCompletedRef.current, settings.loop, settings.loopStart);
     if (sessionCompletedRef.current) {
       resetSessionTracking();
@@ -346,7 +352,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       }, (index + 1) * beatMs));
     });
     countInTimersRef.current.push(window.setTimeout(() => startPlayback(startIndex), countInSequence.length * beatMs));
-  }, [activeIndex, beatMs, click, countInBeat, countInSequence, playing, practiceEvents, resetResults, resetSessionTracking, settings.countIn, settings.loop, settings.loopStart, song, soundEnabled, startPlayback, stop]);
+  }, [activeIndex, beatMs, click, countInBeat, countInSequence, detectorStatus, playing, practiceEvents, practiceWithMic, resetResults, resetSessionTracking, settings.countIn, settings.loop, settings.loopStart, song, soundEnabled, startDetector, startPlayback, stop]);
 
   useEffect(() => {
     if (!practiceWithMic && detectorStatus !== 'idle') stopDetector();
@@ -422,20 +428,29 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     if (settings.mode === 'wait' && fromMicrophone && performance.now() < ignoreMicrophoneUntilRef.current) return;
     if (settings.mode === 'wait' && !fromMicrophone) ignoreMicrophoneUntilRef.current = performance.now() + 1200;
     if (settings.mode === 'wait' && fromMicrophone && waitForReleaseRef.current !== null) {
-      if (waitForReleaseRef.current === midi) return;
+      if (!canAcceptWaitPitch(waitForReleaseRef.current, midi, performance.now(), lastDetectedOnsetAtRef.current)) return;
       waitForReleaseRef.current = null;
     }
-    if (direction && direction !== currentEvent.direction) {
-      setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${currentEvent.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
+    const now = performance.now();
+    const playbackBeat = settings.mode === 'wait'
+      ? currentEvent.beat
+      : startBeatRef.current + Math.max(0, now - startedAtRef.current) / beatMs;
+    const assessmentIndex = settings.mode === 'wait'
+      ? activeIndex
+      : selectPitchAssessmentIndex(practiceEvents, activeIndex, midi, playbackBeat);
+    const assessmentEvent = practiceEvents[assessmentIndex] ?? currentEvent;
+    if (direction && direction !== assessmentEvent.direction) {
+      setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${assessmentEvent.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
       return;
     }
-    const delta = midi - currentEvent.midi;
-    const pitchMatches = currentEvent.hand === 'left' ? midiMatches(currentEvent.midi, midi) : delta === 0;
+    const delta = midi - assessmentEvent.midi;
+    const pitchMatches = assessmentEvent.hand === 'left' ? midiMatches(assessmentEvent.midi, midi) : delta === 0;
+    if (settings.mode !== 'wait' && assessmentIndex !== activeIndex && assessedRef.current.has(assessmentIndex)) return;
     if (pitchMatches) {
-      const targetTime = startedAtRef.current + (currentEvent.beat - startBeatRef.current) * beatMs;
-      const timingDelta = settings.mode === 'wait' ? 0 : performance.now() - targetTime;
-      if (!assessedRef.current.has(activeIndex)) {
-        assessedRef.current.add(activeIndex);
+      const targetTime = startedAtRef.current + (assessmentEvent.beat - startBeatRef.current) * beatMs;
+      const timingDelta = settings.mode === 'wait' ? 0 : now - targetTime;
+      if (!assessedRef.current.has(assessmentIndex)) {
+        assessedRef.current.add(assessmentIndex);
         const timingKind = timingDelta < -120 ? 'early' : timingDelta > 180 ? 'late' : 'correct';
         incrementResult(timingKind);
       }
@@ -473,8 +488,10 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
         }
       }
     } else if (confidence > .72) {
-      if (!wrongRef.current.has(activeIndex)) {
-        wrongRef.current.add(activeIndex);
+      const targetTime = startedAtRef.current + (assessmentEvent.beat - startBeatRef.current) * beatMs;
+      if (settings.mode !== 'wait' && now - targetTime < 90) return;
+      if (!wrongRef.current.has(assessmentIndex)) {
+        wrongRef.current.add(assessmentIndex);
         incrementResult('wrong');
       }
       setFeedback({
@@ -484,6 +501,10 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       });
     }
   }, [activeIndex, beatMs, currentEvent, finishActiveSegment, incrementResult, persistSession, playing, practiceEvents, practiceWithMic, settings.loop, settings.loopEnd, settings.loopStart, settings.mode, song]);
+
+  useEffect(() => {
+    if (detectedOnset) lastDetectedOnsetAtRef.current = detectedOnset.at;
+  }, [detectedOnset]);
 
   useEffect(() => {
     const reading = detectedReading;
@@ -516,7 +537,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
         if (event.key === 'Escape' || key === '?') setShortcutsVisible(false);
         return;
       }
-      if (event.code === 'Space') { event.preventDefault(); begin(); }
+      if (event.code === 'Space') { event.preventDefault(); void begin(); }
       else if (key === 'r') restart();
       else if (key === 'l') setSettings((value) => ({ ...value, loop: !value.loop }));
       else if (key === 'm') setSettings((value) => ({ ...value, metronome: !value.metronome }));
@@ -727,7 +748,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
           <button type="button" className="transport-tool" onClick={restart}><Redo2 /> <span>Recommencer<kbd>R</kbd></span></button>
           <button type="button" className={`transport-tool ${settings.loop ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, loop: !value.loop }))}><Repeat2 /> <span>Boucle<kbd>L</kbd></span></button>
         </div>
-        <button type="button" className="primary-play" onClick={() => { setTempoOpen(false); begin(); }}>{playing || countInBeat !== null ? <Pause /> : <Play fill="currentColor" />}<span>{countInBeat !== null ? `Départ dans ${countInBeat}` : playing ? 'Pause' : 'Commencer'}</span><kbd>Espace</kbd></button>
+        <button type="button" className="primary-play" onClick={() => { setTempoOpen(false); void begin(); }}>{playing || countInBeat !== null ? <Pause /> : <Play fill="currentColor" />}<span>{countInBeat !== null ? `Départ dans ${countInBeat}` : playing ? 'Pause' : 'Commencer'}</span><kbd>Espace</kbd></button>
         <div className="transport-side align-right">
           <label className="tempo-control"><Gauge size={19} /><span>Tempo <strong>{settings.tempo} %</strong></span><input type="range" min="40" max="120" step="5" value={settings.tempo} onChange={(event) => setSettings((value) => ({ ...value, tempo: Number(event.target.value) }))} /></label>
           <button
