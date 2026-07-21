@@ -141,6 +141,25 @@ export const EXPERIENCE_FULL_NOTES = sortNotes([
   ...notesFromMeasures(EXPERIENCE_LEFT_PATTERNS, EXPERIENCE_LEFT_SEQUENCE, 'left'),
 ]);
 
+const experienceMeasureKey = (note: ExperienceNote) => `${note.hand}-${Math.floor(note.beat / 4)}`;
+const experienceMeasureRanges = new Map<string, { lowest: number; highest: number }>();
+for (const note of EXPERIENCE_FULL_NOTES) {
+  const key = experienceMeasureKey(note);
+  const range = experienceMeasureRanges.get(key) ?? { lowest: note.midi, highest: note.midi };
+  range.lowest = Math.min(range.lowest, note.midi);
+  range.highest = Math.max(range.highest, note.midi);
+  experienceMeasureRanges.set(key, range);
+}
+
+// The complete arrangement adapted to the C2–C6 range of a 49-key piano.
+// Whole hand/measure passages move by an octave so their melodic contour and
+// every rhythmic event remain intact.
+export const EXPERIENCE_49_KEY_NOTES = EXPERIENCE_FULL_NOTES.map((note) => {
+  const range = experienceMeasureRanges.get(experienceMeasureKey(note))!;
+  const octaveShift = range.lowest < 36 ? 12 : range.highest > 84 ? -12 : 0;
+  return { ...note, midi: note.midi + octaveShift };
+});
+
 const easyPulse = (pattern: MeasurePattern): MeasurePattern => pattern.filter(([, beat]) => beat % 1 === 0 || beat % 1 === .25).map(([midi, beat]) => [midi, Math.floor(beat) + (beat % 1 === .25 ? .5 : 0), .5]);
 const easyRightPatterns = EXPERIENCE_RIGHT_PATTERNS.map(easyPulse);
 const easyLeftFinalPatterns = [heldNotes([42, 54]), heldNotes([45, 57]), heldNotes([49, 52, 56]), heldNotes([50, 54, 57])];

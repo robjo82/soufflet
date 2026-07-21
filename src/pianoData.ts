@@ -1,5 +1,5 @@
 import type { PianoKeyboardSize } from './types';
-import { EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_EASY_NOTES, EXPERIENCE_FULL_NOTES } from './experienceData';
+import { EXPERIENCE_49_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_EASY_NOTES, EXPERIENCE_FULL_NOTES } from './experienceData';
 
 export interface PianoExercise {
   id: string;
@@ -481,7 +481,8 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'au-clair-de-la-lune-intermediate', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 72, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_MELODY), lyrics: AU_CLAIR_LYRICS },
   { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 4, notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
   { id: 'experience-simplified', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 1 · Version simplifiée', level: 'Simple', bpm: 70, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_EASY_NOTES },
-  { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 2 · Version complète', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
+  { id: 'experience-complete-49', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 2 · Version complète · 49 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_49_KEY_NOTES },
+  { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 3 · Version complète · Tessiture originale', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
