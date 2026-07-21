@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TECHNIQUE_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
-  it('ships right-hand pieces and a first two-hand piece', () => {
-    expect(PIANO_EXERCISES.slice(0, 4).map((item) => item.notes.length)).toEqual([8, 14, 24, 18]);
-    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(3);
+  it('keeps Promenade du matin as an exercise and removes the placeholder pieces', () => {
+    expect(PIANO_TECHNIQUE_EXERCISES.map((item) => item.title)).toEqual(['Promenade du matin']);
+    expect(PIANO_EXERCISES.some((item) => ['Trois petits pas', 'Cinq lumières', 'Dialogue des deux mains'].includes(item.title))).toBe(false);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(2);
     expect(PIANO_EXERCISES.filter((item) => item.hand !== 'both').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
   });
   it('offers the supplied My Way score at three progressive levels', () => {
@@ -33,7 +34,7 @@ describe('piano V1', () => {
     expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(28);
   });
   it('groups arrangements by song before the level choice', () => {
-    expect(PIANO_SONGS).toHaveLength(6);
+    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta']);
     expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-beginner', 'my-way-intermediate', 'my-way-advanced']);
     expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(3);
     expect(groupPianoExercises([PIANO_EXERCISES[0], { ...PIANO_EXERCISES[0], id: 'same-title-other-artist', artist: 'Autre artiste' }])).toHaveLength(2);
@@ -62,10 +63,7 @@ describe('piano V1', () => {
     expect(pianoChordExerciseForSong('Dialogue des deux mains')).toBeUndefined();
   });
   it('separates both-hand arrangements into playable left and right parts', () => {
-    const dialogue = PIANO_EXERCISES.find((item) => item.id === 'piano-two-hands')!;
     const myWay = PIANO_EXERCISES.find((item) => item.id === 'my-way-advanced')!;
-    expect(pianoNotesForHand(dialogue.notes, 'left')).toHaveLength(9);
-    expect(pianoNotesForHand(dialogue.notes, 'right')).toHaveLength(9);
     expect(pianoNotesForHand(myWay.notes, 'left').length).toBeGreaterThan(0);
     expect(pianoNotesForHand(myWay.notes, 'right').length).toBeGreaterThan(0);
     expect(pianoNotesForHand(myWay.notes, 'left').length + pianoNotesForHand(myWay.notes, 'right').length).toBe(myWay.notes.length);
@@ -117,18 +115,14 @@ describe('piano V1', () => {
     expect(hasPianoNoteReachedHitLine(-72)).toBe(true);
   });
   it('converts varied rhythmic values to exact audio durations', () => {
-    expect(PIANO_EXERCISES[0].notes.map((note) => note.duration)).toEqual([.5, .5, 1, 1.5, .5, 2, 1, .5]);
-    expect(PIANO_EXERCISES[0].notes.map((note) => note.beat)).toEqual([0, .5, 1, 2, 3.5, 4, 6, 7]);
+    const promenade = PIANO_TECHNIQUE_EXERCISES[0];
+    expect([...new Set(promenade.notes.map((note) => note.duration))]).toEqual([1, .5, 2]);
+    expect(promenade.notes.slice(0, 6).map((note) => note.beat)).toEqual([0, 1, 2, 2.5, 3, 4]);
     expect([.5, 1, 1.5, 2].map((duration) => pianoNoteDurationSeconds(duration, 1000))).toEqual([.5, 1, 1.5, 2]);
-    expect(PIANO_EXERCISES[0].notes.map((note) => pianoNotePlaybackTiming(note, 1250))).toEqual([
-      { startMs: 0, durationSeconds: .625 },
-      { startMs: 625, durationSeconds: .625 },
+    expect(promenade.notes.slice(0, 3).map((note) => pianoNotePlaybackTiming(note, 1250))).toEqual([
+      { startMs: 0, durationSeconds: 1.25 },
       { startMs: 1250, durationSeconds: 1.25 },
-      { startMs: 2500, durationSeconds: 1.875 },
-      { startMs: 4375, durationSeconds: .625 },
-      { startMs: 5000, durationSeconds: 2.5 },
-      { startMs: 7500, durationSeconds: 1.25 },
-      { startMs: 8750, durationSeconds: .625 },
+      { startMs: 2500, durationSeconds: .625 },
     ]);
   });
   it('computes an actionable score', () => {

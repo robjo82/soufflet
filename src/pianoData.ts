@@ -3,6 +3,7 @@ import type { PianoKeyboardSize } from './types';
 export interface PianoExercise {
   id: string;
   title: string;
+  kind: 'song' | 'exercise';
   artist?: string;
   arrangement?: string;
   level: 'Très simple' | 'Simple' | 'Modéré';
@@ -230,16 +231,13 @@ export function pianoChordExerciseForSong(title: string, artist?: string) {
 }
 
 export const PIANO_EXERCISES: PianoExercise[] = [
-  { id: 'piano-three-steps', title: 'Trois petits pas', level: 'Très simple', bpm: 60, hand: 'right', notes: withRightHandFingerings(phrase([60, 62, 64, 62, 60, 62, 64, 60], [.5, .5, 1, 1.5, .5, 2, 1, .5])) },
-  { id: 'piano-five-lights', title: 'Cinq lumières', level: 'Simple', bpm: 72, hand: 'right', notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 65, 64, 62, 60, 62, 64, 65, 67, 60])) },
-  { id: 'piano-morning-walk', title: 'Promenade du matin', level: 'Modéré', bpm: 80, hand: 'right', notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2])) },
-  { id: 'piano-two-hands', title: 'Dialogue des deux mains', level: 'Simple', bpm: 64, hand: 'both', notes: phrase([48, 60, 50, 62, 52, 64, 53, 65, 55, 67, 53, 65, 52, 64, 50, 62, 48, 60]).map((note) => ({ ...note, hand: note.midi < 60 ? 'left' as const : 'right' as const, finger: (note.midi < 60 ? 6 - C_POSITION_FINGERS[note.midi % 12] : C_POSITION_FINGERS[note.midi % 12]) as PianoFinger })) },
-  { id: 'my-way-beginner', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(MY_WAY_EASY, 'my-way') },
-  { id: 'my-way-intermediate', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(MY_WAY_MELODY, 'my-way') },
-  { id: 'my-way-advanced', title: 'My Way', artist: 'Frank Sinatra', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: MY_WAY_TWO_HANDS },
-  { id: 'se-canta-beginner', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(SE_CANTA_EASY) },
-  { id: 'se-canta-intermediate', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(SE_CANTA_MELODY) },
-  { id: 'se-canta-advanced', title: 'Se Canta', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: SE_CANTA_TWO_HANDS },
+  { id: 'piano-morning-walk', title: 'Promenade du matin', kind: 'exercise', arrangement: 'Régularité et déplacements de la main droite', level: 'Modéré', bpm: 80, hand: 'right', notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2])) },
+  { id: 'my-way-beginner', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(MY_WAY_EASY, 'my-way') },
+  { id: 'my-way-intermediate', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(MY_WAY_MELODY, 'my-way') },
+  { id: 'my-way-advanced', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: MY_WAY_TWO_HANDS },
+  { id: 'se-canta-beginner', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', notes: withRightHandFingerings(SE_CANTA_EASY) },
+  { id: 'se-canta-intermediate', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', notes: withRightHandFingerings(SE_CANTA_MELODY) },
+  { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', notes: SE_CANTA_TWO_HANDS },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -253,7 +251,8 @@ export function groupPianoExercises(exercises: PianoExercise[]) {
   return [...songs.values()];
 }
 
-export const PIANO_SONGS = groupPianoExercises(PIANO_EXERCISES);
+export const PIANO_TECHNIQUE_EXERCISES = PIANO_EXERCISES.filter((exercise) => exercise.kind === 'exercise');
+export const PIANO_SONGS = groupPianoExercises(PIANO_EXERCISES.filter((exercise) => exercise.kind === 'song'));
 
 export function pianoNotesForHand(notes: PianoExercise['notes'], hand: PianoPracticeHand) {
   if (hand === 'both') return notes;

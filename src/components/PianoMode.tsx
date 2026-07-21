@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, BarChart3, Check, ChevronLeft, ChevronRight, Clock3, Hand, Mic2, Pause, Piano, Play, Repeat2, RotateCcw, Target, Volume2, X } from 'lucide-react';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import { classifyPianoAttempt, frenchNote, hasPianoNoteReachedHitLine, isPianoSessionCounted, PIANO_CHORDS, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_PIXELS_PER_BEAT, PIANO_SONGS, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForMode, pianoScore, pianoSessionCounts, resumeTimeline, type PianoChordExercise, type PianoExercise, type PianoPlayMode, type PianoPracticeHand, type PianoSong } from '../pianoData';
+import { classifyPianoAttempt, frenchNote, hasPianoNoteReachedHitLine, isPianoSessionCounted, PIANO_CHORDS, PIANO_CORRECT_TOLERANCE_PX, PIANO_PIXELS_PER_BEAT, PIANO_SONGS, PIANO_TECHNIQUE_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForMode, pianoScore, pianoSessionCounts, resumeTimeline, type PianoChordExercise, type PianoExercise, type PianoPlayMode, type PianoPracticeHand, type PianoSong } from '../pianoData';
 import type { Page, PianoInput, PianoKeyboardSize, PracticeSessionInput, PracticeStats } from '../types';
 
 interface PianoModeProps {
@@ -27,6 +27,7 @@ const PIANO_MICROPHONE_CONFIDENCE = .5;
 const PIANO_LEAD_IN_MS = 3000;
 const PIANO_HAND_LABELS: Record<PianoPracticeHand, string> = { right: 'Main droite', left: 'Main gauche', both: 'Deux mains' };
 const PIANO_HAND_DETAILS: Record<PianoPracticeHand, string> = { right: 'Mélodie', left: 'Accompagnement', both: 'Coordination' };
+const PIANO_SONG_IDS = new Set(PIANO_SONGS.flatMap((song) => song.levels.map((level) => level.id)));
 const LEFT_HAND_FINGER_NAMES: Record<number, string> = { 1: 'Pouce', 2: 'Index', 3: 'Majeur', 4: 'Annulaire', 5: 'Auriculaire' };
 
 function formatPianoDuration(seconds: number) {
@@ -51,7 +52,7 @@ function PianoKeyboard({ size, expected = [], confirmed = [], fingerings = {}, p
 
 export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, onNavigate, onSessionActiveChange }: PianoModeProps) {
   const [screen, setScreen] = useState<'home' | 'calibration' | 'prepare' | 'exercise' | 'chords' | 'song-chords'>('home');
-  const [exercise, setExercise] = useState<PianoExercise>(PIANO_EXERCISES[0]);
+  const [exercise, setExercise] = useState<PianoExercise>(PIANO_TECHNIQUE_EXERCISES[0]);
   const [playing, setPlaying] = useState(false);
   const [paused, setPaused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -252,11 +253,11 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   };
 
   if (screen === 'home' && view === 'home') return <main className="page-content piano-page piano-dashboard">
-    <header className="piano-hero"><span><Piano /></span><div><small>TON PARCOURS PIANO</small><h1>Reprends là où tu en étais</h1><p>Une suggestion courte, puis quelques minutes de pratique ciblée.</p></div><button type="button" onClick={() => openExercise(PIANO_EXERCISES[0])}><Play /> Suggestion du jour</button></header>
-    <section className="piano-dashboard-grid"><article className="daily-piano-card"><small>AUJOURD’HUI · TRÈS SIMPLE</small><h2>Trois petits pas</h2><p>Do, Ré et Mi à tempo calme pour retrouver tes repères.</p><button type="button" onClick={() => openExercise(PIANO_EXERCISES[0])}>Commencer <ChevronRight /></button></article><article className="piano-recommendation"><Target /><div><small>CONSEIL PERSONNALISÉ</small><strong>{stats?.hasData ? 'Consolide les notes encore hésitantes' : 'Commence par les positions de la main droite'}</strong><p>{stats?.hasData ? 'Ralentis à 80 % et rejoue les passages marqués en rouge.' : 'Le premier exercice utilise seulement Do, Ré et Mi.'}</p></div></article></section>
+    <header className="piano-hero"><span><Piano /></span><div><small>TON PARCOURS PIANO</small><h1>Reprends là où tu en étais</h1><p>Une suggestion courte, puis quelques minutes de pratique ciblée.</p></div><button type="button" onClick={() => openExercise(PIANO_TECHNIQUE_EXERCISES[0])}><Play /> Suggestion du jour</button></header>
+    <section className="piano-dashboard-grid"><article className="daily-piano-card"><small>AUJOURD’HUI · MODÉRÉ</small><h2>Promenade du matin</h2><p>Travaille la régularité et les déplacements de la main droite.</p><button type="button" onClick={() => openExercise(PIANO_TECHNIQUE_EXERCISES[0])}>Commencer <ChevronRight /></button></article><article className="piano-recommendation"><Target /><div><small>CONSEIL PERSONNALISÉ</small><strong>{stats?.hasData ? 'Consolide les notes encore hésitantes' : 'Commence par les positions de la main droite'}</strong><p>{stats?.hasData ? 'Ralentis à 80 % et rejoue les passages marqués en rouge.' : 'Repère d’abord Do, Ré, Mi, Fa, Sol et La.'}</p></div></article></section>
     <section className="piano-stat-grid"><article><Clock3 /><strong>{Math.round((stats?.overview.weekSeconds ?? 0) / 60)} min</strong><span>cette semaine</span></article><article><Target /><strong>{stats?.overview.pitchAccuracy ?? '—'}{stats?.overview.pitchAccuracy !== null && stats?.overview.pitchAccuracy !== undefined ? ' %' : ''}</strong><span>notes justes</span></article><article><Repeat2 /><strong>{stats?.overview.timingAccuracy ?? '—'}{stats?.overview.timingAccuracy !== null && stats?.overview.timingAccuracy !== undefined ? ' %' : ''}</strong><span>précision rythmique</span></article></section>
     <section className="suggested-chords"><header><div><small>ACCORDS VISUELS</small><h2>Aujourd’hui : Do majeur et Sol majeur</h2></div><button type="button" onClick={() => setScreen('chords')}>Voir les accords <ChevronRight /></button></header><PianoKeyboard size={keyboardSize} expected={PIANO_CHORDS[0].midis} onPlay={judge} /></section>
-    <section className="piano-worked"><header><h2>Morceaux les plus travaillés</h2><button type="button" onClick={() => onNavigate('piano-songs')}>Tous les morceaux</button></header>{stats?.favoriteSongs.length ? stats.favoriteSongs.slice(0, 3).map((song) => <article key={song.songId}><strong>{song.title}</strong><span>{song.sessions} séance{song.sessions > 1 ? 's' : ''}</span><em>{Math.round(song.activeSeconds / 60)} min</em></article>) : <p>Les morceaux que tu pratiques apparaîtront ici.</p>}</section>
+    <section className="piano-worked"><header><h2>Morceaux les plus travaillés</h2><button type="button" onClick={() => onNavigate('piano-songs')}>Tous les morceaux</button></header>{stats?.favoriteSongs.some((song) => PIANO_SONG_IDS.has(song.songId)) ? stats.favoriteSongs.filter((song) => PIANO_SONG_IDS.has(song.songId)).slice(0, 3).map((song) => <article key={song.songId}><strong>{song.title}</strong><span>{song.sessions} séance{song.sessions > 1 ? 's' : ''}</span><em>{Math.round(song.activeSeconds / 60)} min</em></article>) : <p>Les morceaux que tu pratiques apparaîtront ici.</p>}</section>
   </main>;
 
   if (screen === 'home' && view === 'songs') return <main className="page-content piano-page">
@@ -265,7 +266,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
     <section className="piano-exercise-grid piano-song-list">{PIANO_SONGS.filter((song) => songFilter === 'all' || song.levels.some((level) => level.hand === songFilter)).map((song) => <button type="button" key={`${song.title}-${song.artist ?? ''}`} onClick={() => openSong(song)}><small>{song.artist ?? 'Exercice original'}</small><strong>{song.title}</strong><span>{song.levels.length} niveau{song.levels.length > 1 ? 'x' : ''} · {pianoSongHands(song)}</span><em>{song.levels.map((level) => level.level).join(' · ')}</em><ChevronRight /></button>)}</section>
   </main>;
 
-  if (screen === 'home' && view === 'exercises') return <main className="page-content piano-page"><header className="page-heading"><span className="eyebrow">Technique</span><h1>Exercices</h1><p>Travaille une difficulté à la fois, sans portée musicale.</p></header><section className="piano-technique-grid">{[['Trouver la bonne note', 'Reconnais une touche éclairée.'], ['Jouer une suite de notes', 'Enchaîne Do, Ré, Mi sans perdre ta position.'], ['Travail du rythme', 'Joue régulièrement dans une fenêtre de ±300 ms.'], ['Intervalles simples', 'Repère les distances entre deux touches.'], ['Main droite', 'Travail mélodique corrigé.'], ['Main gauche', 'Repérage visuel, correction bientôt.'], ['Deux mains', 'Coordination visuelle, détection bientôt.']].map(([title, detail], index) => <button type="button" key={title} onClick={() => openExercise(PIANO_EXERCISES[Math.min(index, 2)])}><span>{index + 1}</span><strong>{title}</strong><p>{detail}</p><ChevronRight /></button>)}</section></main>;
+  if (screen === 'home' && view === 'exercises') return <main className="page-content piano-page"><header className="page-heading"><span className="eyebrow">Technique</span><h1>Exercices</h1><p>Travaille une difficulté à la fois, sans portée musicale.</p></header><section className="piano-technique-grid">{PIANO_TECHNIQUE_EXERCISES.map((item, index) => <button type="button" key={item.id} onClick={() => openExercise(item)}><span>{index + 1}</span><strong>{item.title}</strong><p>{item.arrangement}</p><ChevronRight /></button>)}</section></main>;
 
   if (screen === 'prepare') {
     const song = PIANO_SONGS.find((item) => item.title === exercise.title && item.artist === exercise.artist);
