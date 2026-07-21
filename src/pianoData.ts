@@ -1,4 +1,5 @@
 import type { PianoKeyboardSize } from './types';
+import { EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_EASY_NOTES, EXPERIENCE_FULL_NOTES } from './experienceData';
 
 export interface PianoExercise {
   id: string;
@@ -458,6 +459,7 @@ export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'se-canta-chords', songTitle: 'Se Canta', artist: 'Traditionnel occitan', progression: harmonyToChordProgression(SE_CANTA_HARMONY) },
   { id: 'ne-me-quitte-pas-chords', songTitle: 'Ne me quitte pas', artist: 'Jacques Brel', progression: harmonyToChordProgression(BREL_HARMONY) },
   { id: 'au-clair-de-la-lune-chords', songTitle: 'Au clair de la lune', artist: 'Traditionnel français', progression: harmonyToChordProgression(AU_CLAIR_HARMONY) },
+  { id: 'experience-chords', songTitle: 'Experience', artist: 'Ludovico Einaudi', progression: EXPERIENCE_CHORD_PROGRESSION },
 ];
 
 export function pianoChordExerciseForSong(title: string, artist?: string) {
@@ -478,6 +480,8 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'au-clair-de-la-lune-beginner', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 56, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_EASY), lyrics: AU_CLAIR_LYRICS },
   { id: 'au-clair-de-la-lune-intermediate', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 72, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_MELODY), lyrics: AU_CLAIR_LYRICS },
   { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 4, notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
+  { id: 'experience-simplified', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 1 · Version simplifiée', level: 'Simple', bpm: 70, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_EASY_NOTES },
+  { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 2 · Version complète', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -538,6 +542,15 @@ export const PIANO_CHORDS = [
 
 const START_BY_SIZE: Record<PianoKeyboardSize, number> = { 25: 48, 32: 45, 49: 36, 61: 36, 76: 28, 88: 21 };
 export const pianoRange = (size: PianoKeyboardSize) => Array.from({ length: size }, (_, index) => START_BY_SIZE[size] + index);
+export function pianoKeyboardSizeForNotes(notes: PianoExercise['notes']): PianoKeyboardSize {
+  if (!notes.length) return 25;
+  const lowest = Math.min(...notes.map((note) => note.midi));
+  const highest = Math.max(...notes.map((note) => note.midi));
+  return ([25, 32, 49, 61, 76, 88] as PianoKeyboardSize[]).find((size) => {
+    const range = pianoRange(size);
+    return lowest >= range[0] && highest <= range[range.length - 1];
+  }) ?? 88;
+}
 export const isBlackKey = (midi: number) => [1, 3, 6, 8, 10].includes(midi % 12);
 export const frenchNote = (midi: number) => `${['Do', 'Do♯', 'Ré', 'Ré♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'][midi % 12]}${Math.floor(midi / 12) - 1}`;
 

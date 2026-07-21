@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, BarChart3, Captions, Check, ChevronLeft, ChevronRight, Clock3, Hand, Mic2, Pause, Piano, Play, Repeat2, RotateCcw, Target, Volume2, X } from 'lucide-react';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import { classifyPianoAttempt, frenchNote, hasPianoNoteReachedHitLine, isPianoSessionCounted, PIANO_CHORDS, PIANO_CORRECT_TOLERANCE_PX, PIANO_PIXELS_PER_BEAT, PIANO_SONGS, PIANO_TECHNIQUE_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyGeometry, pianoLyricCueAtBeat, pianoMeasureBeats, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForMode, pianoScore, pianoSessionCounts, resumeTimeline, type PianoChordExercise, type PianoExercise, type PianoPlayMode, type PianoPracticeHand, type PianoSong } from '../pianoData';
+import { classifyPianoAttempt, frenchNote, hasPianoNoteReachedHitLine, isPianoSessionCounted, PIANO_CHORDS, PIANO_CORRECT_TOLERANCE_PX, PIANO_PIXELS_PER_BEAT, PIANO_SONGS, PIANO_TECHNIQUE_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyboardSizeForNotes, pianoKeyGeometry, pianoLyricCueAtBeat, pianoMeasureBeats, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForMode, pianoScore, pianoSessionCounts, resumeTimeline, type PianoChordExercise, type PianoExercise, type PianoPlayMode, type PianoPracticeHand, type PianoSong } from '../pianoData';
 import type { Page, PianoInput, PianoKeyboardSize, PracticeSessionInput, PracticeStats } from '../types';
 
 interface PianoModeProps {
@@ -85,6 +85,12 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   const detector = usePitchDetector({ profile: 'piano' });
   const beatMs = 60000 / (exercise.bpm * tempoPercent / 100);
   const notes = useMemo(() => pianoNotesForMode(exercise, playMode, practiceHand), [exercise, playMode, practiceHand]);
+  const requiredKeyboardSize = pianoKeyboardSizeForNotes(notes);
+  const keyboardTooSmall = keyboardSize < requiredKeyboardSize;
+  const noteRange = useMemo(() => ({
+    lowest: Math.min(...notes.map((note) => note.midi)),
+    highest: Math.max(...notes.map((note) => note.midi)),
+  }), [notes]);
   const correctToleranceMs = PIANO_CORRECT_TOLERANCE_PX / PIANO_PIXELS_PER_BEAT * beatMs;
   const timingToleranceBeats = PIANO_TIMING_TOLERANCE_PX / PIANO_PIXELS_PER_BEAT;
   const exerciseEndBeat = pianoExerciseEndBeat(notes);
@@ -297,10 +303,11 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
         <div className="preparation-modes"><button type="button" className={playMode === 'learning' ? 'is-selected' : ''} onClick={() => selectPlayMode('learning')}><Target /><span><strong>Apprentissage</strong><small>Le défilement attend chaque bonne note.</small></span>{playMode === 'learning' && <Check />}</button><button type="button" className={playMode === 'practice' ? 'is-selected' : ''} onClick={() => selectPlayMode('practice')}><Repeat2 /><span><strong>Entraînement</strong><small>Tempo réel, une seule main, sans score.</small></span>{playMode === 'practice' && <Check />}</button><button type="button" className={playMode === 'game' ? 'is-selected' : ''} onClick={() => selectPlayMode('game')}><Play /><span><strong>Jeu</strong><small>Tempo continu et score comptabilisé.</small></span>{playMode === 'game' && <Check />}</button></div>
         {handChoices.length > 1 && <fieldset className="preparation-hand-choice"><legend>{playMode === 'practice' ? 'Main à entraîner' : 'Main à apprendre'}</legend><div>{handChoices.map((hand) => <button type="button" key={hand} className={practiceHand === hand ? 'is-selected' : ''} aria-pressed={practiceHand === hand} onClick={() => setPracticeHand(hand)}><span><strong>{PIANO_HAND_LABELS[hand]}</strong><small>{PIANO_HAND_DETAILS[hand]}</small></span>{practiceHand === hand && <Check />}</button>)}</div></fieldset>}
         {playMode === 'practice' && handChoices.length === 1 && <p className="preparation-practice-note"><Repeat2 /> Ce niveau se travaille en temps réel avec la main droite uniquement. La séance ne modifiera pas tes statistiques.</p>}
+        {keyboardTooSmall && <p className="preparation-keyboard-warning"><AlertTriangle /><span><strong>{requiredKeyboardSize} touches nécessaires</strong>Les notes vont de {frenchNote(noteRange.lowest)} à {frenchNote(noteRange.highest)} pour cette sélection. Ton piano est configuré sur {keyboardSize} touches : modifie-le dans Mon profil, ou choisis une autre main ou un autre niveau.</span></p>}
         {exercise.lyrics?.length && <label className={`preparation-lyrics-toggle ${showLyrics ? 'is-checked' : ''}`}><input type="checkbox" checked={showLyrics} onChange={(event) => setShowLyrics(event.target.checked)} /><span className="preparation-lyrics-icon"><Captions /></span><span><strong>Paroles synchronisées</strong><small>Afficher la phrase actuelle et la suivante pendant le morceau.</small></span><i aria-hidden="true"><span /></i></label>}
         <label className="preparation-tempo"><span>Vitesse du morceau</span><strong>{tempoPercent} % · {Math.round(exercise.bpm * tempoPercent / 100)} BPM</strong><input type="range" min="50" max="100" step="10" value={tempoPercent} onChange={(event) => setTempoPercent(Number(event.target.value))} /></label>
         {input === 'microphone' && (detector.status === 'denied' || detector.status === 'error') && <div className="account-message is-error"><AlertTriangle /><span>{detector.error}</span></div>}
-        <button type="button" className="primary-button preparation-start" disabled={detector.status === 'requesting'} onClick={() => void beginExercise()}>{detector.status === 'requesting' ? <><Mic2 /> Autorisation du microphone…</> : <><Play /> {playMode === 'learning' ? 'Lancer l’apprentissage' : playMode === 'practice' ? 'Lancer l’entraînement' : 'Lancer le morceau'}</>}</button>
+        <button type="button" className="primary-button preparation-start" disabled={detector.status === 'requesting' || keyboardTooSmall} onClick={() => void beginExercise()}>{detector.status === 'requesting' ? <><Mic2 /> Autorisation du microphone…</> : keyboardTooSmall ? <><AlertTriangle /> {requiredKeyboardSize} touches nécessaires</> : <><Play /> {playMode === 'learning' ? 'Lancer l’apprentissage' : playMode === 'practice' ? 'Lancer l’entraînement' : 'Lancer le morceau'}</>}</button>
       </section>
     </main>;
   }
