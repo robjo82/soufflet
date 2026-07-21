@@ -11,7 +11,7 @@
 - accordeur monophonique navigateur et cartographie guidée pousser/tirer de toutes les touches mélodiques ;
 - première leçon microphone-first : trois notes guidées, mini-mélodie en attente de la bonne note et performance de mémoire ;
 - SQLite, API, validation d’entrée, limite d’upload et conteneur non-root ;
-- import de tablature simple et pipeline Gemini réel ;
+- import de tablature simple et pipeline YouTube multimodal réel avec recherche documentée, mélodie, main gauche, couverture mesurée et réparation conditionnelle ;
 - correction et autosauvegarde locale ;
 - séances idempotentes et tableau de bord de progression isolé par compte ;
 - CI de PR, Semantic Release, registre privé, stack Portainer et mise à jour Watchtower.
@@ -32,6 +32,7 @@
 - stockage objet éphémère chiffré et suppression vérifiable ;
 - file de travaux pour les médias longs ;
 - reprise d’upload et progression réelle du pipeline ;
+- cache persistant des recherches musicales validées et métriques de durée/coût par passe ;
 - journal d’opérations serveur pour versions, annulation et synchronisation hors ligne ;
 - budgets Gemini par utilisateur, limitation de débit distribuée et alertes de coût ;
 - observabilité, sauvegardes restaurées en test, SLO et procédure d’incident ;

@@ -52,9 +52,17 @@ Ce détecteur est adapté aux notes isolées. Il ne prétend pas distinguer de m
 
 ## Gemini
 
-La clé serveur vient de `GEMINI_API_KEY`. Une clé de session facultative arrive dans l’en-tête `x-gemini-key` et n’est jamais journalisée ni stockée. Les uploads utilisent une mémoire temporaire limitée à 25 Mo et ne sont pas écrits sur disque. Le délai d’appel est limité à 120 secondes et la réponse est assainie : bornes de tempo, MIDI, confiance, taille et tri chronologique.
+La clé serveur vient de `GEMINI_API_KEY`. Une clé de session facultative arrive dans l’en-tête `x-gemini-key` et n’est jamais journalisée ni stockée. Les uploads utilisent une mémoire temporaire limitée à 25 Mo et ne sont pas écrits sur disque. La réponse est assainie : bornes de tempo, hauteurs, confiance, taille et tri chronologique. Le MIDI est dérivé du nom scientifique de la note ; une valeur MIDI contradictoire n’est jamais acceptée silencieusement.
 
-Pour YouTube, le serveur récupère d’abord le titre et l’auteur via oEmbed. Un titre correspondant à une édition intégrée prête à jouer réutilise cette transcription contrôlée, avec un avertissement explicite sur la synchronisation de l’enregistrement. Sans correspondance, la vidéo précède le prompt dans la requête Gemini, son type MIME est explicite et toutes les confiances sont plafonnées à 60 %. Cette branche reste une ébauche à corriger, pas une transcription certifiée.
+Pour YouTube, le serveur récupère d’abord le titre et l’auteur via oEmbed. Un titre correspondant à une édition intégrée prête à jouer réutilise cette transcription contrôlée, main gauche comprise, avec un avertissement explicite sur la synchronisation de l’enregistrement.
+
+Sans correspondance, le pipeline multimodal sépare les responsabilités :
+
+1. une passe documentaire avec Google Search et URL Context cherche les sources musicales publiques et produit un dossier de référence ;
+2. une passe audiovisuelle analyse toute la vidéo avec ce dossier, retourne jusqu’à 4096 événements par main et effectue son propre contrôle musical ;
+3. le serveur recalcule la durée transcrite depuis le dernier beat et le tempo, rejette les URL provenant de la passe vidéo non outillée et déclenche une réparation lorsque la couverture ou la main gauche sont insuffisantes.
+
+Le registre de sources vérifiées peut pointer vers une notation distante sans intégrer la partition dans le dépôt. Il contient actuellement l’édition ABC publique de *Valse à Ollu*. Une source n’augmente la confiance que si sa notation a réellement été chargée ; une simple page de métadonnées ne suffit pas. Le Studio expose la couverture, la provenance, les avertissements et deux pistes séparées. Une transcription reste une proposition à corriger, jamais une édition certifiée.
 
 Avant une exposition publique intensive, ajouter au reverse proxy : quota par compte, limitation de débit distribuée, journal d’audit sans contenu musical et analyse antivirus des fichiers. Les mutations restent sur la même origine avec des cookies `SameSite=Lax`; le cookie passe en mode `Secure` derrière HTTPS.
 

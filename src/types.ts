@@ -98,6 +98,22 @@ export interface AccompanimentEvent {
   confidence?: number;
 }
 
+export interface TranscriptionSource {
+  title: string;
+  url: string;
+  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'chords' | 'metadata' | 'other';
+  usedFor: string;
+  reliability: number;
+}
+
+export interface TranscriptionCoverage {
+  sourceDurationSeconds: number;
+  transcribedDurationSeconds: number;
+  ratio: number;
+  sectionsFound: number;
+  sectionsTranscribed: number;
+}
+
 export interface Song {
   id: string;
   title: string;
@@ -114,8 +130,10 @@ export interface Song {
   accompaniment?: AccompanimentEvent[];
   confidence?: number;
   uncertainBeats?: number[];
-  transcriptionMethod?: 'deterministic' | 'verified-library' | 'gemini-preview';
+  transcriptionMethod?: 'deterministic' | 'verified-library' | 'gemini-preview' | 'multimodal-research';
   transcriptionWarnings?: string[];
+  transcriptionSources?: TranscriptionSource[];
+  transcriptionCoverage?: TranscriptionCoverage;
   builtIn?: boolean;
   license?: string;
   provenance?: string;
@@ -236,7 +254,7 @@ export interface TranscriptionResult {
   timeSignature: [number, number];
   confidence: number;
   warnings: string[];
-  method?: 'deterministic' | 'verified-library' | 'gemini-preview';
+  method?: 'deterministic' | 'verified-library' | 'gemini-preview' | 'multimodal-research';
   events: Array<{
     beat: number;
     duration: number;
@@ -245,6 +263,18 @@ export interface TranscriptionResult {
     chord?: string;
     confidence: number;
   }>;
+  accompaniment?: Array<{
+    beat: number;
+    duration: number;
+    rootMidi: number;
+    midi: number;
+    note: string;
+    chord: string;
+    role: 'bass' | 'chord';
+    confidence: number;
+  }>;
+  sources?: TranscriptionSource[];
+  coverage?: TranscriptionCoverage;
 }
 
 export type Page = 'home' | 'learn' | 'game' | 'library' | 'studio' | 'tuner' | 'settings' | 'account';

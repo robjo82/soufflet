@@ -322,7 +322,7 @@ app.post('/api/transcriptions', requireUser, upload.single('file'), async (reque
 app.post('/api/transcriptions/youtube', requireUser, async (request, response) => {
   try {
     const body = z.object({ url: z.string().url(), accordionId: z.string().min(1) }).parse(request.body);
-    const result = await transcriber.fromYoutube(body.url, request.get('x-gemini-key'));
+    const result = await transcriber.fromYoutube(body.url, body.accordionId, request.get('x-gemini-key'));
     response.json({ result });
   } catch (error) {
     response.status(422).json({ error: error instanceof Error ? error.message : 'Vidéo impossible à analyser.' });

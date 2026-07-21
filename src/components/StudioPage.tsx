@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, ChevronDown, Clock3, Cloud, History, Music2, Play, Redo2, Save, Scissors, Sparkles, Undo2, WandSparkles } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, Clock3, Cloud, ExternalLink, History, Music2, Play, Redo2, Save, Scissors, Sparkles, Undo2, WandSparkles } from 'lucide-react';
 import type { AccordionConfig, Song, SongEvent } from '../types';
 import { AccordionInstrument } from './AccordionInstrument';
 import { adaptSongToAccordion } from '../data';
@@ -33,7 +33,10 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
   }, [onSave, saved, song]);
 
   if (!song) return <main className="page-content empty-studio"><WandSparkles /><h1>Le studio est prêt</h1><p>Importe un morceau pour corriger les notes, le rythme, les doigtés et le soufflet.</p></main>;
-  const measureCount = Math.floor((song.events.at(-1)?.beat ?? 0) / song.timeSignature[0]) + 1;
+  const finalBeat = Math.max(0, ...song.events.map((event) => event.beat + event.duration), ...(song.accompaniment ?? []).map((event) => event.beat + event.duration));
+  const measureCount = Math.max(1, Math.ceil(finalBeat / song.timeSignature[0]));
+  const measureWidth = song.timeSignature[0] * 72;
+  const timelineWidth = Math.max(1800, measureCount * measureWidth);
 
   const updateEvent = (patch: Partial<SongEvent>) => {
     setHistory((items) => [...items.slice(-19), song]);
@@ -49,22 +52,35 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
     <main className="studio-page">
       <header className="studio-header"><div><span className="eyebrow"><Sparkles /> Éditeur de tablature</span><h1>Studio</h1></div><label className="song-select"><Music2 /><span><small>MORCEAU OUVERT</small><select value={song.id} onChange={(event) => { const next = editableSongs.find((item) => item.id === event.target.value); if (next) { setSong(next); setActiveIndex(0); } }}>{editableSongs.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></span><ChevronDown /></label><div className="studio-actions"><button type="button" className="icon-button" onClick={undo} disabled={!history.length} title="Annuler"><Undo2 /></button><button type="button" className="icon-button" disabled title="Rétablir"><Redo2 /></button><span className="save-state">{saved ? <><Cloud /> Sauvegardé localement</> : <><Save /> Sauvegarde…</>}</span><button type="button" className="primary-button" onClick={() => onPractice(song)}><Play fill="currentColor" /> Tester</button></div></header>
 
-      {(song.transcriptionMethod === 'verified-library' || song.transcriptionMethod === 'gemini-preview') && (
-        <section className={`transcription-source-note ${song.transcriptionMethod === 'verified-library' ? 'is-verified' : 'is-preview'}`}>
+      {(song.transcriptionMethod === 'verified-library' || song.transcriptionMethod === 'gemini-preview' || song.transcriptionMethod === 'multimodal-research') && (
+        <section className={`transcription-source-note ${song.transcriptionMethod === 'verified-library' ? 'is-verified' : song.transcriptionMethod === 'multimodal-research' ? 'is-researched' : 'is-preview'}`}>
           {song.transcriptionMethod === 'verified-library' ? <Check /> : <AlertTriangle />}
           <span>
-            <strong>{song.transcriptionMethod === 'verified-library' ? 'Mélodie reconnue dans la bibliothèque vérifiée' : 'Transcription YouTube expérimentale — vérification obligatoire'}</strong>
+            <strong>{song.transcriptionMethod === 'verified-library' ? 'Édition reconnue dans la bibliothèque vérifiée' : song.transcriptionMethod === 'multimodal-research' ? 'Transcription multimodale documentée — contrôle humain conseillé' : 'Transcription YouTube expérimentale — vérification obligatoire'}</strong>
             <small>{song.transcriptionWarnings?.join(' ')}</small>
           </span>
           {song.sourceUrl && <a href={song.sourceUrl} target="_blank" rel="noreferrer">Écouter la source</a>}
         </section>
       )}
 
+      {song.transcriptionMethod === 'multimodal-research' && (
+        <section className="transcription-report" aria-label="Rapport de transcription">
+          <div className="transcription-report-metrics">
+            <span><small>COUVERTURE</small><strong>{song.transcriptionCoverage?.sourceDurationSeconds ? `${Math.round(song.transcriptionCoverage.ratio * 100)} %` : 'À confirmer'}</strong></span>
+            <span><small>MAIN DROITE</small><strong>{song.events.length} notes</strong></span>
+            <span><small>MAIN GAUCHE</small><strong>{song.accompaniment?.length ?? 0} gestes</strong></span>
+            <span><small>SOURCES CROISÉES</small><strong>{song.transcriptionSources?.length ?? 0}</strong></span>
+          </div>
+          {Boolean(song.transcriptionSources?.length) && <div className="transcription-sources"><small>SOURCES UTILISÉES</small>{song.transcriptionSources?.slice(0, 5).map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer"><span><b>{source.title}</b><i>{source.kind.toUpperCase()} · {source.usedFor}</i></span><ExternalLink /></a>)}</div>}
+        </section>
+      )}
+
       <div className="studio-toolbar"><button type="button" className="is-active"><Music2 /> Note</button><button type="button"><Scissors /> Découper</button><button type="button"><Clock3 /> Durée</button><span /><button type="button"><History /> Historique</button><span className="confidence-legend"><i /> Incertain · vérification nécessaire</span></div>
 
       <section className="studio-timeline">
-        <div className="timeline-ruler">{Array.from({ length: measureCount }).map((_, index) => <span key={index}>Mesure {index + 1}</span>)}</div>
-        <div className="timeline-track">{song.events.map((event, index) => <button type="button" key={event.id} className={`${index === activeIndex ? 'is-active' : ''} ${(event.confidence ?? 1) < 0.7 ? 'is-uncertain' : ''}`} onClick={() => setActiveIndex(index)} style={{ left: `${event.beat * 72}px`, width: `${Math.max(54, event.duration * 68)}px` }}><strong>{event.note}</strong><small>{event.buttonId === 'unmapped' ? '?' : event.buttonId.match(/\d+$/)?.[0]}{event.direction === 'pull' ? 'T' : 'P'}</small>{(event.confidence ?? 1) < 0.7 && <AlertTriangle />}</button>)}</div>
+        <div className="timeline-ruler"><b />{Array.from({ length: measureCount }).map((_, index) => <span key={index} style={{ width: `${measureWidth}px`, flexBasis: `${measureWidth}px` }}>Mesure {index + 1}</span>)}</div>
+        <div className="timeline-lane"><strong>Main droite</strong><div className="timeline-track" style={{ width: `${timelineWidth}px` }}>{song.events.map((event, index) => <button type="button" key={event.id} className={`${index === activeIndex ? 'is-active' : ''} ${(event.confidence ?? 1) < 0.7 ? 'is-uncertain' : ''}`} onClick={() => setActiveIndex(index)} style={{ left: `${event.beat * 72}px`, width: `${Math.max(54, event.duration * 68)}px` }}><strong>{event.note}</strong><small>{event.buttonId === 'unmapped' ? '?' : event.buttonId.match(/\d+$/)?.[0]}{event.direction === 'pull' ? 'T' : 'P'}</small>{(event.confidence ?? 1) < 0.7 && <AlertTriangle />}</button>)}</div></div>
+        <div className="timeline-lane is-left-hand"><strong>Main gauche</strong><div className="timeline-track" style={{ width: `${timelineWidth}px` }}>{song.accompaniment?.map((event) => <span key={event.id} className={(event.confidence ?? 1) < .7 ? 'is-uncertain' : ''} style={{ left: `${event.beat * 72}px`, width: `${Math.max(48, event.duration * 68)}px` }}><b>{event.chord}</b><small>{event.role === 'bass' ? 'Basse' : 'Accord'}</small>{(event.confidence ?? 1) < .7 && <AlertTriangle />}</span>)}</div></div>
       </section>
 
       <section className="studio-inspector">
