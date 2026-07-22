@@ -84,13 +84,19 @@ describe('piano V1', () => {
     expect(pianoNotesForHand(arrangements[0].notes, 'left')).toHaveLength(91);
     expect(pianoNotesForHand(complete.notes, 'right')).toHaveLength(951);
     expect(pianoNotesForHand(complete.notes, 'left')).toHaveLength(532);
-    expect(pianoNotesForHand(complete.notes, 'right').slice(0, 4).map((note) => [note.midi, note.beat, note.duration])).toEqual([[73, 0, 1], [73, 1, 1], [74, 2, 1], [73, 3, 1]]);
+    expect(pianoNotesForHand(arrangements[0].notes, 'right').slice(0, 4).map((note) => [note.midi, note.finger])).toEqual([[71, 3], [71, 3], [72, 4], [71, 3]]);
+    expect(pianoNotesForHand(complete.notes, 'right').slice(0, 4).map((note) => [note.midi, note.beat, note.duration, note.finger])).toEqual([[73, 0, 1, 3], [73, 1, 1, 3], [74, 2, 1, 4], [73, 3, 1, 3]]);
     expect(pianoNotesForHand(complete.notes, 'right').filter((note) => note.beat >= 32 && note.beat < 33).map((note) => note.midi)).toEqual([73, 69, 61, 69]);
+    expect(pianoNotesForHand(complete.notes, 'right').filter((note) => note.beat >= 32 && note.beat < 33).map((note) => note.finger)).toEqual([4, 2, 1, 2]);
+    expect(pianoNotesForHand(complete.notes, 'right').filter((note) => note.beat >= 64 && note.beat < 65).map((note) => [note.midi, note.finger])).toEqual([[69, 2], [61, 1], [73, 4], [61, 1]]);
+    expect(pianoNotesForHand(complete.notes, 'left').slice(0, 4).map((note) => [note.midi, note.finger])).toEqual([[54, 5], [61, 2], [66, 1], [61, 2]]);
+    expect(pianoNotesForHand(arrangements[0].notes, 'left').filter((note) => note.beat === 32).map((note) => note.finger)).toEqual([2]);
+    expect(pianoNotesForHand(arrangements[0].notes, 'left').filter((note) => note.beat === 64).map((note) => note.finger)).toEqual([5, 2]);
     expect(Math.max(...complete.notes.map((note) => note.midi))).toBe(86);
     expect(Math.min(...complete.notes.map((note) => note.midi))).toBe(30);
     expect(Math.min(...adapted.notes.map((note) => note.midi))).toBeGreaterThanOrEqual(36);
     expect(Math.max(...adapted.notes.map((note) => note.midi))).toBeLessThanOrEqual(84);
-    expect(adapted.notes.every((note, index) => note.beat === complete.notes[index].beat && note.duration === complete.notes[index].duration && note.hand === complete.notes[index].hand && (note.midi - complete.notes[index].midi) % 12 === 0)).toBe(true);
+    expect(adapted.notes.every((note, index) => note.beat === complete.notes[index].beat && note.duration === complete.notes[index].duration && note.hand === complete.notes[index].hand && note.finger === complete.notes[index].finger && (note.midi - complete.notes[index].midi) % 12 === 0)).toBe(true);
   });
   it('groups arrangements by song before the level choice', () => {
     expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Experience']);

@@ -106,21 +106,42 @@ const EXPERIENCE_LEFT_SEQUENCE = [
   24, 25, 25, 30,
 ];
 
-const rightFinger = (midi: number): ExperienceFinger => {
-  const pitchClass = midi % 12;
-  if (pitchClass === 1) return 1;
-  if (pitchClass === 2 || pitchClass === 3) return 2;
-  if (pitchClass === 4) return 3;
-  if (pitchClass === 6) return 4;
-  return 5;
+const EXPERIENCE_MELODY_FINGERS: Record<number, ExperienceFinger> = { 69: 1, 71: 2, 73: 3, 74: 4 };
+const EXPERIENCE_OSTINATO_FINGERS: Record<number, Record<number, ExperienceFinger>> = {
+  7: { 61: 1, 69: 2, 73: 4 },
+  8: { 61: 1, 68: 2, 69: 3, 73: 5 },
+  9: { 61: 1, 66: 3, 68: 4, 69: 5 },
+  10: { 62: 1, 66: 3, 68: 4, 69: 5 },
+  11: { 61: 1, 69: 3, 71: 4, 73: 5 },
+  12: { 62: 1, 69: 3, 71: 4, 73: 5 },
+};
+const EXPERIENCE_ENDING_FINGERS: Record<number, ExperienceFinger> = { 61: 1, 62: 1, 68: 3, 69: 4 };
+const EXPERIENCE_ARPEGGIO_PATTERNS = new Set([3, 4, 5, 6, 13, 14, 15, 16, 17, 18]);
+
+const rightFinger = (patternId: number, midi: number): ExperienceFinger => {
+  if (patternId <= 2) return EXPERIENCE_MELODY_FINGERS[midi] ?? 3;
+  if (EXPERIENCE_ARPEGGIO_PATTERNS.has(patternId)) {
+    const highRegister = patternId >= 16;
+    if (midi >= (highRegister ? 83 : 71)) {
+      if (midi % 12 === 2) return 5;
+      return midi % 12 === 11 ? 3 : 4;
+    }
+    return midi >= (highRegister ? 78 : 66) ? 2 : 1;
+  }
+  return EXPERIENCE_OSTINATO_FINGERS[patternId]?.[midi] ?? EXPERIENCE_ENDING_FINGERS[midi] ?? 3;
 };
 
 const leftFinger = (pattern: MeasurePattern, midi: number): ExperienceFinger => {
   const pitches = [...new Set(pattern.map(([pitch]) => pitch))].sort((left, right) => left - right);
   const index = pitches.indexOf(midi);
-  if (pitches.length <= 1 || index === 0) return 5;
+  const isHeldPosition = pattern.every(([, beat, duration]) => beat === 0 && duration === 4);
+  if (pitches.length === 1) return 2;
+  if (index === 0) return 5;
+  if (pitches.length === 2) return 2;
   if (index === pitches.length - 1) return 1;
-  return pitches.length >= 4 && index === pitches.length - 2 ? 2 : 3;
+  if (pitches.length === 3) return isHeldPosition ? 3 : 2;
+  if (pitches.length === 4) return index === 1 ? 3 : 2;
+  return index === pitches.length - 2 ? 2 : 3;
 };
 
 const notesFromMeasures = (patterns: MeasurePattern[], sequence: number[], hand: 'right' | 'left', startMeasure = 0, transpose = 0): ExperienceNote[] => sequence.flatMap((patternId, measureIndex) => {
@@ -130,7 +151,7 @@ const notesFromMeasures = (patterns: MeasurePattern[], sequence: number[], hand:
     beat: (startMeasure + measureIndex) * 4 + beat,
     duration,
     hand,
-    finger: hand === 'right' ? rightFinger(midi + transpose) : leftFinger(pattern, midi),
+    finger: hand === 'right' ? rightFinger(patternId, midi) : leftFinger(pattern, midi),
   }));
 });
 
