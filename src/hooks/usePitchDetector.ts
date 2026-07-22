@@ -127,7 +127,12 @@ export function stabilizePitchReading(state: PitchStabilityState, current: Pitch
     return { state: { stable: current, candidateMidi: null, candidateFrames: 0 }, reading: current as PitchReading | null };
   }
   const candidateFrames = state.candidateMidi === current.midi ? state.candidateFrames + 1 : 1;
-  const requiredFrames = 2;
+  // The first note must remain immediate, especially after starting the mic.
+  // Once a reed is established, one extra observation prevents a short pitch
+  // glide between two real notes from briefly lighting an unrelated button.
+  const requiredFrames = state.stable
+    ? current.confidence >= .9 ? 3 : 5
+    : current.confidence >= .9 ? 2 : 3;
   if (candidateFrames >= requiredFrames) {
     return { state: { stable: current, candidateMidi: null, candidateFrames: 0 }, reading: current as PitchReading | null };
   }

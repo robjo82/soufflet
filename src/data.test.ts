@@ -9,6 +9,7 @@ import { createPracticeTimeline } from './practiceTimeline';
 import { createTunerTargets, findTunerTargetIndex, nextTunerTarget } from './tunerWorkflow';
 import { classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, type AudioFeatureFrame, type BellowsProfile } from './audioTraining';
 import { createAccordion3DPlayback } from './accordion3dPlayback';
+import type { PitchStabilityState } from './hooks/usePitchDetector';
 
 describe('accordion configurations', () => {
   it('ships the Hohner Club I 10 + 9 + 2 layout', () => {
@@ -85,8 +86,20 @@ describe('pitch and notation', () => {
     const switchTwo = stabilizePitchReading(switchOne.state, g);
     const switchThree = stabilizePitchReading(switchTwo.state, g);
     expect(switchOne.reading).toBeNull();
-    expect(switchTwo.reading?.midi).toBe(67);
+    expect(switchTwo.reading).toBeNull();
     expect(switchThree.reading?.midi).toBe(67);
+  });
+
+  it('asks for longer confirmation when a changed pitch is less reliable', () => {
+    const c = frequencyToPitch(261.63, .98, .08);
+    const mechanicalNoise = frequencyToPitch(116.54, .85, .01);
+    let state: PitchStabilityState = { stable: c, candidateMidi: null, candidateFrames: 0 };
+    for (let frame = 0; frame < 4; frame += 1) {
+      const transition = stabilizePitchReading(state, mechanicalNoise);
+      expect(transition.reading).toBeNull();
+      state = transition.state;
+    }
+    expect(stabilizePitchReading(state, mechanicalNoise).reading?.midi).toBe(46);
   });
 
   it('renders the supported beginner notations', () => {

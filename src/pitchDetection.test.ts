@@ -137,4 +137,40 @@ describe('microphone pitch detection', () => {
 
     expect(heard).toEqual(midis);
   });
+
+  it('tracks the Brise-pied opening through its first E5 without exposing a two-frame transition', () => {
+    const midis = [67, 69, 67, 69, 67, 76];
+    const recordings = midis.map(recordedAccordionSample);
+    const sampleRate = recordings[0].sampleRate;
+    const noteLength = Math.round(sampleRate * .18);
+    const leadIn = 4096;
+    const phrase = new Float32Array(leadIn + noteLength * recordings.length);
+    recordings.forEach(({ samples }, index) => {
+      phrase.set(samples.subarray(15_000, 15_000 + noteLength), leadIn + index * noteLength);
+    });
+
+    let stability = EMPTY_PITCH_STABILITY;
+    const heard: number[] = [];
+    const hop = Math.round(sampleRate * .038);
+    for (let end = leadIn; end <= phrase.length; end += hop) {
+      const result = detectResponsivePitchFrequency(phrase.subarray(end - 4096, end), sampleRate);
+      const pitch = result.frequency > 0 ? frequencyToPitch(result.frequency, result.clarity, result.volume) : null;
+      const stabilized = stabilizePitchReading(stability, pitch);
+      stability = stabilized.state;
+      if (stabilized.reading && heard.at(-1) !== stabilized.reading.midi) heard.push(stabilized.reading.midi);
+    }
+
+    expect(heard).toEqual(midis);
+
+    const establishedE = stabilizePitchReading(
+      { stable: frequencyToPitch(659.255, .99, .2), candidateMidi: null, candidateFrames: 0 },
+      frequencyToPitch(554.365, .99, .15),
+    );
+    const secondTransitionFrame = stabilizePitchReading(
+      establishedE.state,
+      frequencyToPitch(554.365, .99, .15),
+    );
+    expect(establishedE.reading).toBeNull();
+    expect(secondTransitionFrame.reading).toBeNull();
+  });
 });
