@@ -47,7 +47,14 @@ type PianoNote = PianoExercise['notes'][number];
 export type PianoFinger = 1 | 2 | 3 | 4 | 5;
 type PianoHarmonyStep = { beat: number; name: string; root: number; intervals: number[]; fingers: PianoFinger[] };
 export type PianoPracticeHand = 'right' | 'left' | 'both';
-export type PianoPlayMode = 'learning' | 'practice' | 'game';
+export type PianoPlayMode = 'practice' | 'maestro';
+export interface PianoPracticeSection {
+  id: 'part-1' | 'part-2' | 'part-3';
+  title: string;
+  description: string;
+  startBeat: number;
+  endBeat: number;
+}
 
 const phrase = (midis: number[], durations?: number[]) => {
   let beat = 0;
@@ -514,17 +521,38 @@ export function pianoNotesForHand(notes: PianoExercise['notes'], hand: PianoPrac
 }
 
 export function pianoNotesForMode(exercise: PianoExercise, mode: PianoPlayMode, hand: PianoPracticeHand) {
-  if (exercise.hand !== 'both' || mode === 'game') return exercise.notes;
+  if (exercise.hand !== 'both' || mode === 'maestro') return exercise.notes;
   return pianoNotesForHand(exercise.notes, hand === 'left' ? 'left' : 'right');
 }
 
 export function pianoHandChoicesForMode(exercise: PianoExercise, mode: PianoPlayMode): PianoPracticeHand[] {
   if (exercise.hand !== 'both') return ['right'];
-  return mode === 'game' ? ['both'] : ['right', 'left'];
+  return mode === 'maestro' ? ['both'] : ['right', 'left'];
 }
 
 export function isPianoSessionCounted(mode: PianoPlayMode) {
   return mode !== 'practice';
+}
+
+export function pianoShowsFingerings(mode: PianoPlayMode) {
+  return mode === 'practice';
+}
+
+const EXPERIENCE_SIMPLE_PRACTICE_SECTIONS: PianoPracticeSection[] = [
+  { id: 'part-1', title: 'Partie 1 · Introduction', description: 'Mesures 1 à 8', startBeat: 0, endBeat: 32 },
+  { id: 'part-2', title: 'Partie 2 · Motif central', description: 'Mesures 9 à 16', startBeat: 32, endBeat: 64 },
+  { id: 'part-3', title: 'Partie 3 · Variation finale', description: 'Mesures 17 à 24', startBeat: 64, endBeat: 96 },
+];
+
+export function pianoPracticeSections(exercise: PianoExercise) {
+  return exercise.id === 'experience-simplified' ? EXPERIENCE_SIMPLE_PRACTICE_SECTIONS : [];
+}
+
+export function pianoNotesForSection(notes: PianoExercise['notes'], section?: PianoPracticeSection) {
+  if (!section) return notes;
+  return notes
+    .filter((note) => note.beat >= section.startBeat && note.beat < section.endBeat)
+    .map((note) => ({ ...note, beat: note.beat - section.startBeat }));
 }
 
 export function pianoSessionCounts(correct: number, timings: number[], correctToleranceMs: number) {

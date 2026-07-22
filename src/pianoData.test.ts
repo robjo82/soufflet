@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TECHNIQUE_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyboardSizeForNotes, pianoKeyGeometry, pianoLyricCueAtBeat, pianoMeasureBeats, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoRange, pianoScore, pianoSessionCounts, resumeTimeline } from './pianoData';
+import { classifyPianoAttempt, groupPianoExercises, hasPianoNoteReachedHitLine, isPianoHit, isPianoNoteAtHitLine, isPianoSessionCounted, PIANO_CHORD_EXERCISES, PIANO_CORRECT_TOLERANCE_PX, PIANO_EXERCISES, PIANO_SONGS, PIANO_TECHNIQUE_EXERCISES, PIANO_TIMING_TOLERANCE_PX, pianoChordExerciseForSong, pianoExerciseEndBeat, pianoHandChoicesForMode, pianoKeyboardSizeForNotes, pianoKeyGeometry, pianoLyricCueAtBeat, pianoMeasureBeats, pianoNoteDurationSeconds, pianoNoteOffsetPx, pianoNotePlaybackTiming, pianoNotesForHand, pianoNotesForMode, pianoNotesForSection, pianoPracticeSections, pianoRange, pianoScore, pianoSessionCounts, pianoShowsFingerings, resumeTimeline } from './pianoData';
 
 describe('piano V1', () => {
   it('keeps Promenade du matin as an exercise and removes the placeholder pieces', () => {
@@ -150,17 +150,31 @@ describe('piano V1', () => {
   });
   it('runs practice in real time with one hand and never counts its score', () => {
     const myWay = PIANO_EXERCISES.find((item) => item.id === 'my-way-advanced')!;
-    expect(pianoHandChoicesForMode(myWay, 'learning')).toEqual(['right', 'left']);
     expect(pianoHandChoicesForMode(myWay, 'practice')).toEqual(['right', 'left']);
-    expect(pianoHandChoicesForMode(myWay, 'game')).toEqual(['both']);
-    expect(pianoNotesForMode(myWay, 'learning', 'both')).toEqual(pianoNotesForHand(myWay.notes, 'right'));
+    expect(pianoHandChoicesForMode(myWay, 'maestro')).toEqual(['both']);
     expect(pianoNotesForMode(myWay, 'practice', 'right')).toEqual(pianoNotesForHand(myWay.notes, 'right'));
     expect(pianoNotesForMode(myWay, 'practice', 'left')).toEqual(pianoNotesForHand(myWay.notes, 'left'));
-    expect(pianoNotesForMode(myWay, 'game', 'right')).toHaveLength(myWay.notes.length);
+    expect(pianoNotesForMode(myWay, 'maestro', 'right')).toHaveLength(myWay.notes.length);
     expect(isPianoSessionCounted('practice')).toBe(false);
-    expect(isPianoSessionCounted('learning')).toBe(true);
-    expect(isPianoSessionCounted('game')).toBe(true);
+    expect(isPianoSessionCounted('maestro')).toBe(true);
+    expect(pianoShowsFingerings('practice')).toBe(true);
+    expect(pianoShowsFingerings('maestro')).toBe(false);
     expect(pianoSessionCounts(5, [-301, -300, 0, 300, 301], 300)).toEqual({ correctCount: 3, earlyCount: 1, lateCount: 1 });
+  });
+  it('splits simple Experience into three complete eight-measure practice sections', () => {
+    const experience = PIANO_EXERCISES.find((item) => item.id === 'experience-simplified')!;
+    const sections = pianoPracticeSections(experience);
+    const rightHand = pianoNotesForMode(experience, 'practice', 'right');
+    const sectionNotes = sections.map((section) => pianoNotesForSection(rightHand, section));
+    expect(sections.map((section) => [section.id, section.startBeat, section.endBeat])).toEqual([
+      ['part-1', 0, 32],
+      ['part-2', 32, 64],
+      ['part-3', 64, 96],
+    ]);
+    expect(sectionNotes.every((notes) => notes.length > 0 && notes[0].beat >= 0 && pianoExerciseEndBeat(notes) === 32)).toBe(true);
+    expect(sectionNotes.reduce((total, notes) => total + notes.length, 0)).toBe(rightHand.length);
+    expect(pianoNotesForSection(rightHand)).toBe(rightHand);
+    expect(pianoPracticeSections(PIANO_EXERCISES.find((item) => item.id === 'experience-complete-49')!)).toEqual([]);
   });
   it('adds a playable finger number to every falling note', () => {
     expect(PIANO_EXERCISES.every((exercise) => exercise.notes.every((note) => Number.isInteger(note.finger) && note.finger! >= 1 && note.finger! <= 5))).toBe(true);
