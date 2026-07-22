@@ -538,14 +538,31 @@ export function pianoShowsFingerings(mode: PianoPlayMode) {
   return mode === 'practice';
 }
 
-const EXPERIENCE_SIMPLE_PRACTICE_SECTIONS: PianoPracticeSection[] = [
-  { id: 'part-1', title: 'Partie 1 · Introduction', description: 'Mesures 1 à 8', startBeat: 0, endBeat: 32 },
-  { id: 'part-2', title: 'Partie 2 · Motif central', description: 'Mesures 9 à 16', startBeat: 32, endBeat: 64 },
-  { id: 'part-3', title: 'Partie 3 · Variation finale', description: 'Mesures 17 à 24', startBeat: 64, endBeat: 96 },
-];
+const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas']);
+const PRACTICE_SECTION_IDS: PianoPracticeSection['id'][] = ['part-1', 'part-2', 'part-3'];
+const PRACTICE_SECTION_TITLES = ['Partie 1 · Début', 'Partie 2 · Milieu', 'Partie 3 · Fin'];
+
+export function pianoExerciseMeasureCount(exercise: PianoExercise) {
+  const firstMeasureBeat = exercise.measureStartBeat ?? 0;
+  return Math.max(1, Math.ceil(Math.max(0, pianoExerciseEndBeat(exercise.notes) - firstMeasureBeat) / exercise.beatsPerMeasure));
+}
 
 export function pianoPracticeSections(exercise: PianoExercise) {
-  return exercise.id === 'experience-simplified' ? EXPERIENCE_SIMPLE_PRACTICE_SECTIONS : [];
+  if (exercise.kind !== 'song' || !SECTIONED_PIANO_SONGS.has(exercise.title)) return [];
+  const measureCount = pianoExerciseMeasureCount(exercise);
+  const firstMeasureBeat = exercise.measureStartBeat ?? 0;
+  const measureBoundaries = [0, Math.round(measureCount / 3), Math.round(measureCount * 2 / 3), measureCount];
+  return PRACTICE_SECTION_IDS.map((id, index): PianoPracticeSection => {
+    const firstMeasure = measureBoundaries[index];
+    const lastMeasure = measureBoundaries[index + 1];
+    return {
+      id,
+      title: PRACTICE_SECTION_TITLES[index],
+      description: `Mesures ${firstMeasure + 1} à ${lastMeasure}`,
+      startBeat: index === 0 ? 0 : firstMeasureBeat + firstMeasure * exercise.beatsPerMeasure,
+      endBeat: firstMeasureBeat + lastMeasure * exercise.beatsPerMeasure,
+    };
+  });
 }
 
 export function pianoNotesForSection(notes: PianoExercise['notes'], section?: PianoPracticeSection) {
