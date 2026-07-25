@@ -5,7 +5,7 @@ describe('piano V1', () => {
   it('keeps Promenade du matin as an exercise and removes the placeholder pieces', () => {
     expect(PIANO_TECHNIQUE_EXERCISES.map((item) => item.title)).toEqual(['Promenade du matin']);
     expect(PIANO_EXERCISES.some((item) => ['Trois petits pas', 'Cinq lumières', 'Dialogue des deux mains'].includes(item.title))).toBe(false);
-    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(7);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(8);
     expect(PIANO_EXERCISES.filter((item) => item.hand !== 'both').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
   });
   it('offers the supplied My Way score at three progressive levels', () => {
@@ -32,6 +32,27 @@ describe('piano V1', () => {
     expect(pianoNotesForHand(arrangements[2].notes, 'left')).toHaveLength(36);
     expect(pianoNotesForHand(arrangements[2].notes, 'right')).toHaveLength(25);
     expect(pianoExerciseEndBeat(arrangements[2].notes)).toBe(28);
+  });
+  it('offers the complete traditional Brise-pied in every piano mode', () => {
+    const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Le Brise-pied aveyronnais');
+    const [beginner, intermediate, advanced] = arrangements;
+    expect(arrangements).toHaveLength(3);
+    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Simple', 'Modéré']);
+    expect(arrangements.map((item) => item.artist)).toEqual(['Traditionnel aveyronnais', 'Traditionnel aveyronnais', 'Traditionnel aveyronnais']);
+    expect(arrangements.map((item) => item.bpm)).toEqual([72, 88, 104]);
+    expect(arrangements.map((item) => item.notes.length)).toEqual([62, 106, 246]);
+    expect(arrangements.map((item) => pianoExerciseEndBeat(item.notes))).toEqual([64, 64, 64]);
+    expect(intermediate.notes.slice(0, 8).map((note) => [note.midi, note.beat, note.duration, note.finger])).toEqual([
+      [67, 0, .5, 1], [76, .5, .5, 5], [76, 1, .5, 5], [76, 1.5, .5, 5],
+      [67, 2, .5, 1], [76, 2.5, .5, 5], [76, 3, .5, 5], [76, 3.5, .5, 5],
+    ]);
+    expect(pianoNotesForHand(advanced.notes, 'right')).toHaveLength(106);
+    expect(pianoNotesForHand(advanced.notes, 'left')).toHaveLength(140);
+    expect(pianoHandChoicesForMode(beginner, 'practice')).toEqual(['right']);
+    expect(pianoHandChoicesForMode(advanced, 'practice')).toEqual(['right', 'left']);
+    expect(pianoHandChoicesForMode(advanced, 'maestro')).toEqual(['both']);
+    expect(pianoNotesForMode(advanced, 'practice', 'left')).toHaveLength(140);
+    expect(pianoNotesForMode(advanced, 'maestro', 'right')).toHaveLength(246);
   });
   it('offers the complete supplied Ne me quitte pas form at three progressive levels', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Ne me quitte pas');
@@ -99,12 +120,13 @@ describe('piano V1', () => {
     expect(adapted.notes.every((note, index) => note.beat === complete.notes[index].beat && note.duration === complete.notes[index].duration && note.hand === complete.notes[index].hand && note.finger === complete.notes[index].finger && (note.midi - complete.notes[index].midi) % 12 === 0)).toBe(true);
   });
   it('groups arrangements by song before the level choice', () => {
-    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Experience']);
+    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Experience', 'Le Brise-pied aveyronnais']);
     expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-beginner', 'my-way-intermediate', 'my-way-advanced']);
     expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(3);
     expect(PIANO_SONGS.find((song) => song.title === 'Ne me quitte pas')?.levels).toHaveLength(3);
     expect(PIANO_SONGS.find((song) => song.title === 'Au clair de la lune')?.levels).toHaveLength(3);
     expect(PIANO_SONGS.find((song) => song.title === 'Experience')?.levels).toHaveLength(3);
+    expect(PIANO_SONGS.find((song) => song.title === 'Le Brise-pied aveyronnais')?.levels).toHaveLength(3);
     expect(groupPianoExercises([PIANO_EXERCISES[0], { ...PIANO_EXERCISES[0], id: 'same-title-other-artist', artist: 'Autre artiste' }])).toHaveLength(2);
   });
   it('provides complete left-hand chord exercises with beginner fingerings', () => {
@@ -113,7 +135,8 @@ describe('piano V1', () => {
     const brel = pianoChordExerciseForSong('Ne me quitte pas', 'Jacques Brel')!;
     const auClair = pianoChordExerciseForSong('Au clair de la lune', 'Traditionnel français')!;
     const experience = pianoChordExerciseForSong('Experience', 'Ludovico Einaudi')!;
-    expect(PIANO_CHORD_EXERCISES).toHaveLength(5);
+    const brisePied = pianoChordExerciseForSong('Le Brise-pied aveyronnais', 'Traditionnel aveyronnais')!;
+    expect(PIANO_CHORD_EXERCISES).toHaveLength(6);
     expect(myWay.progression).toHaveLength(54);
     expect(new Set(myWay.progression.map((step) => step.name))).toHaveLength(12);
     expect(myWay.progression.at(-1)).toMatchObject({ beat: 213, name: 'Fa majeur' });
@@ -132,6 +155,9 @@ describe('piano V1', () => {
     expect(experience.progression.at(0)).toMatchObject({ beat: 0, name: 'Fa♯ mineur' });
     expect(experience.progression.at(-1)).toMatchObject({ beat: 268, name: 'Ré majeur' });
     expect(new Set(experience.progression.map((step) => step.name))).toEqual(new Set(['Fa♯ mineur', 'La majeur', 'Do♯ mineur', 'Ré majeur']));
+    expect(brisePied.progression).toHaveLength(16);
+    expect(brisePied.progression.at(-1)).toMatchObject({ beat: 60, name: 'Do majeur' });
+    expect(new Set(brisePied.progression.map((step) => step.name))).toEqual(new Set(['Do majeur', 'Fa majeur', 'Sol 7']));
     for (const exercise of PIANO_CHORD_EXERCISES) for (const step of exercise.progression) {
       expect(step.fingers).toHaveLength(step.midis.length);
       expect(step.fingers.every((finger) => finger >= 1 && finger <= 5)).toBe(true);

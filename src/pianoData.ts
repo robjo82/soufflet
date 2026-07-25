@@ -67,6 +67,7 @@ const phrase = (midis: number[], durations?: number[]) => {
 };
 
 const timedNotes = (entries: Array<[midi: number, beat: number, duration: number]>): PianoNote[] => entries.map(([midi, beat, duration]) => ({ midi, beat, duration }));
+const fingeredTimedNotes = (entries: Array<[midi: number, beat: number, duration: number, finger: PianoFinger]>): PianoNote[] => entries.map(([midi, beat, duration, finger]) => ({ midi, beat, duration, finger }));
 
 const C_POSITION_FINGERS: Record<number, PianoFinger> = { 0: 1, 1: 1, 2: 2, 3: 2, 4: 3, 5: 4, 6: 4, 7: 5, 8: 5, 9: 5, 10: 5, 11: 5 };
 const MY_WAY_FINGERS: Record<number, PianoFinger> = {
@@ -459,6 +460,52 @@ const AU_CLAIR_TWO_HANDS = [
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
+// Traditional Brise-pied collected from accordionist François Vidalenc in the
+// Aubrac/Carladez area. The source score gives an eight-measure C-major tune;
+// the playable form below repeats it once, as is customary for the dance.
+const BRISE_PIED_MELODY_CYCLE = fingeredTimedNotes([
+  [67, 0, .5, 1], [76, .5, .5, 5], [76, 1, .5, 5], [76, 1.5, .5, 5], [67, 2, .5, 1], [76, 2.5, .5, 5], [76, 3, .5, 5], [76, 3.5, .5, 5],
+  [67, 4, .5, 1], [76, 4.5, .5, 4], [76, 5, .5, 4], [77, 5.5, .5, 5], [76, 6, 1, 4], [74, 7, .5, 3], [74, 7.5, .5, 3],
+  [69, 8, .5, 1], [74, 8.5, .5, 4], [74, 9, .5, 4], [74, 9.5, .5, 4], [69, 10, .5, 1], [74, 10.5, .5, 4], [74, 11, .5, 4], [74, 11.5, .5, 4],
+  [69, 12, .5, 1], [74, 12.5, .5, 4], [74, 13, .5, 4], [74, 13.5, .5, 4], [72, 14, 1.5, 3], [77, 15.5, .5, 5],
+  [76, 16, .5, 3], [72, 16.5, .5, 1], [76, 17, .5, 3], [79, 17.5, .5, 5], [76, 18, 1, 3], [72, 19, .5, 1], [72, 19.5, .5, 1],
+  [74, 20, .5, 2], [71, 20.5, .5, 1], [74, 21, .5, 2], [77, 21.5, .5, 4], [72, 22, 1.5, 1], [79, 23.5, .5, 5],
+  [79, 24, .5, 4], [81, 24.5, .5, 5], [79, 25, .5, 4], [77, 25.5, .5, 3], [76, 26, .5, 2], [72, 26.5, .5, 1], [76, 27, .5, 3], [79, 27.5, .5, 5],
+  [76, 28, 1, 3], [72, 29, 1, 1], [72, 30, 2, 1],
+]);
+const BRISE_PIED_MELODY = [...BRISE_PIED_MELODY_CYCLE, ...shiftNotes(BRISE_PIED_MELODY_CYCLE, 32)];
+
+const BRISE_PIED_EASY_CYCLE = fingeredTimedNotes([
+  [67, 0, 1, 1], [76, 1, 1, 5], [67, 2, 1, 1], [76, 3, 1, 5],
+  [67, 4, 1, 1], [76, 5, 1, 4], [76, 6, 1, 4], [74, 7, 1, 3],
+  [69, 8, 1, 1], [74, 9, 1, 4], [69, 10, 1, 1], [74, 11, 1, 4],
+  [69, 12, 1, 1], [74, 13, 1, 4], [72, 14, 1, 3], [77, 15, 1, 5],
+  [76, 16, 1, 3], [76, 17, 1, 3], [76, 18, 1, 3], [72, 19, 1, 1],
+  [74, 20, 1, 2], [74, 21, 1, 2], [72, 22, 1, 1], [79, 23, 1, 5],
+  [79, 24, 1, 4], [79, 25, 1, 4], [76, 26, 1, 2], [76, 27, 1, 3],
+  [76, 28, 1, 3], [72, 29, 1, 1], [72, 30, 2, 1],
+]);
+const BRISE_PIED_EASY = [...BRISE_PIED_EASY_CYCLE, ...shiftNotes(BRISE_PIED_EASY_CYCLE, 32)];
+
+type BrisePiedChordName = 'c-major' | 'f-major' | 'g-seven';
+const BRISE_PIED_CHORDS: Record<BrisePiedChordName, Omit<PianoHarmonyStep, 'beat'>> = {
+  'c-major': { name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'f-major': { name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'g-seven': { name: 'Sol 7', root: 43, intervals: [0, 4, 7, 10], fingers: [5, 3, 2, 1] },
+};
+const BRISE_PIED_CHORD_SEQUENCE: BrisePiedChordName[] = ['c-major', 'c-major', 'g-seven', 'g-seven', 'c-major', 'g-seven', 'f-major', 'c-major'];
+const brisePiedHarmonyCycle = (startBeat: number): PianoHarmonyStep[] => BRISE_PIED_CHORD_SEQUENCE.map((chord, index) => ({ beat: startBeat + index * 4, ...BRISE_PIED_CHORDS[chord] }));
+const BRISE_PIED_HARMONY = [...brisePiedHarmonyCycle(0), ...brisePiedHarmonyCycle(32)];
+const BRISE_PIED_TWO_HANDS = [
+  ...BRISE_PIED_MELODY.map((note) => ({ ...note, hand: 'right' as const })),
+  ...BRISE_PIED_HARMONY.flatMap(({ beat, root, intervals, fingers }) => [
+    { midi: root, beat, duration: 1, hand: 'left' as const, finger: 5 as const },
+    ...intervals.map((interval, index) => ({ midi: root + interval, beat: beat + 1, duration: 1, hand: 'left' as const, finger: fingers[index] })),
+    { midi: root, beat: beat + 2, duration: 1, hand: 'left' as const, finger: 5 as const },
+    ...intervals.map((interval, index) => ({ midi: root + interval, beat: beat + 3, duration: 1, hand: 'left' as const, finger: fingers[index] })),
+  ]),
+].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
+
 const harmonyToChordProgression = (steps: PianoHarmonyStep[]): PianoChordStep[] => steps.map(({ beat, name, root, intervals, fingers }) => ({ beat, name, midis: intervals.map((interval) => root + interval), fingers }));
 
 export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
@@ -467,6 +514,7 @@ export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'ne-me-quitte-pas-chords', songTitle: 'Ne me quitte pas', artist: 'Jacques Brel', progression: harmonyToChordProgression(BREL_HARMONY) },
   { id: 'au-clair-de-la-lune-chords', songTitle: 'Au clair de la lune', artist: 'Traditionnel français', progression: harmonyToChordProgression(AU_CLAIR_HARMONY) },
   { id: 'experience-chords', songTitle: 'Experience', artist: 'Ludovico Einaudi', progression: EXPERIENCE_CHORD_PROGRESSION },
+  { id: 'brise-pied-aveyronnais-chords', songTitle: 'Le Brise-pied aveyronnais', artist: 'Traditionnel aveyronnais', progression: harmonyToChordProgression(BRISE_PIED_HARMONY) },
 ];
 
 export function pianoChordExerciseForSong(title: string, artist?: string) {
@@ -490,6 +538,9 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'experience-simplified', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 1 · Version simplifiée', level: 'Simple', bpm: 70, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_EASY_NOTES },
   { id: 'experience-complete-49', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 2 · Version complète · 49 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_49_KEY_NOTES },
   { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 3 · Version complète · Tessiture originale', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
+  { id: 'brise-pied-aveyronnais-beginner', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 72, hand: 'right', beatsPerMeasure: 4, notes: BRISE_PIED_EASY },
+  { id: 'brise-pied-aveyronnais-intermediate', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Niveau 2 · Mélodie traditionnelle', level: 'Simple', bpm: 88, hand: 'right', beatsPerMeasure: 4, notes: BRISE_PIED_MELODY },
+  { id: 'brise-pied-aveyronnais-advanced', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 104, hand: 'both', beatsPerMeasure: 4, notes: BRISE_PIED_TWO_HANDS },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
