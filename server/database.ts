@@ -110,7 +110,7 @@ export class SouffletDatabase {
       `
         ALTER TABLE user_preferences ADD COLUMN instrument_type TEXT NOT NULL DEFAULT 'accordion'
           CHECK(instrument_type IN ('accordion', 'piano'));
-        ALTER TABLE user_preferences ADD COLUMN piano_keyboard_size INTEGER NOT NULL DEFAULT 49;
+        ALTER TABLE user_preferences ADD COLUMN piano_keyboard_size INTEGER NOT NULL DEFAULT 61;
         ALTER TABLE user_preferences ADD COLUMN piano_input TEXT NOT NULL DEFAULT 'computer-keyboard'
           CHECK(piano_input IN ('midi', 'microphone', 'computer-keyboard'));
         ALTER TABLE practice_sessions ADD COLUMN instrument_type TEXT NOT NULL DEFAULT 'accordion'
@@ -309,7 +309,7 @@ export class SouffletDatabase {
         learning_instruments = excluded.learning_instruments,
         instrument_setup_done = excluded.instrument_setup_done,
         updated_at = CURRENT_TIMESTAMP
-    `).run(userId, preferences.accordionId, preferences.notation, Number(preferences.countIn), preferences.instrumentType ?? 'accordion', preferences.pianoKeyboardSize ?? 49, preferences.pianoInput ?? 'computer-keyboard', JSON.stringify(preferences.learningInstruments ?? ['accordion']), Number(preferences.instrumentSetupDone ?? true));
+    `).run(userId, preferences.accordionId, preferences.notation, Number(preferences.countIn), preferences.instrumentType ?? 'accordion', preferences.pianoKeyboardSize ?? 61, preferences.pianoInput ?? 'computer-keyboard', JSON.stringify(preferences.learningInstruments ?? ['accordion']), Number(preferences.instrumentSetupDone ?? true));
     return this.getUserPreferences(userId)!;
   }
 

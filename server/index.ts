@@ -104,7 +104,7 @@ const preferencesSchema = z.object({
   notation: z.enum(['french', 'english', 'tablature', 'button']),
   countIn: z.boolean(),
   instrumentType: z.enum(['accordion', 'piano']).default('accordion'),
-  pianoKeyboardSize: z.union([z.literal(25), z.literal(32), z.literal(49), z.literal(61), z.literal(76), z.literal(88)]).default(49),
+  pianoKeyboardSize: z.union([z.literal(25), z.literal(32), z.literal(49), z.literal(61), z.literal(76), z.literal(88)]).default(61),
   pianoInput: z.enum(['midi', 'microphone', 'computer-keyboard']).default('computer-keyboard'),
   learningInstruments: z.array(z.enum(['accordion', 'piano'])).min(1).max(2).default(['accordion']),
   instrumentSetupDone: z.boolean().default(true),

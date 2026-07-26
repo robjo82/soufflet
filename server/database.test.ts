@@ -79,7 +79,7 @@ describe('production data migrations', () => {
     db.createUser({ id: 'usr_piano', email: 'piano@example.fr', displayName: 'Piano', passwordHash: 'test' });
     expect(db.saveUserPreferences('usr_piano', {
       accordionId: 'standard-gc-21-8', notation: 'french', countIn: true,
-    })).toMatchObject({ instrumentType: 'accordion', learningInstruments: ['accordion'], instrumentSetupDone: true, pianoKeyboardSize: 49, pianoInput: 'computer-keyboard' });
+    })).toMatchObject({ instrumentType: 'accordion', learningInstruments: ['accordion'], instrumentSetupDone: true, pianoKeyboardSize: 61, pianoInput: 'computer-keyboard' });
     expect(db.saveUserPreferences('usr_piano', {
       accordionId: 'standard-gc-21-8', notation: 'french', countIn: true,
       instrumentType: 'piano', learningInstruments: ['accordion', 'piano'], instrumentSetupDone: true, pianoKeyboardSize: 61, pianoInput: 'midi',

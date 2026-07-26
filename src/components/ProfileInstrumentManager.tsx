@@ -27,7 +27,7 @@ export function ProfileInstrumentManager({ accordions, pianos, selectedAccordion
     const base = templates.find((item) => item.id === selectedAccordionId) ?? templates[0];
     if (base) setEditor({ kind: 'accordion', value: { ...structuredClone(base), id: 'draft', maker: 'Mon accordéon', model: base.model, verified: false } });
   };
-  const newPiano = () => setEditor({ kind: 'piano', value: { id: 'draft', name: 'Mon piano', keyboardSize: 49, input: 'computer-keyboard', notation: 'french' } });
+  const newPiano = () => setEditor({ kind: 'piano', value: { id: 'draft', name: 'Mon piano', keyboardSize: 61, input: 'computer-keyboard', notation: 'french' } });
   const save = async () => {
     if (!editor || editor.kind === 'choice') return;
     setSaving(true); setError('');

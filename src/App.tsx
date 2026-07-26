@@ -40,7 +40,7 @@ const defaultPreferences: UserPreferences = {
   onboardingDone: false,
   tutorialDone: false,
   instrumentType: 'accordion',
-  pianoKeyboardSize: 49,
+  pianoKeyboardSize: 61,
   pianoInput: 'computer-keyboard',
   learningInstruments: ['accordion'],
   instrumentSetupDone: true,

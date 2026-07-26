@@ -415,7 +415,18 @@ const AU_CLAIR_VERSE = timedNotes([
   [60, 48, 1], [60, 49, 1], [60, 50, 1], [62, 51, 1], [64, 52, 2], [62, 54, 2],
   [60, 56, 1], [64, 57, 1], [62, 58, 1], [62, 59, 1], [60, 60, 4],
 ]);
-const AU_CLAIR_EASY_VERSE = AU_CLAIR_VERSE.filter((note) => note.beat % 4 === 0 || note.beat % 4 === 2).map((note) => ({ ...note, duration: note.duration === 4 ? 4 : 2 }));
+// The simplified version preserves every melodic turn while grouping repeated
+// notes into longer values. Filtering every other beat made the tune incorrect.
+const AU_CLAIR_EASY_VERSE = timedNotes([
+  [60, 0, 3], [62, 3, 1], [64, 4, 2], [62, 6, 2],
+  [60, 8, 1], [64, 9, 1], [62, 10, 2], [60, 12, 4],
+  [60, 16, 3], [62, 19, 1], [64, 20, 2], [62, 22, 2],
+  [60, 24, 1], [64, 25, 1], [62, 26, 2], [60, 28, 4],
+  [62, 32, 4], [69, 36, 4],
+  [62, 40, 1], [60, 41, 1], [59, 42, 1], [57, 43, 1], [55, 44, 4],
+  [60, 48, 3], [62, 51, 1], [64, 52, 2], [62, 54, 2],
+  [60, 56, 1], [64, 57, 1], [62, 58, 2], [60, 60, 4],
+]);
 const AU_CLAIR_MELODY = [8, 72, 136, 200].flatMap((beat) => shiftNotes(AU_CLAIR_VERSE, beat));
 const AU_CLAIR_EASY = [8, 72, 136, 200].flatMap((beat) => shiftNotes(AU_CLAIR_EASY_VERSE, beat));
 const AU_CLAIR_LYRICS_1 = [
@@ -523,24 +534,19 @@ export function pianoChordExerciseForSong(title: string, artist?: string) {
 
 export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'piano-morning-walk', title: 'Promenade du matin', kind: 'exercise', arrangement: 'Régularité et déplacements de la main droite', level: 'Modéré', bpm: 80, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2])) },
-  { id: 'my-way-beginner', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 54, hand: 'right', beatsPerMeasure: 4, measureStartBeat: 1, notes: withRightHandFingerings(MY_WAY_EASY, 'my-way') },
-  { id: 'my-way-intermediate', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', beatsPerMeasure: 4, measureStartBeat: 1, notes: withRightHandFingerings(MY_WAY_MELODY, 'my-way') },
-  { id: 'my-way-advanced', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 4, measureStartBeat: 1, notes: MY_WAY_TWO_HANDS },
-  { id: 'se-canta-beginner', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 1 · Thème simplifié', level: 'Très simple', bpm: 54, hand: 'right', beatsPerMeasure: 3, measureStartBeat: 1, notes: withRightHandFingerings(SE_CANTA_EASY) },
-  { id: 'se-canta-intermediate', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 64, hand: 'right', beatsPerMeasure: 3, measureStartBeat: 1, notes: withRightHandFingerings(SE_CANTA_MELODY) },
-  { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 3, measureStartBeat: 1, notes: SE_CANTA_TWO_HANDS },
-  { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 52, hand: 'right', beatsPerMeasure: 3, notes: withRightHandFingerings(BREL_EASY, 'brel'), lyrics: BREL_LYRICS },
-  { id: 'ne-me-quitte-pas-intermediate', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 62, hand: 'right', beatsPerMeasure: 3, notes: withRightHandFingerings(BREL_MELODY, 'brel'), lyrics: BREL_LYRICS },
-  { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', beatsPerMeasure: 3, notes: BREL_TWO_HANDS, lyrics: BREL_LYRICS },
-  { id: 'au-clair-de-la-lune-beginner', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 56, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_EASY), lyrics: AU_CLAIR_LYRICS },
-  { id: 'au-clair-de-la-lune-intermediate', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 2 · Mélodie complète', level: 'Simple', bpm: 72, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_MELODY), lyrics: AU_CLAIR_LYRICS },
-  { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 4, notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
-  { id: 'experience-simplified', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 1 · Version simplifiée', level: 'Simple', bpm: 70, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_EASY_NOTES },
-  { id: 'experience-complete-49', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 2 · Version complète · 49 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_49_KEY_NOTES },
-  { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Niveau 3 · Version complète · Tessiture originale', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
-  { id: 'brise-pied-aveyronnais-beginner', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Niveau 1 · Mélodie simplifiée', level: 'Très simple', bpm: 72, hand: 'right', beatsPerMeasure: 4, notes: BRISE_PIED_EASY },
-  { id: 'brise-pied-aveyronnais-intermediate', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Niveau 2 · Mélodie traditionnelle', level: 'Simple', bpm: 88, hand: 'right', beatsPerMeasure: 4, notes: BRISE_PIED_MELODY },
-  { id: 'brise-pied-aveyronnais-advanced', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Niveau 3 · Mélodie et accompagnement', level: 'Modéré', bpm: 104, hand: 'both', beatsPerMeasure: 4, notes: BRISE_PIED_TWO_HANDS },
+  { id: 'my-way-beginner', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 54, hand: 'right', beatsPerMeasure: 4, measureStartBeat: 1, notes: withRightHandFingerings(MY_WAY_EASY, 'my-way') },
+  { id: 'my-way-advanced', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 4, measureStartBeat: 1, notes: MY_WAY_TWO_HANDS },
+  { id: 'se-canta-beginner', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 54, hand: 'right', beatsPerMeasure: 3, measureStartBeat: 1, notes: withRightHandFingerings(SE_CANTA_EASY) },
+  { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 3, measureStartBeat: 1, notes: SE_CANTA_TWO_HANDS },
+  { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 52, hand: 'right', beatsPerMeasure: 3, notes: withRightHandFingerings(BREL_EASY, 'brel'), lyrics: BREL_LYRICS },
+  { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', beatsPerMeasure: 3, notes: BREL_TWO_HANDS, lyrics: BREL_LYRICS },
+  { id: 'au-clair-de-la-lune-beginner', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 56, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_EASY), lyrics: AU_CLAIR_LYRICS },
+  { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 4, notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
+  { id: 'experience-simplified', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version simplifiée', level: 'Simple', bpm: 70, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_EASY_NOTES },
+  { id: 'experience-complete-49', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · 49 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_49_KEY_NOTES },
+  { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · Tessiture originale', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
+  { id: 'brise-pied-aveyronnais-beginner', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 72, hand: 'right', beatsPerMeasure: 4, notes: BRISE_PIED_EASY },
+  { id: 'brise-pied-aveyronnais-advanced', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 104, hand: 'both', beatsPerMeasure: 4, notes: BRISE_PIED_TWO_HANDS },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -578,7 +584,7 @@ export function pianoNotesForMode(exercise: PianoExercise, mode: PianoPlayMode, 
 
 export function pianoHandChoicesForMode(exercise: PianoExercise, mode: PianoPlayMode): PianoPracticeHand[] {
   if (exercise.hand !== 'both') return ['right'];
-  return mode === 'maestro' ? ['both'] : ['right', 'left'];
+  return mode === 'maestro' ? ['both'] : ['left', 'right'];
 }
 
 export function isPianoSessionCounted(mode: PianoPlayMode) {
