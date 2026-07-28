@@ -62,7 +62,7 @@ describe('production data migrations', () => {
     db.saveAccordion({ id: 'custom-delete', maker: 'Test', model: 'Privé', tuning: 'Do/Fa' }, 'usr_delete');
     db.saveTunerReading('usr_delete', {
       id: 'reading-delete', sessionId: 'tuner-delete', accordionId: 'custom-delete', accordionModel: 'Privé',
-      buttonId: 'button-1', row: 1, buttonIndex: 1, direction: 'push', expectedMidi: 60, detectedMidi: 60,
+      buttonId: 'button-1', row: 1, buttonIndex: 1, hand: 'right', direction: 'push', expectedMidi: 60, detectedMidi: 60,
       frequency: 261.8, cents: 1, confidence: .94, volume: .08, outcome: 'matched', measuredAt: '2026-07-16T18:00:00.000Z',
     });
     db.savePracticeSession('usr_delete', {
@@ -86,13 +86,13 @@ describe('production data migrations', () => {
     db.createUser({ id: 'usr_tuner', email: 'tuner@example.fr', displayName: 'Accordeur', passwordHash: 'test' });
     const base = {
       accordionId: 'hohner-club-i-cf-10-9-2', accordionModel: 'Club I', buttonId: 'c1-in-3', row: 2,
-      buttonIndex: 3, direction: 'push' as const, expectedMidi: 55, detectedMidi: 65, frequency: 349.8,
+      buttonIndex: 3, hand: 'left' as const, direction: 'push' as const, expectedMidi: 55, detectedMidi: 65, frequency: 349.8,
       cents: 3, confidence: .94, volume: .08, outcome: 'corrected' as const,
     };
     db.saveTunerReading('usr_tuner', { ...base, id: 'reading-old', sessionId: 'campaign-old', measuredAt: '2026-07-18T18:00:00.000Z' });
     db.saveTunerReading('usr_tuner', { ...base, id: 'reading-new', sessionId: 'campaign-new', measuredAt: '2026-07-19T18:00:00.000Z' });
 
-    expect(db.listTunerReadings('usr_tuner')).toMatchObject([{ id: 'reading-new', cents: 3, outcome: 'corrected' }]);
+    expect(db.listTunerReadings('usr_tuner')).toMatchObject([{ id: 'reading-new', cents: 3, hand: 'left', outcome: 'corrected' }]);
     expect(db.listTunerReadings('usr_tuner', 'campaign-old')).toMatchObject([{ id: 'reading-old' }]);
   });
 

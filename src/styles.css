@@ -245,8 +245,8 @@ svg { stroke-width: 1.8; }
 .melody-row:nth-child(3) { justify-content: start; padding-top: 15px; }
 .melody-button { width: var(--melody-button-size, 27px); height: var(--melody-button-size, 27px); flex: 0 0 var(--melody-button-size, 27px); position: relative; color: #4a4641; font-size: 8px; font-weight: 900; }
 .melody-button.is-helper { background: radial-gradient(circle at 36% 30%, #ffe6a9, #d3a342 60%, #775920); color: #342a19; }
-.melody-button.is-detected:not(.is-active) { box-shadow: 0 0 0 5px rgba(232,184,75,.38), 0 6px 0 #92773e, 0 8px 6px rgba(0,0,0,.5); background: #f8d980; transform: translateZ(13px) scale(1.08); }
-.melody-button.is-selected { outline: 3px solid white; box-shadow: 0 0 0 6px var(--green), 0 6px 0 #244b3b, 0 9px 8px rgba(0,0,0,.5); transform: translateZ(16px) scale(1.12); z-index: 12; }
+.bass-button.is-detected:not(.is-active), .melody-button.is-detected:not(.is-active) { box-shadow: 0 0 0 5px rgba(232,184,75,.38), 0 6px 0 #92773e, 0 8px 6px rgba(0,0,0,.5); background: #f8d980; transform: translateZ(13px) scale(1.08); }
+.bass-button.is-selected, .melody-button.is-selected { outline: 3px solid white; box-shadow: 0 0 0 6px var(--green), 0 6px 0 #244b3b, 0 9px 8px rgba(0,0,0,.5); transform: translateZ(16px) scale(1.12); z-index: 12; }
 .finger-badge { position: absolute; right: -10px; top: -9px; width: 17px; height: 17px; display: grid; place-items: center; color: white; background: var(--green); border: 2px solid white; border-radius: 50%; font-size: 8px; transform: translateZ(8px); }
 .instrument-nameplate { position: absolute; z-index: 3; left: 18px; right: 18px; bottom: 19px; padding: 5px 8px; border: 1px solid rgba(255,255,255,.22); border-radius: 6px; display: flex; justify-content: space-between; color: rgba(255,255,255,.7); background: rgba(0,0,0,.18); transform: translateZ(5px); }
 .instrument-nameplate strong { font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
@@ -1291,6 +1291,14 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .tuner-target-navigation button:disabled { opacity: .35; cursor: default; }
 .tuner-target-navigation svg { width: 15px; }
 .tuner-target-navigation strong { min-width: 48px; text-align: center; font-size: 9px; }
+.tuner-hand-choice { margin-top: 12px; padding: 4px; border-radius: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #e9e5dd; }
+.tuner-hand-choice button { min-height: 48px; padding: 7px 11px; border: 0; border-radius: 10px; display: flex; align-items: center; gap: 9px; color: var(--muted); background: transparent; cursor: pointer; text-align: left; }
+.tuner-hand-choice button > svg { width: 18px; flex: 0 0 auto; }
+.tuner-hand-choice button > span { display: flex; flex-direction: column; gap: 1px; }
+.tuner-hand-choice button strong { font-size: 9px; }
+.tuner-hand-choice button small { color: inherit; font-size: 7px; }
+.tuner-hand-choice button.is-active { color: white; background: var(--green); box-shadow: 0 4px 10px rgba(49,92,75,.18); }
+.tuner-hand-choice button:disabled { opacity: .42; cursor: default; }
 .tuner-target-controls { margin-top: 12px; display: grid; grid-template-columns: 1fr auto; gap: 10px; }
 .tuner-target-controls > label { min-height: 48px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 11px; display: flex; flex-direction: column; }
 .tuner-target-controls small { color: var(--muted); font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
@@ -1312,6 +1320,10 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .tuner-confirm-button { min-height: 48px; max-width: 265px; font-size: 9px; }
 .tuner-confirm-button:disabled { opacity: .48; cursor: default; }
 .tuner-inline-message { margin: 8px 0 0 !important; }
+.tuner-left-hand-note { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; display: flex; align-items: start; gap: 8px; color: #456355; background: var(--green-soft); font-size: 8px; line-height: 1.45; }
+.tuner-left-hand-note > svg { width: 15px; flex: 0 0 auto; }
+.tuner-left-hand-note span { display: block; }
+.tuner-left-hand-note strong { margin-right: 4px; }
 .tuner-location-hint { margin: 8px 0 0; color: var(--muted); display: flex; align-items: center; gap: 6px; font-size: 8px; }
 .tuner-location-hint svg { width: 13px; flex: 0 0 auto; }
 .tuner-help-compact { min-height: 56px; margin-top: 12px; padding-block: 10px; }

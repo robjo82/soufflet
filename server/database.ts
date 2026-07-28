@@ -28,6 +28,7 @@ export interface StoredTunerReading {
   buttonId: string;
   row: number;
   buttonIndex: number;
+  hand: 'right' | 'left';
   direction: 'push' | 'pull';
   expectedMidi: number;
   detectedMidi: number;
@@ -175,6 +176,10 @@ export class SouffletDatabase {
           ON tuner_readings(user_id, session_id, measured_at);
         CREATE INDEX IF NOT EXISTS tuner_readings_user_latest_idx
           ON tuner_readings(user_id, measured_at DESC);
+      `,
+      `
+        ALTER TABLE tuner_readings ADD COLUMN hand TEXT NOT NULL DEFAULT 'right'
+          CHECK(hand IN ('right', 'left'));
       `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
@@ -440,14 +445,15 @@ export class SouffletDatabase {
     this.db.prepare(`
       INSERT INTO tuner_readings (
         id, session_id, user_id, accordion_id, accordion_model, button_id, button_row, button_index,
-        direction, expected_midi, detected_midi, frequency, cents, confidence, volume, outcome, measured_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        hand, direction, expected_midi, detected_midi, frequency, cents, confidence, volume, outcome, measured_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         accordion_id = excluded.accordion_id,
         accordion_model = excluded.accordion_model,
         button_id = excluded.button_id,
         button_row = excluded.button_row,
         button_index = excluded.button_index,
+        hand = excluded.hand,
         direction = excluded.direction,
         expected_midi = excluded.expected_midi,
         detected_midi = excluded.detected_midi,
@@ -460,7 +466,7 @@ export class SouffletDatabase {
       WHERE tuner_readings.user_id = excluded.user_id
     `).run(
       reading.id, reading.sessionId, userId, reading.accordionId, reading.accordionModel,
-      reading.buttonId, reading.row, reading.buttonIndex, reading.direction, reading.expectedMidi,
+      reading.buttonId, reading.row, reading.buttonIndex, reading.hand, reading.direction, reading.expectedMidi,
       reading.detectedMidi, reading.frequency, reading.cents, reading.confidence, reading.volume,
       reading.outcome, reading.measuredAt,
     );
@@ -474,14 +480,14 @@ export class SouffletDatabase {
     if (!selectedSession) return [];
     const rows = this.db.prepare(`
       SELECT id, session_id, accordion_id, accordion_model, button_id, button_row, button_index,
-             direction, expected_midi, detected_midi, frequency, cents, confidence, volume, outcome, measured_at
+             hand, direction, expected_midi, detected_midi, frequency, cents, confidence, volume, outcome, measured_at
       FROM tuner_readings
       WHERE user_id = ? AND session_id = ?
       ORDER BY measured_at, button_row, button_index
       LIMIT 240
     `).all(userId, selectedSession) as Array<{
       id: string; session_id: string; accordion_id: string; accordion_model: string; button_id: string;
-      button_row: number; button_index: number; direction: 'push' | 'pull'; expected_midi: number;
+      button_row: number; button_index: number; hand: 'right' | 'left'; direction: 'push' | 'pull'; expected_midi: number;
       detected_midi: number; frequency: number; cents: number; confidence: number; volume: number;
       outcome: 'matched' | 'corrected'; measured_at: string;
     }>;
@@ -493,6 +499,7 @@ export class SouffletDatabase {
       buttonId: row.button_id,
       row: row.button_row,
       buttonIndex: row.button_index,
+      hand: row.hand,
       direction: row.direction,
       expectedMidi: row.expected_midi,
       detectedMidi: row.detected_midi,

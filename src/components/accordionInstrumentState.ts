@@ -13,7 +13,7 @@ export function getAccordionInstrumentState(config: AccordionConfig, input: Acco
   );
   const detectedButtonIds = input.detectedMidi === undefined
     ? []
-    : config.buttons
+    : [...config.buttons, ...config.basses]
       .filter((button) => button.pushMidi === input.detectedMidi || button.pullMidi === input.detectedMidi)
       .map((button) => button.id);
 
