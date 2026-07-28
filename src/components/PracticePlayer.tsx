@@ -5,6 +5,7 @@ import {
   Wind,
 } from 'lucide-react';
 import { AccordionInstrument } from './AccordionInstrument';
+import { FingeringGuide } from './FingeringGuide';
 import { ScoreStrip } from './ScoreStrip';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
@@ -19,6 +20,7 @@ import { createPracticeTimeline } from '../practiceTimeline';
 import { adaptSongToAccordion } from '../data';
 import { BELLOWS_STYLE_OPTIONS, bellowsAmountLabel, bellowsStepAt } from '../bellowsStrategy';
 import { canAcceptWaitPitch, selectPitchAssessmentIndex } from '../practicePitchAssessment';
+import { planMelodyFingering } from '../fingeringGuide';
 
 interface PracticePlayerProps {
   song: Song;
@@ -44,16 +46,17 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     mode: 'guided', hand: 'right', tempo: 80, countIn, metronome: false, loop: false,
     loopStart: 0, loopEnd: sourceSong.events.length - 1, notation, bellowsStyle: 'balanced',
   });
-  const song = useMemo(
-    () => adaptSongToAccordion(sourceSong, accordion, settings.bellowsStyle),
-    [accordion, settings.bellowsStyle, sourceSong],
-  );
+  const song = useMemo(() => {
+    const adapted = adaptSongToAccordion(sourceSong, accordion, settings.bellowsStyle);
+    return { ...adapted, events: planMelodyFingering(adapted.events, accordion) };
+  }, [accordion, settings.bellowsStyle, sourceSong]);
   const [playing, setPlaying] = useState(false);
   const [countInBeat, setCountInBeat] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeAccompanimentIndex, setActiveAccompanimentIndex] = useState(0);
   const [modeOpen, setModeOpen] = useState(false);
   const [showScore, setShowScore] = useState(true);
+  const [showFingering, setShowFingering] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [tempoOpen, setTempoOpen] = useState(false);
   const [flagged, setFlagged] = useState(false);
@@ -543,6 +546,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       else if (key === 'm') setSettings((value) => ({ ...value, metronome: !value.metronome }));
       else if (key === 's') setSoundEnabled((value) => !value);
       else if (key === 'p') setShowScore((value) => !value);
+      else if (key === 'd') setShowFingering((value) => !value);
       else if (key === 'f') void toggleFullscreen();
       else if (key === '?') setShortcutsVisible((value) => !value);
       else if (!playing && countInBeat === null && event.key === 'ArrowLeft') {
@@ -657,6 +661,15 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
           <button type="button" className={`tool-toggle ${settings.loop ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, loop: !value.loop }))}>
             <Repeat2 size={17} /> Boucler
           </button>
+          <button
+            type="button"
+            className={`tool-toggle ${showFingering ? 'is-active' : ''}`}
+            disabled={settings.hand === 'left' || settings.mode === 'performance'}
+            onClick={() => setShowFingering((value) => !value)}
+            title="Afficher ou masquer les conseils de doigté main droite"
+          >
+            <Hand size={17} /> Doigté
+          </button>
           <button type="button" className={`tool-toggle ${!showScore ? 'is-active' : ''}`} onClick={() => setShowScore(!showScore)}><SlidersHorizontal size={17} /> {showScore ? 'Masquer la partition' : 'Afficher la partition'}</button>
         </div>
 
@@ -672,6 +685,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
               bellowsAmount={bellowsAmount}
               airValveActive={Boolean(currentBellowsStep?.airBefore) && !playing && countInBeat === null}
               depressActive={playing && countInBeat === null && !sessionFinished}
+              showFingering={showFingering}
               context="practice"
               onButtonPress={(buttonId, direction) => {
                 if (direction !== currentEvent?.direction) {
@@ -698,8 +712,25 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
           )}
         </section>
 
+        {settings.mode !== 'performance' && settings.hand !== 'left' && showFingering && (
+          <FingeringGuide
+            events={practiceEvents}
+            activeIndex={activeIndex}
+            accordion={accordion}
+            connectsToScore={showScore}
+          />
+        )}
+
         {settings.mode !== 'performance' && showScore && (
-          <ScoreStrip song={scoreSong} activeIndex={activeIndex} notation={notation} hand={settings.hand} completed={sessionFinished} onSelect={(_, index) => selectIndex(index)} />
+          <ScoreStrip
+            song={scoreSong}
+            activeIndex={activeIndex}
+            notation={notation}
+            hand={settings.hand}
+            completed={sessionFinished}
+            showFingering={settings.hand !== 'left' && showFingering}
+            onSelect={(_, index) => selectIndex(index)}
+          />
         )}
 
         {shortcutsVisible && (
@@ -719,6 +750,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
                 <span><kbd>M</kbd><b>Métronome</b></span>
                 <span><kbd>S</kbd><b>Son de l’app</b></span>
                 <span><kbd>P</kbd><b>Partition</b></span>
+                <span><kbd>D</kbd><b>Doigté</b></span>
                 <span><kbd>F</kbd><b>Plein écran</b></span>
                 <span><kbd>← →</kbd><b>Parcourir les notes</b></span>
                 <span><kbd>1—4</kbd><b>Choisir un mode</b></span>
