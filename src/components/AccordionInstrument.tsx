@@ -27,6 +27,7 @@ export function AccordionInstrument({
   depressActive = false,
   bellowsAmount,
   airValveActive = false,
+  showFingering = true,
   onButtonPress,
   context = 'practice',
   showLearningGuides = true,
@@ -47,6 +48,7 @@ export function AccordionInstrument({
       depressActive={depressActive}
       bellowsAmount={bellowsAmount}
       airValveActive={airValveActive}
+      showFingering={showFingering}
       onButtonPress={onButtonPress}
     />
   );

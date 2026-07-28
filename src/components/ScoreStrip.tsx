@@ -3,6 +3,7 @@ import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { displayNote } from '../data';
 import { getScoreItemContentLeft, getScoreScrollTarget } from '../scoreScroll';
 import type { Hand, Notation, Song, SongEvent } from '../types';
+import { fingerName, fingerSymbol } from '../fingeringGuide';
 
 interface ScoreStripProps {
   song: Song;
@@ -10,10 +11,19 @@ interface ScoreStripProps {
   notation: Notation;
   hand?: Hand;
   completed?: boolean;
+  showFingering?: boolean;
   onSelect: (event: SongEvent, index: number) => void;
 }
 
-export function ScoreStrip({ song, activeIndex, notation, hand = 'right', completed = false, onSelect }: ScoreStripProps) {
+export function ScoreStrip({
+  song,
+  activeIndex,
+  notation,
+  hand = 'right',
+  completed = false,
+  showFingering = false,
+  onSelect,
+}: ScoreStripProps) {
   const stripRef = useRef<HTMLDivElement>(null);
   const eventRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -55,7 +65,7 @@ export function ScoreStrip({ song, activeIndex, notation, hand = 'right', comple
       <div className="score-labels">
         <span>Mesure</span>
         <span>Soufflet</span>
-        <span>{hand === 'left' ? 'Basses' : 'Notes'}</span>
+        <span>{hand === 'left' ? 'Basses' : showFingering ? 'Notes · doigt' : 'Notes'}</span>
       </div>
       <div className="score-strip" aria-label="Partition interactive" ref={stripRef}>
         {song.events.map((event, index) => {
@@ -78,6 +88,11 @@ export function ScoreStrip({ song, activeIndex, notation, hand = 'right', comple
               </span>
               <strong>{displayNote(event.note, notation, event.buttonId, event.direction)}</strong>
               <small>{rhythmSymbol(event.duration)}</small>
+              {showFingering && (
+                <span className="score-finger" title={fingerName(event.finger)} aria-label={`Doigt conseillé : ${fingerName(event.finger)}`}>
+                  {fingerSymbol(event.finger)}
+                </span>
+              )}
               {uncertain && <AlertTriangle className="confidence-warning" size={13} />}
               {!completed && index === activeIndex && <ChevronRight className="playhead-mark" size={16} />}
             </button>

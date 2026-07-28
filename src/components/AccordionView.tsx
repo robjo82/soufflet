@@ -3,6 +3,7 @@ import type { AccordionConfig, Direction, Notation, SongEvent } from '../types';
 import { displayNote, FRENCH_NOTES } from '../data';
 import { useSynth } from '../hooks/useSynth';
 import { getAccordionVisualVariant, getMelodyButtonSize } from './accordionLayout';
+import { fingerName, fingerSymbol } from '../fingeringGuide';
 
 export interface AccordionViewProps {
   config: AccordionConfig;
@@ -15,6 +16,7 @@ export interface AccordionViewProps {
   depressActive?: boolean;
   bellowsAmount?: number;
   airValveActive?: boolean;
+  showFingering?: boolean;
   onButtonPress?: (buttonId: string, direction: Direction) => void;
 }
 
@@ -36,6 +38,7 @@ export function AccordionView({
   depressActive = false,
   bellowsAmount,
   airValveActive = false,
+  showFingering = true,
   onButtonPress,
 }: AccordionViewProps) {
   const { playMidi } = useSynth();
@@ -143,7 +146,11 @@ export function AccordionView({
                       data-midi={currentMidi}
                     >
                       <span>{label}</span>
-                      {isActive && activeEvent?.finger && <b className="finger-badge">{activeEvent.finger}</b>}
+                      {showFingering && isActive && activeEvent?.finger && (
+                        <b className="finger-badge" title={fingerName(activeEvent.finger)} aria-label={`Doigt : ${fingerName(activeEvent.finger)}`}>
+                          {fingerSymbol(activeEvent.finger)}
+                        </b>
+                      )}
                     </button>
                   );
                 })}
