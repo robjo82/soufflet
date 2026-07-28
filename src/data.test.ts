@@ -6,7 +6,7 @@ import { HAND_FOCUS_OPTIONS, PRACTICE_MODES, PRIMARY_PRACTICE_MODES } from './pr
 import { createWaitTutorialSong, TUTORIAL_MODE_TRIALS } from './tutorialFlow';
 import { getCountInSequence, getPlaybackStartIndex, getWaitAdvance } from './practiceProgress';
 import { createPracticeTimeline } from './practiceTimeline';
-import { createTunerTargets, findTunerTargetIndex, nextTunerTarget } from './tunerWorkflow';
+import { createTunerTargets, findTunerTargetIndex, nextTunerTarget, updateTunerButtonMapping } from './tunerWorkflow';
 import { classifyBellows, createBellowsReference, evaluateRhythm, midiMatches, type AudioFeatureFrame, type BellowsProfile } from './audioTraining';
 import { createAccordion3DPlayback } from './accordion3dPlayback';
 import type { PitchStabilityState } from './hooks/usePitchDetector';
@@ -114,21 +114,42 @@ describe('guided tuner workflow', () => {
   const accordion = FALLBACK_ACCORDIONS[0];
   const targets = createTunerTargets(accordion);
 
-  it('checks push then pull for every melody button', () => {
-    expect(targets).toHaveLength(accordion.buttons.length * 2);
+  it('checks push then pull for every button on both hands', () => {
+    expect(targets).toHaveLength((accordion.buttons.length + accordion.basses.length) * 2);
     expect(targets.slice(0, 4)).toEqual([
-      { buttonId: accordion.buttons[0].id, direction: 'push' },
-      { buttonId: accordion.buttons[0].id, direction: 'pull' },
-      { buttonId: accordion.buttons[1].id, direction: 'push' },
-      { buttonId: accordion.buttons[1].id, direction: 'pull' },
+      { buttonId: accordion.buttons[0].id, direction: 'push', hand: 'right' },
+      { buttonId: accordion.buttons[0].id, direction: 'pull', hand: 'right' },
+      { buttonId: accordion.buttons[1].id, direction: 'push', hand: 'right' },
+      { buttonId: accordion.buttons[1].id, direction: 'pull', hand: 'right' },
+    ]);
+    expect(targets.slice(-2)).toEqual([
+      { buttonId: accordion.basses.at(-1)!.id, direction: 'push', hand: 'left' },
+      { buttonId: accordion.basses.at(-1)!.id, direction: 'pull', hand: 'left' },
     ]);
   });
 
   it('moves from pulling one button to pushing the next one', () => {
     const first = accordion.buttons[0];
     const next = nextTunerTarget(targets, first.id, 'pull');
-    expect(next).toEqual({ buttonId: accordion.buttons[1].id, direction: 'push' });
+    expect(next).toEqual({ buttonId: accordion.buttons[1].id, direction: 'push', hand: 'right' });
     expect(findTunerTargetIndex(targets, next!.buttonId, next!.direction)).toBe(2);
+  });
+
+  it('continues from the last melody button to the first left-hand bass', () => {
+    const lastMelody = accordion.buttons.at(-1)!;
+    expect(nextTunerTarget(targets, lastMelody.id, 'pull', 1, 'right')).toEqual({
+      buttonId: accordion.basses[0].id,
+      direction: 'push',
+      hand: 'left',
+    });
+  });
+
+  it('corrects a left-hand reed without changing the melody mapping', () => {
+    const bass = accordion.basses[0];
+    const corrected = updateTunerButtonMapping(accordion, bass.id, 'left', 'pull', 45);
+    expect(corrected.basses[0]).toMatchObject({ pullMidi: 45, pull: 'A2' });
+    expect(corrected.buttons).toEqual(accordion.buttons);
+    expect(accordion.basses[0]).toBe(bass);
   });
 });
 

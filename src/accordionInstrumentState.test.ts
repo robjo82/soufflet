@@ -29,13 +29,21 @@ describe('accordion instrument 3D state', () => {
       .toEqual([event.buttonId, event.bassButtonId]);
   });
 
-  it('maps microphone and tuner feedback onto every matching melody button', () => {
+  it('maps microphone and tuner feedback onto matching buttons on both hands', () => {
     const detectedMidi = accordion.buttons[4].pullMidi;
     const selectedButtonId = accordion.buttons[4].id;
     const state = getAccordionInstrumentState(accordion, { detectedMidi, selectedButtonId });
 
     expect(state.detectedButtonIds).toContain(selectedButtonId);
     expect(state.selectedButtonIds).toEqual([selectedButtonId]);
+
+    const bass = accordion.basses[0];
+    const leftState = getAccordionInstrumentState(accordion, {
+      detectedMidi: bass.pushMidi,
+      selectedButtonId: bass.id,
+    });
+    expect(leftState.detectedButtonIds).toContain(bass.id);
+    expect(leftState.selectedButtonIds).toEqual([bass.id]);
   });
 
   it('uses the detected push or pull direction when a mapped button is pressed', () => {

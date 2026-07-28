@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, CircleCheck,
-  Download, Info, Mic2, RotateCcw, Save, SlidersHorizontal, Volume2,
+  Download, Hand, Info, Mic2, Music2, RotateCcw, Save, SlidersHorizontal, Volume2,
 } from 'lucide-react';
 import type { AccordionConfig, Direction, Notation, PitchReading, TunerReading } from '../types';
 import { noteFromMidi } from '../data';
 import { frequencyToPitch, rememberReliablePitch, usePitchDetector } from '../hooks/usePitchDetector';
 import { buildTunerExport, tunerExportFilename } from '../tunerExport';
-import { createTunerTargets, findTunerTargetIndex, nextTunerTarget } from '../tunerWorkflow';
+import {
+  createTunerTargets, findTunerTargetIndex, nextTunerTarget, updateTunerButtonMapping, type TunerHand,
+} from '../tunerWorkflow';
 import { AccordionInstrument } from './AccordionInstrument';
 
 interface TunerPageProps {
@@ -17,8 +19,8 @@ interface TunerPageProps {
   onAccordionChange: (accordion: AccordionConfig) => void;
 }
 
-function targetKey(buttonId: string, direction: Direction) {
-  return `${buttonId}:${direction}`;
+function targetKey(hand: TunerHand, buttonId: string, direction: Direction) {
+  return `${hand}:${buttonId}:${direction}`;
 }
 
 function rowLabel(row: number) {
@@ -26,6 +28,17 @@ function rowLabel(row: number) {
   if (row === 2) return 'intérieur';
   return 'demi-rang';
 }
+
+function buttonLabel(button: AccordionConfig['buttons'][number], hand: TunerHand) {
+  if (hand === 'right') return `Bouton ${button.index} · rang ${rowLabel(button.row)}`;
+  const pair = Math.ceil(button.index / 2);
+  return `${button.role === 'chord' ? 'Accord' : 'Basse'} ${pair} · bouton gauche ${button.index}`;
+}
+
+const HAND_LABELS: Record<TunerHand, string> = {
+  right: 'Main droite',
+  left: 'Main gauche',
+};
 
 export function TunerPage({ accordion, notation, onBack, onAccordionChange }: TunerPageProps) {
   const detector = usePitchDetector();
@@ -43,8 +56,13 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
   const sessionId = useRef(crypto.randomUUID()).current;
 
   const targets = useMemo(() => createTunerTargets(accordion), [accordion]);
-  const targetIndex = findTunerTargetIndex(targets, selectedButtonId, direction);
-  const selectedButton = accordion.buttons.find((button) => button.id === selectedButtonId) ?? accordion.buttons[0];
+  const allButtons = useMemo(() => [...accordion.buttons, ...accordion.basses], [accordion.basses, accordion.buttons]);
+  const selectedHand: TunerHand = accordion.basses.some((button) => button.id === selectedButtonId) ? 'left' : 'right';
+  const handButtons = selectedHand === 'right' ? accordion.buttons : accordion.basses;
+  const handTargets = targets.filter((target) => target.hand === selectedHand);
+  const verifiedHandTargets = handTargets.filter((target) => verifiedTargets.has(targetKey(target.hand, target.buttonId, target.direction))).length;
+  const targetIndex = findTunerTargetIndex(targets, selectedButtonId, direction, selectedHand);
+  const selectedButton = handButtons.find((button) => button.id === selectedButtonId) ?? handButtons[0];
   const expectedMidi = selectedButton ? (direction === 'push' ? selectedButton.pushMidi : selectedButton.pullMidi) : undefined;
   const liveReading = detector.reading
     ? frequencyToPitch(detector.reading.frequency, detector.reading.confidence, detector.reading.volume, a4)
@@ -59,10 +77,10 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
   const inTune = Boolean(reading && Math.abs(cents) <= tolerance && reading.confidence > .65);
   const noteMatches = Boolean(reading && reading.midi === expectedMidi);
   const canCorrect = Boolean(reading && reading.confidence > .72 && expectedMidi !== undefined && !noteMatches);
-  const currentVerified = selectedButton ? verifiedTargets.has(targetKey(selectedButton.id, direction)) : false;
+  const currentVerified = selectedButton ? verifiedTargets.has(targetKey(selectedHand, selectedButton.id, direction)) : false;
   const matchingButtons = useMemo(
-    () => accordion.buttons.filter((button) => button.pushMidi === reading?.midi || button.pullMidi === reading?.midi),
-    [accordion.buttons, reading?.midi],
+    () => allButtons.filter((button) => button.pushMidi === reading?.midi || button.pullMidi === reading?.midi),
+    [allButtons, reading?.midi],
   );
 
   useEffect(() => { void start(); return stop; }, [start, stop]);
@@ -74,8 +92,13 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
     setSaveMessage('');
   };
 
+  const selectHand = (hand: TunerHand) => {
+    const firstTarget = targets.find((target) => target.hand === hand);
+    if (firstTarget) selectTarget(firstTarget.buttonId, firstTarget.direction);
+  };
+
   const moveTarget = (offset: number) => {
-    const target = nextTunerTarget(targets, selectedButtonId, direction, offset);
+    const target = nextTunerTarget(targets, selectedButtonId, direction, offset, selectedHand);
     if (target) selectTarget(target.buttonId, target.direction);
   };
 
@@ -94,6 +117,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
       buttonId: selectedButton.id,
       row: selectedButton.row,
       buttonIndex: selectedButton.index,
+      hand: selectedHand,
       direction,
       expectedMidi: capturedExpectedMidi,
       detectedMidi: capturedReading.midi,
@@ -121,8 +145,8 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
     if (!selectedButton || !reading || expectedMidi === undefined) return;
     setSaving(true);
     const archived = await archiveReading('matched', reading, expectedMidi);
-    setVerifiedTargets((previous) => new Set(previous).add(targetKey(selectedButton.id, direction)));
-    setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} vérifié pour le bouton ${selectedButton.index}.${archived ? ' Relevé archivé.' : ' Relevé gardé pour l’export local.'}`);
+    setVerifiedTargets((previous) => new Set(previous).add(targetKey(selectedHand, selectedButton.id, direction)));
+    setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} vérifié pour ${buttonLabel(selectedButton, selectedHand).toLowerCase()}.${archived ? ' Relevé archivé.' : ' Relevé gardé pour l’export local.'}`);
     setSaving(false);
     window.setTimeout(() => moveTarget(1), 380);
   };
@@ -134,14 +158,11 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
     setSaving(true);
     setSaveMessage('');
     try {
-      const buttons = accordion.buttons.map((button) => button.id !== selectedButton.id ? button : direction === 'push'
-        ? { ...button, pushMidi: reading.midi, push: noteFromMidi(reading.midi) }
-        : { ...button, pullMidi: reading.midi, pull: noteFromMidi(reading.midi) });
+      const mappedAccordion = updateTunerButtonMapping(accordion, selectedButton.id, selectedHand, direction, reading.midi);
       const isCustom = accordion.id.startsWith('custom-');
       const draft = {
-        ...accordion,
+        ...mappedAccordion,
         ...(isCustom ? {} : { model: `${accordion.model} — mon instrument` }),
-        buttons,
         verified: false,
         sourceNote: `Configuration ajustée avec l’accordeur le ${new Date().toLocaleDateString('fr-FR')}.`,
       };
@@ -157,13 +178,15 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
         ? false
         : await archiveReading('corrected', capturedReading, capturedExpectedMidi, savedAccordion);
       onAccordionChange(savedAccordion);
-      const savedButton = savedAccordion.buttons.find((button) => button.row === selectedButton.row && button.index === selectedButton.index);
+      const savedButtons = selectedHand === 'right' ? savedAccordion.buttons : savedAccordion.basses;
+      const savedButton = savedButtons.find((button) => button.id === selectedButton.id)
+        ?? savedButtons.find((button) => button.row === selectedButton.row && button.index === selectedButton.index);
       if (savedButton) setSelectedButtonId(savedButton.id);
-      setVerifiedTargets((previous) => new Set(previous).add(targetKey(savedButton?.id ?? selectedButton.id, direction)));
-      setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} · bouton ${selectedButton.index} corrigé en ${noteFromMidi(capturedReading.midi)}.${archived ? ' Relevé archivé.' : ' Relevé gardé pour l’export local.'}`);
+      setVerifiedTargets((previous) => new Set(previous).add(targetKey(selectedHand, savedButton?.id ?? selectedButton.id, direction)));
+      setSaveMessage(`${direction === 'push' ? 'Pousser' : 'Tirer'} · ${buttonLabel(selectedButton, selectedHand).toLowerCase()} corrigé en ${noteFromMidi(capturedReading.midi)}.${archived ? ' Relevé archivé.' : ' Relevé gardé pour l’export local.'}`);
       window.setTimeout(() => {
         const updatedTargets = createTunerTargets(savedAccordion);
-        const target = nextTunerTarget(updatedTargets, savedButton?.id ?? selectedButton.id, direction);
+        const target = nextTunerTarget(updatedTargets, savedButton?.id ?? selectedButton.id, direction, 1, selectedHand);
         if (target) selectTarget(target.buttonId, target.direction);
       }, 500);
     } catch (reason) {
@@ -216,7 +239,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
           <button type="button" className="back-link" onClick={onBack}><ChevronLeft /> Retour</button>
           <span className="eyebrow">Vérification guidée</span>
           <h1>Accordeur</h1>
-          <p>Sélectionne un bouton, joue pousser puis tirer : Soufflet mémorise la dernière note fiable et t’emmène au geste suivant.</p>
+          <p>Vérifie séparément la main droite, puis les basses et accords de la main gauche. Soufflet mémorise la dernière note fiable et t’emmène au geste suivant.</p>
         </div>
         <div className="tuner-heading-actions">
           <button type="button" className="tuner-export-button" onClick={() => void exportReadings()} disabled={exporting}>
@@ -224,7 +247,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
           </button>
           <div className="tuner-progress-summary" aria-label={`${verifiedTargets.size} gestes vérifiés sur ${targets.length} dans cette session`}>
             <CircleCheck />
-            <span><strong>{verifiedTargets.size} / {targets.length}</strong><small>session actuelle</small></span>
+            <span><strong>{verifiedTargets.size} / {targets.length}</strong><small>instrument complet</small></span>
             <i><b style={{ width: `${targets.length ? (verifiedTargets.size / targets.length) * 100 : 0}%` }} /></i>
           </div>
         </div>
@@ -266,11 +289,27 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
             </div>
           </header>
 
+          <div className="tuner-hand-choice" aria-label="Main à accorder">
+            {(['right', 'left'] as TunerHand[]).map((hand) => {
+              const handCount = targets.filter((target) => target.hand === hand).length;
+              const handVerified = targets.filter((target) => (
+                target.hand === hand
+                && verifiedTargets.has(targetKey(target.hand, target.buttonId, target.direction))
+              )).length;
+              return (
+                <button type="button" key={hand} disabled={handCount === 0} className={selectedHand === hand ? 'is-active' : ''} onClick={() => selectHand(hand)}>
+                  {hand === 'right' ? <Music2 /> : <Hand />}
+                  <span><strong>{HAND_LABELS[hand]}</strong><small>{hand === 'right' ? 'Mélodie' : 'Basses et accords'} · {handVerified}/{handCount}</small></span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="tuner-target-controls">
             <label>
-              <small>Bouton</small>
+              <small>{HAND_LABELS[selectedHand]} · bouton</small>
               <select value={selectedButton?.id ?? ''} onChange={(event) => selectTarget(event.target.value)}>
-                {accordion.buttons.map((button) => <option key={button.id} value={button.id}>Bouton {button.index} · rang {rowLabel(button.row)}</option>)}
+                {handButtons.map((button) => <option key={button.id} value={button.id}>{buttonLabel(button, selectedHand)}</option>)}
               </select>
             </label>
             <div className="direction-choice" aria-label="Direction du soufflet">
@@ -293,7 +332,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
 
           <div className={`tuner-check-panel ${noteMatches ? 'is-match' : canCorrect ? 'is-mismatch' : ''}`}>
             <div className="tuner-expected-note">
-              <small>Ce bouton doit jouer</small>
+              <small>{selectedHand === 'left' && selectedButton?.role === 'chord' ? 'Note repère attendue pour cet accord' : 'Ce bouton doit jouer'}</small>
               <strong>{noteFromMidi(expectedMidi ?? 60)}</strong>
               <span>{direction === 'push' ? '→ fermer · pousser' : '← ouvrir · tirer'}</span>
             </div>
@@ -313,6 +352,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
             </button>
           </div>
           {saveMessage && <p className="mapping-message tuner-inline-message">{saveMessage}</p>}
+          {selectedHand === 'left' && <p className="tuner-left-hand-note"><Hand /><span><strong>{verifiedHandTargets} geste{verifiedHandTargets > 1 ? 's' : ''} gauche vérifié{verifiedHandTargets > 1 ? 's' : ''} sur {handTargets.length}.</strong> Pour un accord, le micro contrôle sa note repère. L’analyse complète de toutes les notes simultanées reste signalée comme non disponible.</span></p>}
           {matchingButtons.length > 0 && <p className="tuner-location-hint"><Info /> La note entendue existe à {matchingButtons.length} endroit{matchingButtons.length > 1 ? 's' : ''} sur cette configuration. Le bouton entouré reste celui que tu vérifies.</p>}
         </section>
       </section>

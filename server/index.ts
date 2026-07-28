@@ -246,6 +246,7 @@ const tunerReadingSchema = z.object({
   buttonId: z.string().min(1).max(80),
   row: z.number().int().min(0).max(5),
   buttonIndex: z.number().int().min(1).max(30),
+  hand: z.enum(['right', 'left']).default('right'),
   direction: z.enum(['push', 'pull']),
   expectedMidi: z.number().int().min(0).max(127),
   detectedMidi: z.number().int().min(0).max(127),

@@ -235,6 +235,7 @@ export interface TunerReading {
   buttonId: string;
   row: number;
   buttonIndex: number;
+  hand: 'right' | 'left';
   direction: Direction;
   expectedMidi: number;
   detectedMidi: number;

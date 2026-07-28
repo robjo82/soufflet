@@ -43,7 +43,7 @@ export function AccordionView({
   const longestRow = Math.max(1, ...rows.map((row) => row.length));
   const melodyButtonSize = getMelodyButtonSize(longestRow);
   const detectedButtonIds = new Set(
-    config.buttons
+    [...config.buttons, ...config.basses]
       .filter((button) => button.pushMidi === detectedMidi || button.pullMidi === detectedMidi)
       .map((button) => button.id),
   );
@@ -82,10 +82,12 @@ export function AccordionView({
           <div className="bass-grid">
             {config.basses.map((button) => {
               const active = activeEvent?.bassButtonId === button.id;
+              const isDetected = detectedButtonIds.has(button.id);
+              const isSelected = selectedButtonId === button.id;
               return (
                 <button
                   type="button"
-                  className={`bass-button ${active ? 'is-active' : ''} ${active && depressActive ? 'is-pressed' : ''}`}
+                  className={`bass-button ${active ? 'is-active' : ''} ${active && depressActive ? 'is-pressed' : ''} ${isDetected ? 'is-detected' : ''} ${isSelected ? 'is-selected' : ''}`}
                   key={button.id}
                   aria-pressed={active && depressActive}
                   aria-label={`${button.role === 'bass' ? 'Basse' : 'Accord'} ${button.index}`}
