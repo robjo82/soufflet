@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PitchReading } from '../types';
 import type { AudioFeatureFrame, AudioOnset } from '../audioTraining';
+import { chromaFromSpectralPeaks, type SpectralPeak } from '../leftHandAnalysis';
 import { canManageNativeMicrophone, openNativeMicrophoneSettings, requestNativeMicrophonePermission } from '../nativeMicrophone';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
@@ -194,7 +195,7 @@ export function usePitchDetector() {
       await context.resume();
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
-      analyser.fftSize = 4096;
+      analyser.fftSize = 8192;
       analyser.smoothingTimeConstant = 0.08;
       source.connect(analyser);
       const buffer = new Float32Array(analyser.fftSize);
@@ -214,6 +215,7 @@ export function usePitchDetector() {
           let spectralEnergy = 0;
           let weightedFrequency = 0;
           let brightEnergy = 0;
+          const peaks: SpectralPeak[] = [];
           const binWidth = context.sampleRate / analyser.fftSize;
           for (let index = 1; index < frequencyData.length; index += 1) {
             if (frequencyData[index] < -90) continue;
@@ -222,6 +224,12 @@ export function usePitchDetector() {
             spectralEnergy += energy;
             weightedFrequency += frequency * energy;
             if (frequency >= 2000) brightEnergy += energy;
+            if (
+              frequency >= 45 && frequency <= 2600
+              && frequencyData[index] > -78
+              && frequencyData[index] > frequencyData[index - 1]
+              && frequencyData[index] >= frequencyData[index + 1]
+            ) peaks.push({ frequency, magnitude: energy });
           }
           const frame: AudioFeatureFrame = {
             at: timestamp,
@@ -229,6 +237,7 @@ export function usePitchDetector() {
             spectralCentroid: spectralEnergy ? weightedFrequency / spectralEnergy : 0,
             brightness: spectralEnergy ? brightEnergy / spectralEnergy : 0,
             pitch,
+            chroma: chromaFromSpectralPeaks(peaks, 440),
           };
           const previousEnvelope = envelopeRef.current;
           const threshold = Math.max(.012, noiseFloorRef.current * 2.7);

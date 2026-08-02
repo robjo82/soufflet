@@ -8,7 +8,7 @@
 - représentation bisonore en volume, soufflet plissé synchronisé et touches animées ;
 - profil visuel procédural dédié au Hohner Club I, sans réutilisation des photographies de référence ;
 - lecture/synthèse au tempo, boucle, reprise en une action et raccourcis découvrables avec `Ctrl` ;
-- accordeur monophonique navigateur et cartographie guidée pousser/tirer de toutes les touches mélodiques ;
+- accordeur monophonique des touches mélodiques, analyse harmonique basses/accords et scan main gauche synchronisé ;
 - première leçon microphone-first : trois notes guidées, mini-mélodie en attente de la bonne note et performance de mémoire ;
 - SQLite, API, validation d’entrée, limite d’upload et conteneur non-root ;
 - import de tablature simple et pipeline YouTube multimodal réel avec recherche documentée, mélodie, main gauche, couverture mesurée et réparation conditionnelle ;
@@ -23,7 +23,8 @@
 - calibrer la compensation de latence par boucle audio et non avec une valeur déclarative ;
 - tester les anches avec trémolo et les attaques mécaniques ;
 - évaluer la classification pousser/tirer avec plusieurs boutons et instruments ; la version actuelle compare uniquement les deux sons d’un bouton de référence préalablement calibré et ne détecte pas un mouvement de soufflet silencieux ;
-- ajouter un détecteur polyphonique pour les basses/accords, avec état « ambigu » explicite ;
+- étendre la validation polyphonique à plusieurs modèles, accordages, micros et environnements bruyants ;
+- ajouter un protocole avancé capable de mesurer séparément les anches d’un accord, sans confondre battements et désaccord ;
 - vérifier les dispositions de chaque Club I réel : les instruments anciens ont des variantes. Le seed C/F est donc marqué non vérifié dans l’interface.
 
 ## À renforcer pour un service public à grande échelle

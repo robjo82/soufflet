@@ -6,11 +6,12 @@
 Navigateur React
 ├── moteur de lecture Web Audio à échantillons réels
 ├── détection monophonique locale par autocorrélation
+├── analyse harmonique locale des basses et accords
 ├── préférences et autosauvegarde locale
 └── API HTTPS
     ├── configurations d’accordéons (SQLite)
     ├── comptes et sessions opaques (SQLite)
-    ├── séances et agrégats de progression par utilisateur (SQLite)
+    ├── séances, agrégats et profils acoustiques compacts (SQLite)
     ├── bibliothèque commune licenciée (SQLite)
     ├── parseur de tablature déterministe
     └── transcription multimodale Gemini
@@ -42,6 +43,10 @@ Les 5,5 Mo de WAV sont préchargés dans le cache HTTP, puis décodés localemen
 
 `usePitchDetector` demande un flux `getUserMedia` mono sans annulation d’écho, réduction de bruit ni gain automatique, calcule le RMS, puis estime la période avec YIN entre 55 et 2 500 Hz. La première période acoustiquement plausible est privilégiée afin d'éviter les erreurs d'octave produites par les multiples de période. Chaque analyse confronte une fenêtre longue, fiable sur les sons tenus et graves, à sa partie la plus récente : cette seconde vue isole une nouvelle anche lorsque la fenêtre longue contient encore la note précédente. Une note n’est publiée qu’au-dessus d’un seuil de clarté et après deux observations cohérentes, toutes les 38 ms environ. Pendant cette confirmation, l’interface ne publie rien : un harmonique fugitif ne peut donc ni éclairer un faux bouton ni produire une fausse erreur.
 
+La main gauche n’emploie pas cette hauteur unique comme verdict. Une FFT de 8 192 points extrait les maxima spectraux entre 45 et 2 600 Hz, les replie par classe de hauteur et corrige le poids des premiers harmoniques. Une fenêtre tenue combine ensuite ce profil chromatique avec les votes YIN pour une basse, ou compare 24 gabarits de triades majeures et mineures pour un accord. Le résultat contient une confiance et peut rester `uncertain` : il n’entraîne jamais une correction silencieuse de la cartographie. Le scan guidé attend une attaque, observe 1,25 seconde, exige le relâchement avant le geste suivant et suspend l’avancement lorsqu’une mesure est ambiguë.
+
+Une campagne terminée conserve avec le compte uniquement 12 coefficients chromatiques normalisés par geste, les étiquettes attendue/entendue, la confiance et l’éventuel écart d’une basse. Aucun échantillon temporel, spectre détaillé ou fichier audio n’est envoyé. Ce profil compact permet le diagnostic entre appareils sans rendre l’enregistrement reconstructible. Le corpus de non-régression inclut l’empreinte anonymisée des 16 gestes du Club I fourni pour les essais ; le fichier source reste hors du dépôt.
+
 Le lecteur prépare le microphone avant de démarrer le décompte ou la musique. En lecture au tempo, une courte fenêtre de tolérance rattache une mesure retardée à la note précédente au lieu de la déclarer fausse sur la suivante. En mode « attendre la bonne note », une nouvelle attaque autorise la répétition de la même hauteur sans exiger un silence artificiellement long. Les caractéristiques brutes restent disponibles séparément pour les attaques rythmiques et la calibration du soufflet. Le flux n’est ni enregistré, ni uploadé, et ses pistes sont arrêtées à la fermeture de l’écran ou dès qu’un exercice est terminé. Dans l’application Android, `SouffletMicrophonePlugin` demande d’abord explicitement l’autorisation native `RECORD_AUDIO`; la WebView dispose aussi de `MODIFY_AUDIO_SETTINGS`, nécessaire à la ressource de capture audio de Capacitor. En cas de refus persistant, le tutoriel permet d’ouvrir la fiche de l’application dans les réglages Android puis de relancer l’écoute.
 
 ### Plan de soufflet
@@ -50,7 +55,7 @@ Le lecteur prépare le microphone avant de démarrer le décompte ou la musique.
 
 La réserve commence légèrement fermée, évolue continûment selon la durée et le nombre de voix, et reste entre des limites absolues. Le moteur regarde la consommation de la phrase suivante dès sa frontière : si elle ne tient pas dans la réserve, il insère une action de soupape silencieuse avant la première note. Les mappages vérifiés sont marqués `authorial` et restent verrouillés ; les mappages `optimized` peuvent être recalculés pour un autre style. Le lecteur HTML, le studio et la lecture 3D consomment le même `BellowsPlan`, ce qui évite toute divergence entre la tablature enseignée et l’animation.
 
-Ce détecteur est adapté aux notes isolées. Il ne prétend pas distinguer de manière fiable une mélodie au sein d’un accord polyphonique ; cette capacité devra employer un modèle audio local spécialisé et être validée sur un corpus d’accordéons réels.
+YIN reste réservé aux notes mélodiques isolées. L’analyse harmonique main gauche reconnaît une fondamentale et une qualité majeure/mineure, mais ne prétend ni isoler une mélodie au sein d’un accord, ni mesurer séparément les anches d’un même bouton. Cette dernière opération exige un protocole d’accordage professionnel et un corpus plus large.
 
 ## Gemini
 
@@ -72,7 +77,7 @@ Avant une exposition publique intensive, ajouter au reverse proxy : quota par co
 
 Les comptes, sessions d’authentification, configurations d’instruments, séances de pratique et morceaux communs vivent dans SQLite. Une séance de pratique porte un identifiant client idempotent et est sauvegardée pendant la lecture, à la pause et à la fermeture. Elle enregistre séparément le mode pédagogique et la partie travaillée (`right`, `left` ou `both`) : changer de main ne crée plus de faux mode. La migration associe les anciennes démonstrations aux deux mains, les anciennes séances « main gauche » à la gauche et les autres historiques à la mélodie. L’API accepte encore les instantanés des anciennes versions Android et déduit leur main afin de permettre une mise à jour progressive. Seul le temps de lecture actif est cumulé ; les pauses ne gonflent pas les statistiques. Les démonstrations contribuent au temps mais pas aux métriques de précision. La série est calculée dans le fuseau horaire du navigateur et les comptes sans séance restent strictement à zéro.
 
-Le profil et le mot de passe se modifient depuis l’espace personnel. Un changement de mot de passe invalide toutes les sessions existantes, puis crée une nouvelle session pour l’appareil courant. Les profils audio restent annoncés comme absents jusqu’à ce qu’une calibration réelle ait été enregistrée : aucune valeur de microphone ou de latence n’est simulée.
+Le profil et le mot de passe se modifient depuis l’espace personnel. Un changement de mot de passe invalide toutes les sessions existantes, puis crée une nouvelle session pour l’appareil courant. Les profils main gauche sont synchronisés dans `accordion_audio_profiles` et supprimés en cascade avec le compte ; la signature pousser/tirer du soufflet dépend du micro et reste locale à l’appareil. Les profils restent annoncés comme absents jusqu’à une calibration réelle : aucune valeur de microphone ou de latence n’est simulée.
 
 L’instrument actif, la notation, le décompte et l’achèvement de l’onboarding et du tutoriel sont synchronisés dans `user_preferences`. Une copie locale est isolée par identifiant de compte et sert uniquement de repli lorsque le serveur a déjà été joint au moins une fois sur cet appareil. Le brouillon de la première leçon suit la même isolation par identifiant de compte ; l’ancienne clé locale globale est migrée une fois puis supprimée. Les marqueurs d’achèvement sont monotones : une réponse tardive provenant d’un autre appareil ne peut pas réactiver le tutoriel. À la migration, les comptes qui possèdent déjà une séance active sont considérés comme ayant terminé le tutoriel. Les morceaux importés et leurs corrections restent local-first dans `localStorage` et ne sont pas encore synchronisés. Le passage long terme prévu est un journal d’opérations versionné côté serveur avec IndexedDB comme outbox, identifiants idempotents et résolution de conflits.
 

@@ -70,7 +70,7 @@ Ne pas copier le contenu JSON dans le terminal en argument : la redirection évi
 >
 > Ton compte synchronise ton accordéon, tes préférences et ta progression entre le web et Android. Les transcriptions automatiques restent signalées comme incertaines et peuvent être corrigées avant apprentissage.
 >
-> Soufflet est en développement actif : certaines mesures avancées, notamment la reconnaissance polyphonique, sont encore expérimentales et sont clairement identifiées dans l’application.
+> Soufflet est en développement actif : la reconnaissance locale des basses et accords fournit un indice de confiance, mais l’analyse séparée des anches d’un accord reste expérimentale et n’est pas présentée comme un accordage professionnel.
 
 Ressources à fournir dans la fiche : icône 512 × 512, visuel de présentation 1024 × 500, au moins deux captures de téléphone et idéalement deux captures de tablette. Les captures doivent provenir du build Play réel et ne montrer ni données personnelles ni promesse non disponible.
 
@@ -81,7 +81,7 @@ Réponses conservatrices recommandées pour **Sécurité des données** :
 - données collectées : adresse e-mail, nom affiché, préférences, matériel et activité d’apprentissage ;
 - finalités : fonctionnement du compte, personnalisation et analyse de la progression ;
 - aucun partage publicitaire et aucune vente ;
-- microphone des exercices traité localement et non collecté ; seules les mesures numériques explicitement validées dans l’accordeur sont conservées avec le compte ;
+- microphone des exercices traité localement et non collecté ; seules les mesures numériques validées et les 12 coefficients normalisés non reconstructibles de chaque geste du scan main gauche sont conservés avec le compte ;
 - fichier envoyé volontairement pour transcription traité temporairement par Google Gemini comme prestataire ;
 - données chiffrées en transit ;
 - suppression accessible dans l’application et sur la page publique indiquée plus haut.

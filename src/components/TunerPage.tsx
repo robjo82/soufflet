@@ -3,14 +3,16 @@ import {
   AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, CircleCheck,
   Download, Hand, Info, Mic2, Music2, RotateCcw, Save, SlidersHorizontal, Volume2,
 } from 'lucide-react';
-import type { AccordionConfig, Direction, Notation, PitchReading, TunerReading } from '../types';
+import type { AccordionConfig, Direction, LeftHandAcousticProfile, Notation, PitchReading, TunerReading } from '../types';
 import { noteFromMidi } from '../data';
 import { frequencyToPitch, rememberReliablePitch, usePitchDetector } from '../hooks/usePitchDetector';
+import { analyzeLeftHandFrames, expectedLeftHandLabel, leftHandAnalysisMatches, type LeftHandSoundAnalysis } from '../leftHandAnalysis';
 import { buildTunerExport, tunerExportFilename } from '../tunerExport';
 import {
   createTunerTargets, findTunerTargetIndex, nextTunerTarget, updateTunerButtonMapping, type TunerHand,
 } from '../tunerWorkflow';
 import { AccordionInstrument } from './AccordionInstrument';
+import { LeftHandScan } from './LeftHandScan';
 
 interface TunerPageProps {
   accordion: AccordionConfig;
@@ -32,7 +34,8 @@ function rowLabel(row: number) {
 function buttonLabel(button: AccordionConfig['buttons'][number], hand: TunerHand) {
   if (hand === 'right') return `Bouton ${button.index} · rang ${rowLabel(button.row)}`;
   const pair = Math.ceil(button.index / 2);
-  return `${button.role === 'chord' ? 'Accord' : 'Basse'} ${pair} · bouton gauche ${button.index}`;
+  const side = button.index % 2 ? 'intérieur' : 'extérieur';
+  return `${button.role === 'chord' ? 'Accord' : 'Basse'} ${pair} · ${side}`;
 }
 
 const HAND_LABELS: Record<TunerHand, string> = {
@@ -53,6 +56,10 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
   const [saveMessage, setSaveMessage] = useState('');
   const [rememberedSignal, setRememberedSignal] = useState(detector.reading);
   const [sessionReadings, setSessionReadings] = useState<TunerReading[]>([]);
+  const [leftAnalysis, setLeftAnalysis] = useState<LeftHandSoundAnalysis | null>(null);
+  const [leftScanActive, setLeftScanActive] = useState(false);
+  const leftFramesRef = useRef<NonNullable<typeof detector.audioFrame>[]>([]);
+  const lastLeftAnalysisRef = useRef(0);
   const sessionId = useRef(crypto.randomUUID()).current;
 
   const targets = useMemo(() => createTunerTargets(accordion), [accordion]);
@@ -76,18 +83,38 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
   const hasReliableLiveReading = Boolean(liveReading && liveReading.confidence > .72);
   const reading = hasReliableLiveReading ? liveReading : rememberedReading;
   const isRememberedReading = Boolean(reading && !hasReliableLiveReading);
-  const cents = reading?.cents ?? 0;
-  const inTune = Boolean(reading && Math.abs(cents) <= tolerance && reading.confidence > .65);
-  const noteMatches = Boolean(reading && reading.midi === expectedMidi);
-  const canCorrect = Boolean(reading && reading.confidence > .72 && expectedMidi !== undefined && !noteMatches);
+  const cents = selectedHand === 'left' ? leftAnalysis?.tuningCents ?? 0 : reading?.cents ?? 0;
+  const noteMatches = selectedHand === 'left'
+    ? Boolean(selectedButton && leftAnalysis && leftAnalysis.confidence >= .5 && leftHandAnalysisMatches(selectedButton, direction, leftAnalysis))
+    : Boolean(reading && reading.midi === expectedMidi);
+  const inTune = selectedHand === 'left'
+    ? noteMatches
+    : Boolean(reading && Math.abs(cents) <= tolerance && reading.confidence > .65);
+  const canCorrect = selectedHand === 'right' && Boolean(reading && reading.confidence > .72 && expectedMidi !== undefined && !noteMatches);
   const currentVerified = selectedButton ? verifiedTargets.has(targetKey(selectedHand, selectedButton.id, direction)) : false;
   const matchingButtons = useMemo(
-    () => allButtons.filter((button) => button.pushMidi === reading?.midi || button.pullMidi === reading?.midi),
-    [allButtons, reading?.midi],
+    () => selectedHand === 'right' ? allButtons.filter((button) => button.pushMidi === reading?.midi || button.pullMidi === reading?.midi) : [],
+    [allButtons, reading?.midi, selectedHand],
   );
 
   useEffect(() => { void start(); return stop; }, [start, stop]);
   useEffect(() => { setRememberedSignal((previous) => rememberReliablePitch(previous, detector.reading)); }, [detector.reading]);
+  useEffect(() => {
+    if (selectedHand !== 'left' || !detector.audioFrame || !selectedButton) return;
+    const frame = detector.audioFrame;
+    leftFramesRef.current = [...leftFramesRef.current, frame].filter((item) => frame.at - item.at <= 1450);
+    if (frame.at - lastLeftAnalysisRef.current < 150) return;
+    lastLeftAnalysisRef.current = frame.at;
+    setLeftAnalysis(analyzeLeftHandFrames(
+      leftFramesRef.current,
+      selectedButton.role === 'chord' ? 'chord' : 'bass',
+      a4,
+    ));
+  }, [a4, detector.audioFrame, selectedButton, selectedHand]);
+  useEffect(() => {
+    leftFramesRef.current = [];
+    setLeftAnalysis(null);
+  }, [direction, selectedButtonId]);
 
   const selectTarget = (buttonId: string, nextDirection = direction) => {
     setSelectedButtonId(buttonId);
@@ -145,7 +172,15 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
   };
 
   const validateAndContinue = async () => {
-    if (!selectedButton || !reading || expectedMidi === undefined) return;
+    if (!selectedButton || expectedMidi === undefined) return;
+    if (selectedHand === 'left') {
+      if (!leftAnalysis || !noteMatches) return;
+      setVerifiedTargets((previous) => new Set(previous).add(targetKey(selectedHand, selectedButton.id, direction)));
+      setSaveMessage(`${leftAnalysis.label} reconnu avec ${Math.round(leftAnalysis.confidence * 100)} % de confiance. Utilise le scan complet pour synchroniser l’empreinte acoustique.`);
+      window.setTimeout(() => moveTarget(1), 380);
+      return;
+    }
+    if (!reading) return;
     setSaving(true);
     const archived = await archiveReading('matched', reading, expectedMidi);
     setVerifiedTargets((previous) => new Set(previous).add(targetKey(selectedHand, selectedButton.id, direction)));
@@ -208,7 +243,13 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
         const response = await fetch('/api/tuner-readings');
         if (response.ok) readings = (await response.json() as { readings: TunerReading[] }).readings;
       }
-      const report = buildTunerExport(accordion, readings);
+      let leftHandProfile: LeftHandAcousticProfile | null = null;
+      const profileResponse = await fetch('/api/audio-profiles/left-hand');
+      if (profileResponse.ok) {
+        const profiles = (await profileResponse.json() as { profiles: LeftHandAcousticProfile[] }).profiles;
+        leftHandProfile = profiles.find((profile) => profile.accordionId === accordion.id) ?? null;
+      }
+      const report = buildTunerExport(accordion, readings, leftHandProfile);
       const url = URL.createObjectURL(new Blob([`${JSON.stringify(report, null, 2)}\n`], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
@@ -217,8 +258,8 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      setSaveMessage(readings.length
-        ? `${readings.length} relevé${readings.length > 1 ? 's' : ''} et la cartographie complète ont été exportés.`
+      setSaveMessage(readings.length || leftHandProfile
+        ? `${readings.length} relevé${readings.length > 1 ? 's' : ''}${leftHandProfile ? ' et le profil main gauche' : ''} ont été exportés avec la cartographie complète.`
         : 'La cartographie complète a été exportée. Les relevés fins commenceront à la prochaine validation.');
     } catch {
       setSaveMessage('Export impossible pour le moment. Réessaie sans quitter cette page.');
@@ -233,10 +274,14 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
       ? `Valider ${direction === 'push' ? 'pousser' : 'tirer'} et continuer`
       : canCorrect
         ? `Corriger avec ${reading?.note} et continuer`
-        : 'Joue la note de ce bouton';
+        : selectedHand === 'left' ? 'Joue et tiens ce bouton' : 'Joue la note de ce bouton';
+
+  const heardLabel = selectedHand === 'left' ? leftAnalysis?.label : reading?.note;
+  const heardConfidence = selectedHand === 'left' ? leftAnalysis?.confidence : reading?.confidence;
+  const signalVolume = detector.audioFrame?.volume ?? liveReading?.volume ?? 0;
 
   return (
-    <main className="tuner-page page-content">
+    <main className={`tuner-page page-content ${leftScanActive ? 'is-left-scan-active' : ''}`}>
       <header className="page-heading tuner-heading tuner-heading-compact">
         <div>
           <button type="button" className="back-link" onClick={onBack}><ChevronLeft /> Retour</button>
@@ -263,16 +308,18 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
             <div className="tuner-scale">{[-50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50].map((value) => <i key={value} className={value === 0 ? 'is-center' : ''}><span>{value}</span></i>)}</div>
             <div className="tuner-needle" style={{ transform: `rotate(${Math.max(-45, Math.min(45, cents * .9))}deg)` }} />
             <div className="tuner-reading">
-              {detector.status === 'listening' && reading ? <>
-                <small>{isRememberedReading ? 'Dernière note mémorisée' : inTune ? <><Check /> Juste</> : cents < 0 ? 'Trop bas' : 'Trop haut'}</small>
-                <strong>{reading.note}</strong><span>{reading.frequency.toFixed(1)} Hz</span><em>{cents > 0 ? '+' : ''}{cents} cents</em>
+              {detector.status === 'listening' && heardLabel ? <>
+                <small>{selectedHand === 'left' ? inTune ? <><Check /> Geste reconnu</> : 'Analyse harmonique' : isRememberedReading ? 'Dernière note mémorisée' : inTune ? <><Check /> Juste</> : cents < 0 ? 'Trop bas' : 'Trop haut'}</small>
+                <strong>{heardLabel}</strong>
+                <span>{selectedHand === 'left' ? `${leftAnalysis?.pitchClasses.length ?? 0} composante${(leftAnalysis?.pitchClasses.length ?? 0) > 1 ? 's' : ''} harmonique${(leftAnalysis?.pitchClasses.length ?? 0) > 1 ? 's' : ''}` : `${reading?.frequency.toFixed(1)} Hz`}</span>
+                {selectedHand === 'right' && <em>{cents > 0 ? '+' : ''}{cents} cents</em>}
               </> : <><Mic2 /><strong>—</strong><span>{detector.status === 'requesting' ? 'Autorisation…' : 'En attente d’une note'}</span></>}
             </div>
           </div>
           <div className="tuner-signal-compact">
             <span><Volume2 /> Signal</span>
-            <i><b style={{ width: `${Math.min(100, (liveReading?.volume ?? 0) * 900)}%` }} /></i>
-            <strong>{liveReading ? `${Math.round(liveReading.confidence * 100)} %` : '—'}</strong>
+            <i><b style={{ width: `${Math.min(100, signalVolume * 900)}%` }} /></i>
+            <strong>{heardConfidence ? `${Math.round(heardConfidence * 100)} %` : '—'}</strong>
           </div>
           <details className="tuner-fine-settings">
             <summary><SlidersHorizontal /> Réglages de précision</summary>
@@ -308,6 +355,16 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
             })}
           </div>
 
+          {selectedHand === 'left' && <LeftHandScan
+            accordion={accordion}
+            audioFrame={detector.audioFrame}
+            onset={detector.onset}
+            referencePitchHz={a4}
+            onTargetChange={(buttonId, nextDirection) => selectTarget(buttonId, nextDirection)}
+            onVerified={(sample) => setVerifiedTargets((previous) => new Set(previous).add(targetKey('left', sample.buttonId, sample.direction)))}
+            onActiveChange={setLeftScanActive}
+          />}
+
           <div className="tuner-target-controls">
             <label>
               <small>{HAND_LABELS[selectedHand]} · bouton</small>
@@ -326,7 +383,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
               config={accordion}
               notation={notation}
               direction={direction}
-              detectedMidi={reading?.midi}
+              detectedMidi={selectedHand === 'left' ? noteMatches ? expectedMidi : undefined : reading?.midi}
               selectedButtonId={selectedButton?.id}
               context="tuner"
               onButtonPress={(buttonId) => selectTarget(buttonId)}
@@ -335,15 +392,15 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
 
           <div className={`tuner-check-panel ${noteMatches ? 'is-match' : canCorrect ? 'is-mismatch' : ''}`}>
             <div className="tuner-expected-note">
-              <small>{selectedHand === 'left' && selectedButton?.role === 'chord' ? 'Note repère attendue pour cet accord' : 'Ce bouton doit jouer'}</small>
-              <strong>{expectedChord ?? noteFromMidi(expectedMidi ?? 60)}</strong>
+              <small>{selectedHand === 'left' ? selectedButton?.role === 'chord' ? 'Accord attendu' : 'Basse attendue' : 'Ce bouton doit jouer'}</small>
+              <strong>{selectedHand === 'left' && selectedButton ? expectedLeftHandLabel(selectedButton, direction) : expectedChord ?? noteFromMidi(expectedMidi ?? 60)}</strong>
               <span>{direction === 'push' ? '→ fermer · pousser' : '← ouvrir · tirer'}</span>
             </div>
             <i>{noteMatches ? <Check /> : reading ? <AlertTriangle /> : <Mic2 />}</i>
             <div className="tuner-heard-note">
-              <small>{isRememberedReading ? 'Dernière note entendue' : 'Note entendue'}</small>
-              <strong>{reading?.note ?? '—'}</strong>
-              <span>{reading ? `${Math.round(reading.confidence * 100)} % de confiance` : 'Joue doucement et tiens le son'}</span>
+              <small>{selectedHand === 'left' ? 'Son reconnu' : isRememberedReading ? 'Dernière note entendue' : 'Note entendue'}</small>
+              <strong>{heardLabel ?? '—'}</strong>
+              <span>{heardConfidence ? `${Math.round(heardConfidence * 100)} % de confiance` : 'Joue doucement et tiens le son'}</span>
             </div>
             <button
               type="button"
@@ -355,12 +412,12 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
             </button>
           </div>
           {saveMessage && <p className="mapping-message tuner-inline-message">{saveMessage}</p>}
-          {selectedHand === 'left' && <p className="tuner-left-hand-note"><Hand /><span><strong>{verifiedHandTargets} geste{verifiedHandTargets > 1 ? 's' : ''} gauche vérifié{verifiedHandTargets > 1 ? 's' : ''} sur {handTargets.length}.</strong> Pour un accord, le micro contrôle sa note repère. L’analyse complète de toutes les notes simultanées reste signalée comme non disponible.</span></p>}
+          {selectedHand === 'left' && <p className="tuner-left-hand-note"><Hand /><span><strong>{verifiedHandTargets} geste{verifiedHandTargets > 1 ? 's' : ''} gauche vérifié{verifiedHandTargets > 1 ? 's' : ''} sur {handTargets.length}.</strong> Le moteur combine fondamentales, harmoniques et stabilité temporelle pour distinguer une basse d’un accord majeur ou mineur. Il ne prétend pas encore mesurer séparément chaque anche d’un accord.</span></p>}
           {matchingButtons.length > 0 && <p className="tuner-location-hint"><Info /> La note entendue existe à {matchingButtons.length} endroit{matchingButtons.length > 1 ? 's' : ''} sur cette configuration. Le bouton entouré reste celui que tu vérifies.</p>}
         </section>
       </section>
 
-      <section className="tuner-help tuner-help-compact"><Info /><div><strong>Mesure fiable et privée</strong><p>Une seule note à la fois · soufflet régulier · téléphone éloigné des bruits mécaniques · attends la stabilisation avant de corriger. Seules les mesures que tu valides sont archivées avec ton compte ; jamais l’audio.</p></div></section>
+      <section className="tuner-help tuner-help-compact"><Info /><div><strong>Mesure fiable et privée</strong><p>Un seul bouton à la fois · soufflet régulier · téléphone éloigné des bruits mécaniques · attends la stabilisation avant de corriger. Seules les mesures numériques que tu valides sont archivées avec ton compte ; jamais l’audio.</p></div></section>
     </main>
   );
 }

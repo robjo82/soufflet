@@ -6,6 +6,8 @@ export interface AudioFeatureFrame {
   spectralCentroid: number;
   brightness: number;
   pitch: PitchReading | null;
+  /** Normalized harmonic energy for C, C#, ... B. No audio samples leave the device. */
+  chroma?: number[];
 }
 
 export interface AudioOnset {

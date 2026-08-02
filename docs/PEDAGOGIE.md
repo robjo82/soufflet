@@ -38,9 +38,11 @@ La recherche sur l’apprentissage moteur musical montre que l’alternance et l
 
 ## Vérification de l’instrument
 
-L’accordeur sépare la mesure acoustique de la cartographie. La dernière hauteur fiable reste visible pendant que l’utilisateur sélectionne un bouton, mais elle n’est jamais enregistrée automatiquement dans la configuration. Une validation archive la fréquence, l’écart en cents, la confiance et le geste dans une campagne liée au compte. L’export JSON contient cette campagne et un instantané complet de la cartographie, y compris lorsqu’aucun ancien relevé fin n’est disponible.
+L’accordeur sépare la mesure acoustique de la cartographie. À droite, la dernière hauteur fiable reste visible pendant que l’utilisateur sélectionne un bouton, mais elle n’est jamais enregistrée automatiquement dans la configuration. Une validation archive la fréquence, l’écart en cents, la confiance et le geste dans une campagne liée au compte. L’export JSON contient cette campagne et un instantané complet de la cartographie, y compris lorsqu’aucun ancien relevé fin n’est disponible.
 
-Le parcours ordonne chaque bouton en deux gestes : pousser, puis tirer. Une note conforme peut être validée avant de continuer ; une note différente demande une correction explicite, crée si nécessaire une configuration personnelle et avance ensuite vers le geste suivant. Le bouton courant reçoit un contour distinct de la détection audio, et un sélecteur textuel garantit l’accès aux rangs intérieurs sur les petits écrans.
+À gauche, demander une seule hauteur à un accord produit un verdict arbitraire. Soufflet reconnaît donc séparément les basses et les triades majeures/mineures. Le scan présente les 16 gestes dans leur ordre physique — haut intérieur, haut extérieur, puis vers le bas — et avance sans toucher l’écran après un son fiable puis un relâchement. Une divergence ou une confiance faible interrompt l’automatisme et demande de rejouer ; elle n’est jamais transformée en certitude. Le profil harmonique compact est synchronisé avec le compte, jamais l’audio.
+
+Le parcours ordonne chaque bouton en deux gestes : pousser, puis tirer. Une note mélodique différente demande une correction explicite et crée si nécessaire une configuration personnelle. Une divergence main gauche reste un diagnostic à confirmer, car un accord ne doit pas écraser une cartographie sur la foi d’une seule mesure. Le bouton courant reçoit un contour distinct de la détection audio, et un sélecteur textuel garantit l’accès aux rangs intérieurs sur les petits écrans.
 
 ## Respiration et stratégie de soufflet
 

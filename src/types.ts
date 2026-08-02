@@ -252,6 +252,33 @@ export interface TunerReading {
   measuredAt: string;
 }
 
+export interface LeftHandScanSample {
+  buttonId: string;
+  buttonIndex: number;
+  row: number;
+  direction: Direction;
+  role: 'bass' | 'chord';
+  expectedLabel: string;
+  detectedLabel: string;
+  expectedRootPitchClass: number;
+  detectedRootPitchClass: number;
+  chordQuality?: 'major' | 'minor';
+  confidence: number;
+  tuningCents?: number;
+  /** Normalized C..B harmonic profile. This contains no reconstructable audio. */
+  chroma: number[];
+  outcome: 'matched' | 'uncertain' | 'mismatch';
+  measuredAt: string;
+}
+
+export interface LeftHandAcousticProfile {
+  accordionId: string;
+  accordionModel: string;
+  referencePitchHz: number;
+  completedAt: string;
+  samples: LeftHandScanSample[];
+}
+
 export interface TranscriptionResult {
   title: string;
   artist: string;
