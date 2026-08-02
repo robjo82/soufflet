@@ -80,6 +80,20 @@ const standardBasses = (tuning: 'GC' | 'DG' | 'CF'): AccordionButton[] => {
   ]);
 };
 
+// Cartographie relevée sur l'instrument du projet le 02/08/2026. L'ordre est
+// volontairement physique (de haut en bas, bouton intérieur puis extérieur)
+// afin que le clavier 2D, le modèle 3D et l'accordeur désignent le même geste.
+const clubLeftHand = (): AccordionButton[] => [
+  makeButton('c1-chord-a-dm', 1, 1, 57, 62, { role: 'chord', pushChord: 'A', pullChord: 'Dm' }),
+  makeButton('c1-chord-c-g', 1, 2, 60, 55, { role: 'chord', pushChord: 'C', pullChord: 'G' }),
+  makeButton('c1-bass-a-d', 2, 3, 45, 50, { role: 'bass' }),
+  makeButton('c1-bass-c-g', 2, 4, 48, 43, { role: 'bass' }),
+  makeButton('c1-chord-eb-bb', 3, 5, 63, 58, { role: 'chord', pushChord: 'Eb', pullChord: 'Bb' }),
+  makeButton('c1-chord-f-c', 3, 6, 53, 60, { role: 'chord', pushChord: 'F', pullChord: 'C' }),
+  makeButton('c1-bass-eb-bb', 4, 7, 51, 46, { role: 'bass' }),
+  makeButton('c1-bass-f-c', 4, 8, 41, 48, { role: 'bass' }),
+];
+
 export const FALLBACK_ACCORDIONS: AccordionConfig[] = [
   {
     id: 'hohner-club-i-cf-10-9-2',
@@ -89,16 +103,17 @@ export const FALLBACK_ACCORDIONS: AccordionConfig[] = [
     color: '#6e2f28',
     rightRows: [10, 9, 2],
     bassCount: 8,
-    description: 'Variante Club I mesurée : rangée de Do, rangée de Fa avec Gleichton Do5 et deux altérations.',
+    description: 'Variante Club I mesurée : clavier Do/Fa, Gleichton Do5, main gauche Club complète et diapason historique.',
     buttons: [
       ...mapRow('c1-out', 1, clubOuter),
       ...mapRow('c1-in', 2, clubInner).map((button) => button.index === 5 ? { ...button, isGleichton: true } : button),
       makeButton('c1-help-1', 3, 1, 66, 68, { role: 'accidental', finger: 2 }),
       makeButton('c1-help-2', 3, 2, 75, 73, { role: 'accidental', finger: 3 }),
     ],
-    basses: standardBasses('CF'),
+    basses: clubLeftHand(),
     verified: false,
-    sourceNote: 'Variante mesurée le 19/07/2026 : P1 = F♯5/G♯5, rang Do dès G3/B3, rang Fa dès F4/G4 et Gleichton Do5 au bouton 5. Les autres Club I peuvent différer.',
+    sourceNote: 'Main droite mesurée le 19/07/2026. Main gauche mesurée le 02/08/2026 : A/Dm, C/G, basses A/D et C/G, Eb/Bb, F/C, basses Eb/Bb et F/C. Diapason acoustique estimé à A4 ≈ 435 Hz.',
+    referencePitchHz: 435,
   },
   {
     id: 'standard-gc-21-8',
@@ -215,7 +230,10 @@ export function adaptSongToAccordion(song: Song, accordion: AccordionConfig, bel
       direction,
       midi: choice.midi,
       note: noteFromMidi(choice.midi),
-      chord: NOTES[((choice.midi % 12) + 12) % 12],
+      chord: choice.button.role === 'chord'
+        ? (direction === 'push' ? choice.button.pushChord : choice.button.pullChord)
+          ?? NOTES[((choice.midi % 12) + 12) % 12]
+        : NOTES[((choice.midi % 12) + 12) % 12],
     };
   });
   return { ...song, events, accompaniment, bellowsPlan: plan };

@@ -32,7 +32,7 @@ export function AccordionInstrument({
   context = 'practice',
   showLearningGuides = true,
 }: AccordionInstrumentProps) {
-  const { playMidi } = useSynth();
+  const { playMidi, playLeftHand } = useSynth();
   const [pointerPressedButtonId, setPointerPressedButtonId] = useState<string>();
   const releaseTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(releaseTimer.current), []);
@@ -64,7 +64,10 @@ export function AccordionInstrument({
     const pressedDirection: Direction = config.buttons.includes(button)
       ? resolveAccordionButtonDirection(button, direction, detectedMidi)
       : direction;
-    playMidi(pressedDirection === 'push' ? button.pushMidi : button.pullMidi, .5, button.role === 'bass' || button.role === 'chord' ? .09 : undefined);
+    const midi = pressedDirection === 'push' ? button.pushMidi : button.pullMidi;
+    const chord = pressedDirection === 'push' ? button.pushChord : button.pullChord;
+    if (button.role === 'bass' || button.role === 'chord') playLeftHand(midi, button.role, chord, .5);
+    else playMidi(midi, .5);
     onButtonPress?.(buttonId, pressedDirection);
     window.clearTimeout(releaseTimer.current);
     setPointerPressedButtonId(buttonId);

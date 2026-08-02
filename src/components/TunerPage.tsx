@@ -43,7 +43,7 @@ const HAND_LABELS: Record<TunerHand, string> = {
 export function TunerPage({ accordion, notation, onBack, onAccordionChange }: TunerPageProps) {
   const detector = usePitchDetector();
   const { start, stop } = detector;
-  const [a4, setA4] = useState(440);
+  const [a4, setA4] = useState(accordion.referencePitchHz ?? 440);
   const [tolerance, setTolerance] = useState(8);
   const [direction, setDirection] = useState<Direction>('push');
   const [selectedButtonId, setSelectedButtonId] = useState(accordion.buttons[0]?.id ?? '');
@@ -64,6 +64,9 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
   const targetIndex = findTunerTargetIndex(targets, selectedButtonId, direction, selectedHand);
   const selectedButton = handButtons.find((button) => button.id === selectedButtonId) ?? handButtons[0];
   const expectedMidi = selectedButton ? (direction === 'push' ? selectedButton.pushMidi : selectedButton.pullMidi) : undefined;
+  const expectedChord = selectedButton?.role === 'chord'
+    ? direction === 'push' ? selectedButton.pushChord : selectedButton.pullChord
+    : undefined;
   const liveReading = detector.reading
     ? frequencyToPitch(detector.reading.frequency, detector.reading.confidence, detector.reading.volume, a4)
     : null;
@@ -333,7 +336,7 @@ export function TunerPage({ accordion, notation, onBack, onAccordionChange }: Tu
           <div className={`tuner-check-panel ${noteMatches ? 'is-match' : canCorrect ? 'is-mismatch' : ''}`}>
             <div className="tuner-expected-note">
               <small>{selectedHand === 'left' && selectedButton?.role === 'chord' ? 'Note repère attendue pour cet accord' : 'Ce bouton doit jouer'}</small>
-              <strong>{noteFromMidi(expectedMidi ?? 60)}</strong>
+              <strong>{expectedChord ?? noteFromMidi(expectedMidi ?? 60)}</strong>
               <span>{direction === 'push' ? '→ fermer · pousser' : '← ouvrir · tirer'}</span>
             </div>
             <i>{noteMatches ? <Check /> : reading ? <AlertTriangle /> : <Mic2 />}</i>
