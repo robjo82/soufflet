@@ -10,17 +10,19 @@ import { ScoreStrip } from './ScoreStrip';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
 import type {
-  AccordionConfig, BellowsStyle, Hand as HandFocus, Notation, PracticeSessionInput, PracticeSettings,
-  PrimaryPracticeMode, Song, SupplementalPracticeMode,
+  AccordionConfig, AccompanimentEvent, BellowsStyle, Hand as HandFocus, LeftHandAcousticProfile, Notation,
+  PracticeAssessmentBreakdown, PracticeDimensionResults, PracticeSessionInput, PracticeSettings, PrimaryPracticeMode,
+  Song, SupplementalPracticeMode,
 } from '../types';
 import { HAND_FOCUS_OPTIONS, PRACTICE_MODES, PRIMARY_PRACTICE_MODES, SUPPLEMENTAL_PRACTICE_MODES } from '../practiceModes';
 import { getCountInSequence, getPlaybackStartIndex, getWaitAdvance } from '../practiceProgress';
-import { midiMatches } from '../audioTraining';
 import { createPracticeTimeline } from '../practiceTimeline';
 import { adaptSongToAccordion } from '../data';
 import { BELLOWS_STYLE_OPTIONS, bellowsAmountLabel, bellowsStepAt } from '../bellowsStrategy';
 import { canAcceptWaitPitch, selectPitchAssessmentIndex } from '../practicePitchAssessment';
 import { planMelodyFingering } from '../fingeringGuide';
+import { accompanimentAttackAtBeat, accompanimentContainsPitch, classifyHandCoordination, detectPracticeLeftHand } from '../practiceHandDetection';
+import type { AudioFeatureFrame } from '../audioTraining';
 
 interface PracticePlayerProps {
   song: Song;
@@ -39,6 +41,28 @@ function accompanimentIndexAt(song: Song, beat: number) {
     index = current;
   }
   return index;
+}
+
+const emptyDimension = (): PracticeDimensionResults => ({ correct: 0, early: 0, late: 0, wrong: 0 });
+const emptyBreakdown = (): PracticeAssessmentBreakdown => ({
+  right: emptyDimension(), left: emptyDimension(), coordination: emptyDimension(),
+});
+
+type HandMonitorStatus = 'waiting' | 'listening' | 'correct' | 'wrong' | 'uncertain';
+interface HandMonitor {
+  status: HandMonitorStatus;
+  label: string;
+  confidence?: number;
+  source?: 'personal-profile' | 'harmonic-model';
+}
+
+interface LeftCapture {
+  onsetId: number;
+  onsetAt: number;
+  target: AccompanimentEvent;
+  targetIndex: number;
+  frames: AudioFeatureFrame[];
+  handled: boolean;
 }
 
 export function PracticePlayer({ song: sourceSong, accordion, onClose, notation, countIn, onNotationChange, onSessionUpdate }: PracticePlayerProps) {
@@ -64,6 +88,12 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   const [sessionFinished, setSessionFinished] = useState(false);
   const [shortcutsVisible, setShortcutsVisible] = useState(false);
   const [results, setResults] = useState({ correct: 0, early: 0, late: 0, wrong: 0 });
+  const [assessmentBreakdown, setAssessmentBreakdown] = useState<PracticeAssessmentBreakdown>(emptyBreakdown);
+  const [leftHandProfile, setLeftHandProfile] = useState<LeftHandAcousticProfile | null>(null);
+  const [handMonitor, setHandMonitor] = useState<{ right: HandMonitor; left: HandMonitor }>({
+    right: { status: 'waiting', label: 'En attente' },
+    left: { status: 'waiting', label: 'En attente' },
+  });
   const [feedback, setFeedback] = useState<{ kind: 'good' | 'hint' | 'neutral'; title: string; detail: string }>({
     kind: 'neutral', title: 'Prêt quand tu l’es', detail: 'Regarde la direction du soufflet, puis appuie sur Lecture.',
   });
@@ -82,6 +112,14 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   const countInTimersRef = useRef<number[]>([]);
   const assessedRef = useRef(new Set<number>());
   const wrongRef = useRef(new Set<number>());
+  const leftAssessedRef = useRef(new Set<number>());
+  const leftWrongRef = useRef(new Set<number>());
+  const assessmentBreakdownRef = useRef(assessmentBreakdown);
+  const waitSatisfiedRef = useRef({ right: false, left: false });
+  const leftCaptureRef = useRef<LeftCapture | null>(null);
+  const rightAttacksRef = useRef(new Map<string, number>());
+  const leftAttacksRef = useRef(new Map<string, number>());
+  const coordinationAssessedRef = useRef(new Set<string>());
   const resultsRef = useRef(results);
   const settingsRef = useRef(settings);
   const maxIndexRef = useRef(0);
@@ -92,7 +130,10 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   const accumulatedActiveMsRef = useRef(0);
   const sessionCompletedRef = useRef(false);
   const { playMidi, playLeftHand, click } = useSynth();
-  const { reading: detectedReading, onset: detectedOnset, status: detectorStatus, start: startDetector, stop: stopDetector } = usePitchDetector();
+  const {
+    reading: detectedReading, audioFrame, onset: detectedOnset, status: detectorStatus,
+    start: startDetector, stop: stopDetector,
+  } = usePitchDetector();
   const practiceEvents = useMemo(() => createPracticeTimeline(song, settings.hand), [settings.hand, song]);
   const scoreSong = useMemo(() => settings.hand === 'left' ? { ...song, events: practiceEvents, accompaniment: undefined } : song, [practiceEvents, settings.hand, song]);
   const currentEvent = practiceEvents[activeIndex];
@@ -101,6 +142,11 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     ? playing && countInBeat === null ? currentBellowsStep.afterAmount : currentBellowsStep.beforeAmount
     : song.bellowsPlan?.startAmount ?? .38;
   const currentAccompaniment = song.accompaniment?.[activeAccompanimentIndex];
+  const waitLeftTarget = settings.hand === 'left'
+    ? song.accompaniment?.[activeIndex]
+    : settings.hand === 'both' && currentEvent
+      ? accompanimentAttackAtBeat(song.accompaniment, currentEvent.beat)
+      : undefined;
   const displayedEvent = useMemo(() => settings.hand === 'both' && currentEvent && currentAccompaniment ? {
     ...currentEvent,
     bassButtonId: currentAccompaniment.buttonId,
@@ -117,6 +163,16 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   useEffect(() => { maxIndexRef.current = Math.max(maxIndexRef.current, activeIndex); }, [activeIndex]);
   useEffect(() => { flaggedRef.current = flagged; }, [flagged]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    setLeftHandProfile(null);
+    void fetch('/api/audio-profiles/left-hand', { signal: controller.signal })
+      .then((response) => response.ok ? response.json() as Promise<{ profiles: LeftHandAcousticProfile[] }> : Promise.reject())
+      .then(({ profiles }) => setLeftHandProfile(profiles.find((profile) => profile.accordionId === accordion.id) ?? null))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [accordion.id]);
+
   const resetSessionTracking = useCallback(() => {
     sessionIdRef.current = crypto.randomUUID();
     sessionStartedAtRef.current = null;
@@ -126,6 +182,9 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     setSessionFinished(false);
     maxIndexRef.current = 0;
     resultsRef.current = { correct: 0, early: 0, late: 0, wrong: 0 };
+    const breakdown = emptyBreakdown();
+    assessmentBreakdownRef.current = breakdown;
+    setAssessmentBreakdown(breakdown);
   }, []);
 
   const finishActiveSegment = useCallback(() => {
@@ -160,6 +219,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       completionPercent: completed ? 100 : Math.min(100, Math.round((maxIndexRef.current + 1) / Math.max(1, practiceEvents.length) * 100)),
       tempoPercent: settingsRef.current.tempo,
       flagged: flaggedRef.current,
+      assessmentBreakdown: assessmentBreakdownRef.current,
     });
   }, [activeMilliseconds, onSessionUpdate, practiceEvents.length, song.id, song.title]);
 
@@ -167,6 +227,13 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     const empty = { correct: 0, early: 0, late: 0, wrong: 0 };
     resultsRef.current = empty;
     setResults(empty);
+    const breakdown = emptyBreakdown();
+    assessmentBreakdownRef.current = breakdown;
+    setAssessmentBreakdown(breakdown);
+    setHandMonitor({
+      right: { status: 'waiting', label: 'En attente' },
+      left: { status: 'waiting', label: 'En attente' },
+    });
   }, []);
 
   const incrementResult = useCallback((kind: keyof typeof results) => {
@@ -174,6 +241,27 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     const next = { ...value, [kind]: value[kind] + 1 };
     resultsRef.current = next;
     setResults(next);
+  }, []);
+
+  const incrementAssessment = useCallback((dimension: keyof PracticeAssessmentBreakdown, kind: keyof PracticeDimensionResults) => {
+    const value = assessmentBreakdownRef.current;
+    const next = { ...value, [dimension]: { ...value[dimension], [kind]: value[dimension][kind] + 1 } };
+    assessmentBreakdownRef.current = next;
+    setAssessmentBreakdown(next);
+  }, []);
+
+  const resetDetectionTracking = useCallback(() => {
+    leftAssessedRef.current.clear();
+    leftWrongRef.current.clear();
+    waitSatisfiedRef.current = { right: false, left: false };
+    leftCaptureRef.current = null;
+    rightAttacksRef.current.clear();
+    leftAttacksRef.current.clear();
+    coordinationAssessedRef.current.clear();
+    setHandMonitor({
+      right: { status: 'waiting', label: 'En attente' },
+      left: { status: 'waiting', label: 'En attente' },
+    });
   }, []);
 
   useEffect(() => () => {
@@ -222,9 +310,10 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     ignoreMicrophoneUntilRef.current = 0;
     assessedRef.current.clear();
     wrongRef.current.clear();
+    resetDetectionTracking();
     resetResults();
     setPlaying(false);
-  }, [clearCountIn, finishActiveSegment, persistSession, practiceEvents, resetResults, resetSessionTracking, song]);
+  }, [clearCountIn, finishActiveSegment, persistSession, practiceEvents, resetDetectionTracking, resetResults, resetSessionTracking, song]);
 
   const stop = useCallback(() => {
     clearCountIn();
@@ -249,15 +338,17 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     ignoreMicrophoneUntilRef.current = 0;
     assessedRef.current.clear();
     wrongRef.current.clear();
+    resetDetectionTracking();
     resetResults();
     setFeedback({ kind: 'neutral', title: 'On reprend calmement', detail: 'Inspire, prépare le doigt et regarde la direction.' });
-  }, [practiceEvents, resetResults, resetSessionTracking, settings.loop, settings.loopStart, song, stop]);
+  }, [practiceEvents, resetDetectionTracking, resetResults, resetSessionTracking, settings.loop, settings.loopStart, song, stop]);
 
   const changeHand = useCallback((hand: HandFocus) => {
     const nextEvents = createPracticeTimeline(song, hand);
     if (!nextEvents.length) return;
     stop();
     resetSessionTracking();
+    resetDetectionTracking();
     resetResults();
     setModeOpen(false);
     setSettings((value) => ({ ...value, hand, loopStart: 0, loopEnd: nextEvents.length - 1 }));
@@ -275,16 +366,17 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       kind: 'neutral',
       title: hand === 'right' ? 'Mélodie seule' : hand === 'left' ? 'Basses et accords seuls' : 'Les deux mains ensemble',
       detail: hand === 'both'
-        ? 'Le microphone évalue la mélodie pendant que la main gauche reste guidée visuellement.'
+        ? 'Le micro vérifie séparément la mélodie, les basses ou accords, puis leur coordination.'
         : hand === 'left'
-          ? 'Les basses et les accords suivent maintenant leur propre frise.'
+          ? 'Le micro reconnaît la fondamentale des basses et toute l’empreinte des accords.'
           : 'Concentre-toi sur les boutons de la main droite.',
     });
-  }, [resetResults, resetSessionTracking, song, stop]);
+  }, [resetDetectionTracking, resetResults, resetSessionTracking, song, stop]);
 
   const selectMode = useCallback((mode: PrimaryPracticeMode | SupplementalPracticeMode) => {
     stop();
     resetSessionTracking();
+    resetDetectionTracking();
     resetResults();
     setModeOpen(false);
     setSettings((value) => ({ ...value, mode }));
@@ -294,11 +386,12 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     if (mode === 'wait') {
       setFeedback({ kind: 'neutral', title: 'La lecture t’attend', detail: 'Appuie sur Commencer, puis joue le geste éclairé. Chaque réussite affiche immédiatement le suivant.' });
     }
-  }, [resetResults, resetSessionTracking, stop]);
+  }, [resetDetectionTracking, resetResults, resetSessionTracking, stop]);
 
   const changeBellowsStyle = useCallback((style: BellowsStyle) => {
     stop();
     resetSessionTracking();
+    resetDetectionTracking();
     resetResults();
     setSettings((value) => ({ ...value, bellowsStyle: style, loopStart: 0, loopEnd: sourceSong.events.length - 1 }));
     setActiveIndex(0);
@@ -309,7 +402,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       title: option?.label ?? 'Stratégie de soufflet',
       detail: option?.description ?? 'Le plan de soufflet a été recalculé pour tout le morceau.',
     });
-  }, [resetResults, resetSessionTracking, sourceSong.events.length, stop]);
+  }, [resetDetectionTracking, resetResults, resetSessionTracking, sourceSong.events.length, stop]);
 
   const startPlayback = useCallback((startIndex = activeIndex) => {
     clearCountIn();
@@ -337,7 +430,10 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     const startIndex = getPlaybackStartIndex(activeIndex, sessionCompletedRef.current, settings.loop, settings.loopStart);
     if (sessionCompletedRef.current) {
       resetSessionTracking();
+      resetDetectionTracking();
       resetResults();
+      assessedRef.current.clear();
+      wrongRef.current.clear();
       setActiveIndex(startIndex);
       setActiveAccompanimentIndex(accompanimentIndexAt(song, practiceEvents[startIndex]?.beat ?? 0));
       setFeedback({ kind: 'neutral', title: 'Nouveau départ', detail: 'Le morceau repart du début avec les mêmes réglages.' });
@@ -355,7 +451,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       }, (index + 1) * beatMs));
     });
     countInTimersRef.current.push(window.setTimeout(() => startPlayback(startIndex), countInSequence.length * beatMs));
-  }, [activeIndex, beatMs, click, countInBeat, countInSequence, detectorStatus, playing, practiceEvents, practiceWithMic, resetResults, resetSessionTracking, settings.countIn, settings.loop, settings.loopStart, song, soundEnabled, startDetector, startPlayback, stop]);
+  }, [activeIndex, beatMs, click, countInBeat, countInSequence, detectorStatus, playing, practiceEvents, practiceWithMic, resetDetectionTracking, resetResults, resetSessionTracking, settings.countIn, settings.loop, settings.loopStart, song, soundEnabled, startDetector, startPlayback, stop]);
 
   useEffect(() => {
     if (!practiceWithMic && detectorStatus !== 'idle') stopDetector();
@@ -426,8 +522,77 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     return () => cancelAnimationFrame(rafRef.current);
   }, [activeIndex, beatMs, click, finishActiveSegment, persistSession, playLeftHand, playMidi, playing, practiceEvents, settings.hand, settings.loop, settings.loopEnd, settings.loopStart, settings.metronome, settings.mode, song, soundEnabled]);
 
+  const recordCoordination = useCallback((hand: 'right' | 'left', beat: number, at: number) => {
+    if (settings.hand !== 'both' || !accompanimentAttackAtBeat(song.accompaniment, beat)) return;
+    const key = beat.toFixed(3);
+    (hand === 'right' ? rightAttacksRef : leftAttacksRef).current.set(key, at);
+    const rightAt = rightAttacksRef.current.get(key);
+    const leftAt = leftAttacksRef.current.get(key);
+    if (rightAt === undefined || leftAt === undefined || coordinationAssessedRef.current.has(key)) return;
+    coordinationAssessedRef.current.add(key);
+    const coordination = classifyHandCoordination(rightAt, leftAt);
+    const resultKind = coordination.kind === 'correct' ? 'correct' : coordination.kind === 'left-early' ? 'early' : 'late';
+    incrementAssessment('coordination', resultKind);
+    if (coordination.kind === 'left-early') {
+      setFeedback({ kind: 'hint', title: 'Les deux gestes sont justes, basse un peu tôt', detail: `Retarde la main gauche d’environ ${Math.round(Math.abs(coordination.deltaMs) / 10) * 10} ms pour réunir les attaques.` });
+    } else if (coordination.kind === 'left-late') {
+      setFeedback({ kind: 'hint', title: 'Les deux gestes sont justes, basse un peu tard', detail: `Prépare la main gauche environ ${Math.round(Math.abs(coordination.deltaMs) / 10) * 10} ms plus tôt.` });
+    } else {
+      setFeedback({ kind: 'good', title: 'Deux mains bien ensemble', detail: 'La mélodie et l’accompagnement démarrent sur le même temps.' });
+    }
+  }, [incrementAssessment, settings.hand, song.accompaniment]);
+
+  const completeWaitStep = useCallback((releaseMidi?: number) => {
+    if (settings.mode !== 'wait' || !playing) return false;
+    const requiresRight = settings.hand !== 'left';
+    const requiresLeft = settings.hand === 'left' || Boolean(waitLeftTarget);
+    if ((requiresRight && !waitSatisfiedRef.current.right) || (requiresLeft && !waitSatisfiedRef.current.left)) {
+      const missing = requiresRight && !waitSatisfiedRef.current.right ? 'la mélodie main droite' : 'la basse ou l’accord main gauche';
+      setFeedback({ kind: 'neutral', title: 'Un geste est validé', detail: `Garde-le en mémoire et ajoute maintenant ${missing}.` });
+      return false;
+    }
+    if (lastCorrectIndexRef.current === activeIndex) return true;
+    lastCorrectIndexRef.current = activeIndex;
+    waitForReleaseRef.current = releaseMidi ?? null;
+    const advance = getWaitAdvance(activeIndex, practiceEvents.length, settings.loop, settings.loopStart, settings.loopEnd);
+    if (advance.finished) {
+      finishActiveSegment();
+      sessionCompletedRef.current = true;
+      setSessionFinished(true);
+      void persistSession(true);
+      setPlaying(false);
+      setFeedback({ kind: 'good', title: 'Exercice terminé !', detail: settings.hand === 'both' ? 'Tu as validé la mélodie, la main gauche et leur coordination.' : 'Tous les gestes demandés ont été entendus.' });
+      return true;
+    }
+    window.clearTimeout(waitAdvanceTimerRef.current);
+    setFeedback({ kind: 'good', title: 'Bon geste, on avance', detail: `Le geste ${advance.nextIndex + 1} sur ${practiceEvents.length} arrive maintenant.` });
+    waitAdvanceTimerRef.current = window.setTimeout(() => {
+      if (advance.looped) {
+        assessedRef.current.clear();
+        wrongRef.current.clear();
+        leftAssessedRef.current.clear();
+        leftWrongRef.current.clear();
+        coordinationAssessedRef.current.clear();
+      }
+      waitSatisfiedRef.current = { right: false, left: false };
+      leftCaptureRef.current = null;
+      setHandMonitor({
+        right: { status: settings.hand === 'left' ? 'waiting' : 'listening', label: settings.hand === 'left' ? 'Non demandée' : 'À jouer' },
+        left: { status: settings.hand === 'right' ? 'waiting' : 'listening', label: settings.hand === 'right' ? 'Non demandée' : 'À jouer' },
+      });
+      setActiveIndex(advance.nextIndex);
+      setActiveAccompanimentIndex(accompanimentIndexAt(song, practiceEvents[advance.nextIndex]?.beat ?? 0));
+      setFeedback({
+        kind: 'neutral',
+        title: advance.looped ? 'La boucle recommence' : 'Au geste suivant',
+        detail: advance.looped ? 'Reprends depuis le début du passage.' : 'L’écoute reste active : joue quand tu es prêt.',
+      });
+    }, 180);
+    return true;
+  }, [activeIndex, finishActiveSegment, persistSession, playing, practiceEvents, settings.hand, settings.loop, settings.loopEnd, settings.loopStart, settings.mode, song, waitLeftTarget]);
+
   const assessPitch = useCallback((midi: number, note: string, confidence: number, direction?: 'push' | 'pull', fromMicrophone = false) => {
-    if (!practiceWithMic || !currentEvent || confidence <= .7) return;
+    if (!practiceWithMic || settings.hand === 'left' || !currentEvent || confidence <= .7) return;
     if (settings.mode === 'wait' && fromMicrophone && performance.now() < ignoreMicrophoneUntilRef.current) return;
     if (settings.mode === 'wait' && !fromMicrophone) ignoreMicrophoneUntilRef.current = performance.now() + 1200;
     if (settings.mode === 'wait' && fromMicrophone && waitForReleaseRef.current !== null) {
@@ -447,67 +612,150 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       return;
     }
     const delta = midi - assessmentEvent.midi;
-    const pitchMatches = assessmentEvent.hand === 'left' ? midiMatches(assessmentEvent.midi, midi) : delta === 0;
+    const pitchMatches = delta === 0;
     if (settings.mode !== 'wait' && assessmentIndex !== activeIndex && assessedRef.current.has(assessmentIndex)) return;
+    setHandMonitor((value) => ({ ...value, right: { status: 'listening', label: note, confidence } }));
     if (pitchMatches) {
+      const attackAt = lastDetectedOnsetAtRef.current > 0 && now - lastDetectedOnsetAtRef.current <= 450
+        ? lastDetectedOnsetAtRef.current
+        : now;
       const targetTime = startedAtRef.current + (assessmentEvent.beat - startBeatRef.current) * beatMs;
-      const timingDelta = settings.mode === 'wait' ? 0 : now - targetTime;
+      const timingDelta = settings.mode === 'wait' ? 0 : attackAt - targetTime;
       if (!assessedRef.current.has(assessmentIndex)) {
         assessedRef.current.add(assessmentIndex);
         const timingKind = timingDelta < -120 ? 'early' : timingDelta > 180 ? 'late' : 'correct';
         incrementResult(timingKind);
+        incrementAssessment('right', timingKind);
       }
+      setHandMonitor((value) => ({ ...value, right: { status: 'correct', label: note, confidence } }));
+      recordCoordination('right', assessmentEvent.beat, attackAt);
       if (timingDelta < -120) setFeedback({ kind: 'hint', title: 'Bonne note, mais un peu trop tôt', detail: 'Attends que le repère arrive au centre avant d’attaquer la note.' });
       else if (timingDelta > 180) setFeedback({ kind: 'hint', title: 'Bonne note, mais un peu trop tard', detail: 'Prépare ton doigt pendant la note précédente pour partir sur le temps.' });
-      else setFeedback({ kind: 'good', title: 'Bonne note, au bon moment', detail: 'La hauteur et l’attaque sont justes. Garde le son jusqu’au prochain repère.' });
+      else setFeedback({ kind: 'good', title: 'Main droite juste', detail: settings.hand === 'both' && waitLeftTarget ? 'La mélodie est bonne. Je vérifie aussi la main gauche.' : 'La hauteur et l’attaque sont justes.' });
       if (settings.mode === 'wait' && playing) {
-        if (lastCorrectIndexRef.current === activeIndex) return;
-        lastCorrectIndexRef.current = activeIndex;
-        waitForReleaseRef.current = midi;
-        const advance = getWaitAdvance(activeIndex, practiceEvents.length, settings.loop, settings.loopStart, settings.loopEnd);
-        if (advance.finished) {
-          finishActiveSegment();
-          sessionCompletedRef.current = true;
-          setSessionFinished(true);
-          void persistSession(true);
-          setPlaying(false);
-          setFeedback({ kind: 'good', title: 'Exercice terminé !', detail: 'Tu as trouvé toutes les notes sans limite de temps.' });
-        } else {
-          window.clearTimeout(waitAdvanceTimerRef.current);
-          setFeedback({ kind: 'good', title: 'Bonne note, on avance', detail: `Le geste ${advance.nextIndex + 1} sur ${practiceEvents.length} arrive maintenant.` });
-          waitAdvanceTimerRef.current = window.setTimeout(() => {
-            if (advance.looped) {
-              assessedRef.current.clear();
-              wrongRef.current.clear();
-            }
-            setActiveIndex(advance.nextIndex);
-            setActiveAccompanimentIndex(accompanimentIndexAt(song, practiceEvents[advance.nextIndex]?.beat ?? 0));
-            setFeedback({
-              kind: 'neutral',
-              title: advance.looped ? 'La boucle recommence' : 'À la note suivante',
-              detail: advance.looped ? 'Reprends depuis le début du passage.' : `Joue le geste ${advance.nextIndex + 1} sur ${practiceEvents.length}.`,
-            });
-          }, 180);
-        }
+        waitSatisfiedRef.current.right = true;
+        completeWaitStep(midi);
       }
     } else if (confidence > .72) {
       const targetTime = startedAtRef.current + (assessmentEvent.beat - startBeatRef.current) * beatMs;
       if (settings.mode !== 'wait' && now - targetTime < 90) return;
+      const simultaneousLeft = settings.hand === 'both' ? accompanimentAttackAtBeat(song.accompaniment, assessmentEvent.beat) : undefined;
+      if (accompanimentContainsPitch(simultaneousLeft, midi)) {
+        setHandMonitor((value) => ({ ...value, right: { status: 'uncertain', label: `${note} · accord entendu`, confidence } }));
+        return;
+      }
       if (!wrongRef.current.has(assessmentIndex)) {
         wrongRef.current.add(assessmentIndex);
         incrementResult('wrong');
+        incrementAssessment('right', 'wrong');
       }
+      setHandMonitor((value) => ({ ...value, right: { status: 'wrong', label: note, confidence } }));
       setFeedback({
         kind: 'hint',
-        title: delta < 0 ? 'Un peu trop grave' : 'Un peu trop aigu',
-        detail: `Tu joues ${note}. Cherche le bouton éclairé sans changer la direction du soufflet.`,
+        title: delta < 0 ? 'Main droite trop grave' : 'Main droite trop aiguë',
+        detail: `Tu joues ${note}. Cherche le bouton mélodique éclairé sans changer la direction du soufflet.`,
       });
     }
-  }, [activeIndex, beatMs, currentEvent, finishActiveSegment, incrementResult, persistSession, playing, practiceEvents, practiceWithMic, settings.loop, settings.loopEnd, settings.loopStart, settings.mode, song]);
+  }, [activeIndex, beatMs, completeWaitStep, currentEvent, incrementAssessment, incrementResult, playing, practiceEvents, practiceWithMic, recordCoordination, settings.hand, settings.mode, song.accompaniment, waitLeftTarget]);
 
   useEffect(() => {
-    if (detectedOnset) lastDetectedOnsetAtRef.current = detectedOnset.at;
-  }, [detectedOnset]);
+    if (!detectedOnset) return;
+    lastDetectedOnsetAtRef.current = detectedOnset.at;
+    if (!playing || settings.hand === 'right') return;
+    let target: AccompanimentEvent | undefined;
+    let targetIndex = -1;
+    if (settings.mode === 'wait') {
+      target = waitLeftTarget;
+      targetIndex = settings.hand === 'left' ? activeIndex : target ? song.accompaniment?.indexOf(target) ?? -1 : -1;
+    } else if (settings.hand === 'left') {
+      targetIndex = activeIndex;
+      target = song.accompaniment?.[targetIndex];
+    } else {
+      const playbackBeat = startBeatRef.current + Math.max(0, detectedOnset.at - startedAtRef.current) / beatMs;
+      const ranked = (song.accompaniment ?? []).map((event, index) => ({ event, index, distance: Math.abs(event.beat - playbackBeat) }))
+        .sort((left, right) => left.distance - right.distance);
+      const nearest = ranked[0];
+      if (nearest && nearest.distance * beatMs <= Math.max(360, beatMs * .5)) {
+        target = nearest.event;
+        targetIndex = nearest.index;
+      }
+    }
+    if (!target || targetIndex < 0 || leftAssessedRef.current.has(targetIndex)) return;
+    leftCaptureRef.current = {
+      onsetId: detectedOnset.id,
+      onsetAt: detectedOnset.at,
+      target,
+      targetIndex,
+      frames: [],
+      handled: false,
+    };
+    setHandMonitor((value) => ({ ...value, left: { status: 'listening', label: 'Analyse harmonique…' } }));
+  }, [activeIndex, beatMs, detectedOnset, playing, settings.hand, settings.mode, song.accompaniment, waitLeftTarget]);
+
+  useEffect(() => {
+    const capture = leftCaptureRef.current;
+    if (!audioFrame || !capture || capture.handled || audioFrame.at < capture.onsetAt - 20) return;
+    capture.frames.push(audioFrame);
+    capture.frames = capture.frames.filter((frame) => frame.at >= capture.onsetAt - 20 && frame.at <= capture.onsetAt + 900);
+    const elapsed = audioFrame.at - capture.onsetAt;
+    if (elapsed < 190 || capture.frames.length < 6) return;
+    const button = accordion.basses.find((candidate) => candidate.id === capture.target.buttonId);
+    if (!button) return;
+    const detection = detectPracticeLeftHand(
+      capture.frames,
+      button,
+      capture.target.direction,
+      accordion.referencePitchHz ?? 440,
+      leftHandProfile,
+    );
+    if (!detection) return;
+    setHandMonitor((value) => ({
+      ...value,
+      left: {
+        status: detection.signalQuality === 'good' ? detection.matched ? 'correct' : 'wrong' : 'uncertain',
+        label: `${detection.heardLabel} · ${Math.round(detection.confidence * 100)} %`,
+        confidence: detection.confidence,
+        source: detection.source,
+      },
+    }));
+    const sufficientlyReliable = detection.signalQuality === 'good' && detection.confidence >= .58;
+    if (detection.matched && sufficientlyReliable) {
+      capture.handled = true;
+      if (!leftAssessedRef.current.has(capture.targetIndex)) {
+        leftAssessedRef.current.add(capture.targetIndex);
+        const targetTime = startedAtRef.current + (capture.target.beat - startBeatRef.current) * beatMs;
+        const timingDelta = settings.mode === 'wait' ? 0 : capture.onsetAt - targetTime;
+        const timingKind = timingDelta < -140 ? 'early' : timingDelta > 200 ? 'late' : 'correct';
+        incrementResult(timingKind);
+        incrementAssessment('left', timingKind);
+        recordCoordination('left', capture.target.beat, capture.onsetAt);
+      }
+      setFeedback({
+        kind: 'good',
+        title: capture.target.role === 'chord' ? 'Accord main gauche reconnu' : 'Basse main gauche reconnue',
+        detail: detection.source === 'personal-profile'
+          ? `${detection.expectedLabel} correspond au profil acoustique enregistré de ton accordéon.`
+          : `${detection.expectedLabel} est reconnue par son empreinte harmonique complète.`,
+      });
+      if (settings.mode === 'wait') {
+        waitSatisfiedRef.current.left = true;
+        completeWaitStep();
+      }
+      return;
+    }
+    if (elapsed < 420 || !sufficientlyReliable) return;
+    capture.handled = true;
+    if (!leftWrongRef.current.has(capture.targetIndex)) {
+      leftWrongRef.current.add(capture.targetIndex);
+      incrementResult('wrong');
+      incrementAssessment('left', 'wrong');
+    }
+    setFeedback({
+      kind: 'hint',
+      title: capture.target.role === 'chord' ? 'Autre accord entendu à gauche' : 'Autre basse entendue à gauche',
+      detail: `J’attends ${detection.expectedLabel}, mais l’empreinte ressemble à ${detection.heardLabel}. Vérifie le bouton et le sens du soufflet.`,
+    });
+  }, [accordion.basses, accordion.referencePitchHz, audioFrame, beatMs, completeWaitStep, incrementAssessment, incrementResult, leftHandProfile, recordCoordination, settings.mode]);
 
   useEffect(() => {
     const reading = detectedReading;
@@ -681,19 +929,40 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
               activeEvent={sessionFinished ? undefined : displayedEvent}
               direction={currentEvent?.direction}
               notation={notation}
-              detectedMidi={detectedReading?.midi}
+              detectedMidi={settings.hand === 'left' ? undefined : detectedReading?.midi}
               bellowsAmount={bellowsAmount}
               airValveActive={Boolean(currentBellowsStep?.airBefore) && !playing && countInBeat === null}
               depressActive={playing && countInBeat === null && !sessionFinished}
               showFingering={showFingering}
               context="practice"
               onButtonPress={(buttonId, direction) => {
-                if (direction !== currentEvent?.direction) {
-                  setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${currentEvent?.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
-                  return;
-                }
                 if (settings.mode === 'wait' && playing) {
-                  const button = [...accordion.buttons, ...accordion.basses].find((item) => item.id === buttonId);
+                  const leftButton = accordion.basses.find((item) => item.id === buttonId);
+                  if (leftButton) {
+                    if (!waitLeftTarget) {
+                      setFeedback({ kind: 'neutral', title: 'Pas de nouvelle attaque à gauche', detail: 'Maintiens l’accompagnement précédent ; seule la mélodie change sur ce repère.' });
+                      return;
+                    }
+                    if (direction !== waitLeftTarget.direction || buttonId !== waitLeftTarget.buttonId) {
+                      setFeedback({ kind: 'hint', title: 'Autre geste main gauche', detail: `Cherche ${waitLeftTarget.chord} en ${waitLeftTarget.direction === 'pull' ? 'tirant' : 'poussant'}.` });
+                      return;
+                    }
+                    if (!leftAssessedRef.current.has(activeAccompanimentIndex)) {
+                      leftAssessedRef.current.add(activeAccompanimentIndex);
+                      incrementResult('correct');
+                      incrementAssessment('left', 'correct');
+                    }
+                    waitSatisfiedRef.current.left = true;
+                    setHandMonitor((value) => ({ ...value, left: { status: 'correct', label: waitLeftTarget.chord, confidence: 1 } }));
+                    recordCoordination('left', waitLeftTarget.beat, performance.now());
+                    completeWaitStep();
+                    return;
+                  }
+                  if (direction !== currentEvent?.direction) {
+                    setFeedback({ kind: 'hint', title: 'Bon bouton, autre direction', detail: `Ici, il faut ${currentEvent?.direction === 'pull' ? 'ouvrir et tirer' : 'fermer et pousser'} le soufflet.` });
+                    return;
+                  }
+                  const button = accordion.buttons.find((item) => item.id === buttonId);
                   if (!button) return;
                   const midi = direction === 'push' ? button.pushMidi : button.pullMidi;
                   const note = direction === 'push' ? button.push : button.pull;
@@ -764,14 +1033,25 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
         <section className={`coach-feedback feedback-${feedback.kind}`} aria-live="polite">
           <div className="coach-avatar"><AudioLines size={22} /></div>
           <div><small>CONSEIL EN DIRECT</small><strong>{feedback.title}</strong><p>{feedback.detail}</p></div>
+          {practiceWithMic && settings.hand !== 'right' && (
+            <div className="hand-detection-panel" aria-label="Détection séparée des mains">
+              {settings.hand === 'both' && <span className={`hand-detection-${handMonitor.right.status}`}><Music2 /><small>DROITE</small><b>{handMonitor.right.label}</b></span>}
+              <span className={`hand-detection-${handMonitor.left.status}`}><Hand /><small>GAUCHE</small><b>{handMonitor.left.label}</b>{handMonitor.left.source === 'personal-profile' && <em>profil perso</em>}</span>
+              {settings.hand === 'both' && <span className="hand-coordination"><Wind /><small>ENSEMBLE</small><b>{assessmentBreakdown.coordination.correct} synchronisé{assessmentBreakdown.coordination.correct > 1 ? 's' : ''}</b></span>}
+            </div>
+          )}
           {practiceWithMic && (
             <div className="mic-status">
               <span className={detectorStatus === 'listening' ? 'mic-live' : ''} />
-              {detectorStatus === 'listening' ? (detectedReading ? `${detectedReading.note} · ${Math.round(detectedReading.confidence * 100)} %` : 'Écoute…') : 'Micro en attente'}
+              {detectorStatus === 'listening'
+                ? settings.hand === 'left'
+                  ? handMonitor.left.label
+                  : detectedReading ? `${detectedReading.note} · ${Math.round(detectedReading.confidence * 100)} %` : 'Écoute…'
+                : 'Micro en attente'}
             </div>
           )}
           {practiceWithMic && <div className="live-results" title="Évaluation automatique"><span><b>{results.correct}</b> justes</span><span><b>{results.early + results.late}</b> décalées</span><span><b>{results.wrong}</b> à corriger</span></div>}
-          <button type="button" className="explain-button" onClick={() => setFeedback({ kind: 'neutral', title: 'Ce que j’écoute', detail: 'Je compare la hauteur, le moment de l’attaque et la durée. La direction du soufflet est déduite du bouton attendu : un capteur de mouvement pourra la confirmer plus tard.' })}>Pourquoi ?</button>
+          <button type="button" className="explain-button" onClick={() => setFeedback({ kind: 'neutral', title: 'Ce que j’écoute', detail: settings.hand === 'right' ? 'La main droite est reconnue par la hauteur exacte et son attaque.' : settings.hand === 'left' ? 'Une basse est reconnue par sa fondamentale ; un accord par ses trois notes et leurs harmoniques.' : 'Je sépare la hauteur mélodique de l’empreinte harmonique gauche, puis je compare les instants de leurs attaques. Un seul micro ne peut toutefois pas prouver quel bouton physique produit deux sons identiques.' })}>Pourquoi ?</button>
         </section>
       </main>
 

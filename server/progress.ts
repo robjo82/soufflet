@@ -14,6 +14,11 @@ export interface StoredPracticeSession {
   completionPercent: number;
   tempoPercent: number;
   flagged: boolean;
+  assessmentBreakdown?: {
+    right: { correct: number; early: number; late: number; wrong: number };
+    left: { correct: number; early: number; late: number; wrong: number };
+    coordination: { correct: number; early: number; late: number; wrong: number };
+  };
 }
 
 const DAY_MS = 86_400_000;

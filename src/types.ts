@@ -192,6 +192,20 @@ export interface PracticeSessionInput {
   completionPercent: number;
   tempoPercent: number;
   flagged: boolean;
+  assessmentBreakdown?: PracticeAssessmentBreakdown;
+}
+
+export interface PracticeDimensionResults {
+  correct: number;
+  early: number;
+  late: number;
+  wrong: number;
+}
+
+export interface PracticeAssessmentBreakdown {
+  right: PracticeDimensionResults;
+  left: PracticeDimensionResults;
+  coordination: PracticeDimensionResults;
 }
 
 export interface PracticeStats {

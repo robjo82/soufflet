@@ -1423,6 +1423,19 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .live-results { display: flex; gap: 6px; }
 .live-results span { min-width: 55px; padding: 6px 8px; border-radius: 8px; background: #efebe4; display: flex; flex-direction: column; color: var(--muted); font-size: 7px; }
 .live-results b { color: var(--ink); font-size: 12px; }
+.hand-detection-panel { display: flex; align-items: stretch; gap: 5px; }
+.hand-detection-panel > span { min-width: 86px; padding: 6px 8px; position: relative; border: 1px solid #ded9d0; border-radius: 9px; display: grid; grid-template-columns: 16px 1fr; grid-template-rows: auto auto; column-gap: 5px; align-items: center; background: rgba(255,255,255,.72); }
+.hand-detection-panel svg { width: 14px; height: 14px; grid-row: 1 / 3; color: var(--muted); }
+.hand-detection-panel small { color: var(--muted); font-size: 6px; font-weight: 900; letter-spacing: .08em; }
+.hand-detection-panel b { max-width: 105px; overflow: hidden; color: var(--ink); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.hand-detection-panel em { padding: 1px 4px; position: absolute; top: -7px; right: 4px; border-radius: 5px; color: white; background: var(--green); font-size: 6px; font-style: normal; font-weight: 900; }
+.hand-detection-panel .hand-detection-correct { border-color: #8fb7a1; background: #e6f3ea; }
+.hand-detection-panel .hand-detection-correct svg { color: var(--green); }
+.hand-detection-panel .hand-detection-wrong { border-color: #e0ad92; background: #fff0e8; }
+.hand-detection-panel .hand-detection-wrong svg { color: var(--coral-dark); }
+.hand-detection-panel .hand-detection-listening { border-color: #9bb9ca; box-shadow: inset 0 0 0 1px rgba(73,119,144,.08); }
+.hand-detection-panel .hand-detection-uncertain { border-style: dashed; background: #faf5e8; }
+.hand-detection-panel .hand-coordination { min-width: 94px; }
 
 /* Settings */
 .settings-layout { display: grid; grid-template-columns: 235px 1fr; gap: 25px; }
@@ -1743,6 +1756,9 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .fingering-instruction { grid-column: 1 / -1; }
   .coach-feedback .mic-status { display: none; }
   .live-results { display: none; }
+  .coach-feedback:has(.hand-detection-panel) { flex-wrap: wrap; }
+  .coach-feedback .hand-detection-panel { width: 100%; padding-left: 54px; order: 3; }
+  .coach-feedback .hand-detection-panel > span { flex: 1; }
   .transport-bar { padding: 0 10px; }
   .transport-side { gap: 0; }
   .tempo-control { display: none; }
@@ -1868,6 +1884,7 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .coach-feedback > div:nth-child(2) { display: block; }
   .coach-feedback > div:nth-child(2) small { display: block; }
   .coach-feedback .explain-button { display: none; }
+  .coach-feedback .hand-detection-panel { padding-left: 0; }
   .transport-side .transport-tool:nth-child(2) { display: none; }
   .primary-play { min-width: 135px; grid-template-columns: 25px 1fr; }
   .primary-play kbd { display: none; }

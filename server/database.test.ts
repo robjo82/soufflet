@@ -202,13 +202,18 @@ describe('production data migrations', () => {
       hand: 'right' as const,
       startedAt: '2026-07-16T18:00:00.000Z', endedAt: '2026-07-16T18:02:00.000Z', activeSeconds: 120,
       correctCount: 4, earlyCount: 1, lateCount: 0, wrongCount: 1, completionPercent: 60, tempoPercent: 80, flagged: true,
+      assessmentBreakdown: {
+        right: { correct: 3, early: 1, late: 0, wrong: 1 },
+        left: { correct: 1, early: 0, late: 0, wrong: 0 },
+        coordination: { correct: 1, early: 0, late: 0, wrong: 0 },
+      },
     };
     db.savePracticeSession('usr_upsert', session);
-    db.savePracticeSession('usr_upsert', { ...session, mode: 'demo', hand: 'both', endedAt: '2026-07-16T18:01:00.000Z', activeSeconds: 60, correctCount: 2, flagged: false });
-    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 120, correctCount: 4, mode: 'wait', hand: 'right', flagged: true }]);
+    db.savePracticeSession('usr_upsert', { ...session, assessmentBreakdown: undefined, mode: 'demo', hand: 'both', endedAt: '2026-07-16T18:01:00.000Z', activeSeconds: 60, correctCount: 2, flagged: false });
+    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 120, correctCount: 4, mode: 'wait', hand: 'right', flagged: true, assessmentBreakdown: session.assessmentBreakdown }]);
 
     db.savePracticeSession('usr_upsert', { ...session, mode: 'guided', hand: 'both', endedAt: '2026-07-16T18:03:00.000Z', activeSeconds: 130, correctCount: 5, flagged: false });
-    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 130, correctCount: 5, mode: 'guided', hand: 'both', flagged: false }]);
+    expect(db.listPracticeSessions('usr_upsert')).toMatchObject([{ activeSeconds: 130, correctCount: 5, mode: 'guided', hand: 'both', flagged: false, assessmentBreakdown: session.assessmentBreakdown }]);
   });
 });
 

@@ -217,6 +217,11 @@ const practiceSessionSchema = z.object({
   completionPercent: z.number().min(0).max(100),
   tempoPercent: z.number().int().min(40).max(120),
   flagged: z.boolean(),
+  assessmentBreakdown: z.object({
+    right: z.object({ correct: z.number().int().min(0).max(100_000), early: z.number().int().min(0).max(100_000), late: z.number().int().min(0).max(100_000), wrong: z.number().int().min(0).max(100_000) }),
+    left: z.object({ correct: z.number().int().min(0).max(100_000), early: z.number().int().min(0).max(100_000), late: z.number().int().min(0).max(100_000), wrong: z.number().int().min(0).max(100_000) }),
+    coordination: z.object({ correct: z.number().int().min(0).max(100_000), early: z.number().int().min(0).max(100_000), late: z.number().int().min(0).max(100_000), wrong: z.number().int().min(0).max(100_000) }),
+  }).optional(),
 }).transform((session) => ({
   ...session,
   hand: inferSessionHand(session.mode, session.hand),
