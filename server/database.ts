@@ -218,6 +218,9 @@ export class SouffletDatabase {
         CREATE INDEX IF NOT EXISTS accordion_audio_profiles_user_idx
           ON accordion_audio_profiles(user_id, updated_at DESC);
       `,
+      `
+        ALTER TABLE practice_sessions ADD COLUMN assessment_breakdown TEXT NOT NULL DEFAULT '{}';
+      `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -416,8 +419,9 @@ export class SouffletDatabase {
     this.db.prepare(`
       INSERT INTO practice_sessions (
         id, user_id, song_id, song_title, mode, hand, started_at, ended_at, active_seconds,
-        correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged,
+        assessment_breakdown
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         song_id = excluded.song_id,
         song_title = excluded.song_title,
@@ -433,12 +437,16 @@ export class SouffletDatabase {
         completion_percent = MAX(practice_sessions.completion_percent, excluded.completion_percent),
         tempo_percent = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.tempo_percent ELSE practice_sessions.tempo_percent END,
         flagged = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.flagged ELSE practice_sessions.flagged END,
+        assessment_breakdown = CASE
+          WHEN excluded.ended_at >= practice_sessions.ended_at AND excluded.assessment_breakdown <> '{}'
+          THEN excluded.assessment_breakdown ELSE practice_sessions.assessment_breakdown END,
         updated_at = CURRENT_TIMESTAMP
       WHERE practice_sessions.user_id = excluded.user_id
     `).run(
       session.id, userId, session.songId, session.songTitle, session.mode, session.hand, session.startedAt, session.endedAt,
       session.activeSeconds, session.correctCount, session.earlyCount, session.lateCount, session.wrongCount,
       session.completionPercent, session.tempoPercent, Number(session.flagged),
+      JSON.stringify(session.assessmentBreakdown ?? {}),
     );
     return session;
   }
@@ -446,14 +454,15 @@ export class SouffletDatabase {
   listPracticeSessions(userId: string): StoredPracticeSession[] {
     const rows = this.db.prepare(`
       SELECT id, song_id, song_title, mode, hand, started_at, ended_at, active_seconds,
-             correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged
+             correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged,
+             assessment_breakdown
       FROM practice_sessions
       WHERE user_id = ? AND active_seconds > 0
       ORDER BY ended_at DESC
     `).all(userId) as Array<{
       id: string; song_id: string; song_title: string; mode: string; hand: 'right' | 'left' | 'both'; started_at: string; ended_at: string;
       active_seconds: number; correct_count: number; early_count: number; late_count: number; wrong_count: number;
-      completion_percent: number; tempo_percent: number; flagged: number;
+      completion_percent: number; tempo_percent: number; flagged: number; assessment_breakdown: string;
     }>;
     return rows.map((row) => ({
       id: row.id,
@@ -471,6 +480,12 @@ export class SouffletDatabase {
       completionPercent: row.completion_percent,
       tempoPercent: row.tempo_percent,
       flagged: Boolean(row.flagged),
+      assessmentBreakdown: (() => {
+        try {
+          const parsed = JSON.parse(row.assessment_breakdown) as StoredPracticeSession['assessmentBreakdown'];
+          return parsed?.right && parsed.left && parsed.coordination ? parsed : undefined;
+        } catch { return undefined; }
+      })(),
     }));
   }
 

@@ -107,7 +107,7 @@ export function HomePage({ accordion, song, stats, onPractice, onNavigateLearn, 
         </div>
 
         <div className="skill-analysis">
-          <div className="section-title compact"><div><span className="eyebrow">Compétences observées</span><h2>Ce que le microphone peut mesurer</h2></div><p>Le soufflet et la coordination ne sont pas notés tant qu’aucun capteur fiable ne permet de les distinguer.</p></div>
+          <div className="section-title compact"><div><span className="eyebrow">Compétences observées</span><h2>Ce que le microphone peut mesurer</h2></div><p>La coordination est mesurée sur les attaques deux mains identifiables. L’ouverture réelle du soufflet reste inconnue sans capteur physique.</p></div>
           <div className="skill-metric-grid">{skillCards.map(({ icon: Icon, label, value, suffix, progress, detail }) => <article key={label}><span><Icon /></span><small>{label}</small><StatValue value={value} suffix={suffix} /><p>{detail}</p><i><b style={{ width: `${progress}%` }} /></i></article>)}</div>
         </div>
 
