@@ -994,6 +994,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
           <ScoreStrip
             song={scoreSong}
             activeIndex={activeIndex}
+            activeAccompanimentIndex={activeAccompanimentIndex}
             notation={notation}
             hand={settings.hand}
             completed={sessionFinished}

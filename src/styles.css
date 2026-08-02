@@ -887,6 +887,35 @@ svg { stroke-width: 1.8; }
 .mini-direction.direction-pull { color: #2e5f7d; background: #dfecf2; }
 .confidence-warning { position: absolute; right: 3px; bottom: 3px; color: #bb7428; }
 .playhead-mark { position: absolute; left: -9px; top: 58%; color: var(--coral); fill: var(--coral); }
+.score-shell.is-two-hand { height: 218px; grid-template-columns: 92px 1fr; }
+.score-labels.is-two-hand { padding: 8px 9px; grid-template-rows: 29px 82px 82px; }
+.score-labels.is-two-hand > span:not(:first-child) { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.score-labels.is-two-hand small { color: #a7a29a; font-size: 6px; }
+.score-labels.is-two-hand strong { color: var(--ink); font-size: 8px; letter-spacing: 0; text-transform: none; }
+.score-two-hand-strip { --score-beat-width: 60px; padding: 8px 13px 9px; display: block; }
+.score-two-hand-canvas { width: calc(var(--score-total-beats) * var(--score-beat-width)); min-width: 100%; height: 100%; position: relative; }
+.score-measure-ruler { height: 28px; position: relative; border-bottom: 1px solid var(--line); color: #8f8b84; font-size: 8px; font-weight: 900; }
+.score-measure-ruler > span { width: calc(var(--measure-duration) * var(--score-beat-width)); height: 100%; padding: 7px 6px; position: absolute; left: calc(var(--measure-beat) * var(--score-beat-width)); border-left: 1px solid #cfc9bf; }
+.score-beat-grid { position: absolute; inset: 28px 0 0; pointer-events: none; }
+.score-beat-grid i { width: 1px; height: 100%; position: absolute; left: calc(var(--grid-beat) * var(--score-beat-width)); background: #eeeae3; }
+.score-beat-grid i.is-measure { background: #d4cec4; }
+.score-timed-lane { height: 81px; position: relative; }
+.score-timed-lane.is-right-hand { border-bottom: 1px solid #ece6dc; }
+.score-timed-event { width: max(12px, calc(var(--event-duration) * var(--score-beat-width) - 4px)); height: 66px; padding: 24px 4px 5px; position: absolute; top: 7px; left: calc(var(--event-beat) * var(--score-beat-width) + 2px); overflow: hidden; border: 1px solid transparent; border-radius: 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: opacity .16s ease, box-shadow .16s ease, transform .16s ease; }
+.score-timed-event.is-right-hand { color: #743e31; border-color: #efc9bd; background: #fbede8; }
+.score-timed-event.is-left-hand { color: #315f74; border-color: #bad3de; background: #eaf4f8; }
+.score-timed-event:hover { filter: brightness(.98); }
+.score-timed-event.is-active { z-index: 3; opacity: 1; transform: translateY(-1px); }
+.score-timed-event.is-right-hand.is-active { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(231,120,92,.18), 0 7px 15px rgba(117,62,49,.12); }
+.score-timed-event.is-left-hand.is-active { border-color: #4b8fa8; box-shadow: 0 0 0 3px rgba(75,143,168,.18), 0 7px 15px rgba(49,95,116,.12); }
+.score-timed-event.is-past:not(.is-active) { opacity: .35; }
+.score-timed-event > .mini-direction { top: 5px; left: 5px; }
+.score-timed-event > strong { max-width: 100%; overflow: hidden; font: 800 14px 'Manrope'; text-overflow: ellipsis; white-space: nowrap; }
+.score-timed-event > small { max-width: 100%; overflow: hidden; color: currentColor; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; opacity: .72; }
+.score-timed-event > .score-finger { top: 5px; right: 5px; }
+.score-timed-event > .confidence-warning { bottom: 1px; }
+.score-two-hand-playhead { width: 2px; position: absolute; z-index: 5; top: 27px; bottom: 0; left: calc(var(--score-active-beat) * var(--score-beat-width)); pointer-events: none; background: var(--coral); box-shadow: 0 0 0 1px rgba(255,255,255,.7); }
+.score-two-hand-playhead::before { content: ''; width: 10px; height: 10px; position: absolute; top: -4px; left: -4px; border-radius: 50%; background: var(--coral); }
 .shortcut-overlay { position: fixed; z-index: 110; inset: 0; padding: 24px; display: grid; place-items: center; background: rgba(23,34,30,.6); backdrop-filter: blur(7px); }
 .shortcut-card { width: min(620px, 100%); padding: 24px; border: 1px solid rgba(255,255,255,.65); border-radius: 22px; background: var(--paper); box-shadow: 0 26px 70px rgba(20,35,29,.28); }
 .shortcut-card > header { display: grid; grid-template-columns: 46px 1fr 38px; align-items: center; gap: 12px; }
@@ -949,6 +978,12 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   html:fullscreen .score-labels { padding: 18px 10px; grid-template-rows: 29px 40px 1fr; font-size: 8px; }
   html:fullscreen .score-event { width: calc(68px * var(--duration)); min-width: calc(68px * var(--duration)); padding-top: 43px; }
   html:fullscreen .score-event strong { font-size: 20px; }
+  html:fullscreen .score-shell.is-two-hand { height: 238px; grid-template-columns: 106px 1fr; }
+  html:fullscreen .score-labels.is-two-hand { grid-template-rows: 31px 91px 91px; }
+  html:fullscreen .score-two-hand-strip { --score-beat-width: 72px; }
+  html:fullscreen .score-timed-lane { height: 91px; }
+  html:fullscreen .score-timed-event { height: 74px; }
+  html:fullscreen .score-timed-event > strong { font-size: 17px; }
   html:fullscreen .fingering-guide { min-height: 92px; padding-inline: 17px; }
   html:fullscreen .fingering-guide { bottom: 90px; }
   html:fullscreen .fingering-current strong { font-size: 16px; }
@@ -977,6 +1012,10 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   html:fullscreen .instrument-stage .direction-banner { min-height: 48px; padding-block: 5px; margin-bottom: 6px; }
   html:fullscreen .instrument-stage .accordion { transform: scale(.9); margin-block: -20px; }
   html:fullscreen .score-shell { height: 140px; }
+  html:fullscreen .score-shell.is-two-hand { height: 206px; }
+  html:fullscreen .score-labels.is-two-hand { grid-template-rows: 27px 77px 77px; }
+  html:fullscreen .score-timed-lane { height: 77px; }
+  html:fullscreen .score-timed-event { height: 62px; }
   html:fullscreen .score-labels { padding-block: 13px; grid-template-rows: 25px 34px 1fr; }
   html:fullscreen .score-event { padding-top: 38px; }
   html:fullscreen .mini-direction { top: 19px; }
@@ -1659,6 +1698,10 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
   .instrument-stage .direction-banner { min-height: 44px; padding-block: 5px; margin-bottom: 0; transform: scale(.9); }
   .instrument-stage .accordion { transform: scale(.78); margin-block: -43px; }
   .score-shell { height: 130px; }
+  .score-shell.is-two-hand { height: 196px; }
+  .score-labels.is-two-hand { grid-template-rows: 27px 72px 72px; }
+  .score-timed-lane { height: 72px; }
+  .score-timed-event { height: 58px; }
   .fingering-guide { min-height: 68px; padding-block: 6px; }
   .score-labels { padding-block: 12px; grid-template-rows: 22px 31px 1fr; }
   .score-event { padding-top: 34px; }
@@ -1881,6 +1924,15 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .fingering-hand > span small { display: none; }
   .fingering-explanation { bottom: calc(100% - 3px); }
   .score-shell { grid-template-columns: 45px 1fr; }
+  .score-shell.is-two-hand { height: 202px; grid-template-columns: 58px 1fr; }
+  .score-labels.is-two-hand { padding-inline: 5px; grid-template-rows: 27px 75px 75px; }
+  .score-labels.is-two-hand small { display: none; }
+  .score-labels.is-two-hand strong { font-size: 7px; }
+  .score-two-hand-strip { --score-beat-width: 54px; padding-inline: 8px; }
+  .score-timed-lane { height: 75px; }
+  .score-timed-event { height: 61px; padding-inline: 2px; }
+  .score-timed-event > strong { font-size: 12px; }
+  .score-timed-event > small { font-size: 6px; }
   .coach-feedback > div:nth-child(2) { display: block; }
   .coach-feedback > div:nth-child(2) small { display: block; }
   .coach-feedback .explain-button { display: none; }
