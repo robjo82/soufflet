@@ -12,11 +12,27 @@ describe('tuner export', () => {
   };
 
   it('includes the complete instrument mapping and readable notes', () => {
-    const report = buildTunerExport(accordion, [reading], '2026-07-19T16:01:00.000Z');
+    const report = buildTunerExport(accordion, [reading], null, '2026-07-19T16:01:00.000Z');
     expect(report.instrument.buttons).toHaveLength(21);
     expect(report.instrument.basses).toHaveLength(8);
     expect(report.readings[0]).toMatchObject({ expectedNote: 'F4', detectedNote: 'F4', cents: 3, hand: 'right' });
     expect(report.diagnosticNote).toContain('cents');
+  });
+
+  it('exports the synchronized left-hand fingerprint without raw audio', () => {
+    const leftHandProfile = {
+      accordionId: accordion.id, accordionModel: accordion.model, referencePitchHz: 435,
+      completedAt: '2026-08-02T10:00:00.000Z',
+      samples: [{
+        buttonId: 'c1-chord-a-dm', buttonIndex: 1, row: 1, direction: 'push' as const, role: 'chord' as const,
+        expectedLabel: 'La', detectedLabel: 'La', expectedRootPitchClass: 9, detectedRootPitchClass: 9,
+        chordQuality: 'major' as const, confidence: .88, chroma: Array(12).fill(1 / 12), outcome: 'matched' as const,
+        measuredAt: '2026-08-02T09:59:59.000Z',
+      }],
+    };
+    const report = buildTunerExport(accordion, [], leftHandProfile, '2026-08-02T10:01:00.000Z');
+    expect(report).toMatchObject({ schemaVersion: 2, leftHandProfile: { referencePitchHz: 435 } });
+    expect(JSON.stringify(report)).not.toContain('audioData');
   });
 
   it('creates a portable filename without accents or spaces', () => {

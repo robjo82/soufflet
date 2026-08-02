@@ -6,7 +6,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 
 - onboarding en cinq étapes : instrument, notation, micro et premier geste ;
 - création et gestion de compte, mot de passe dérivé avec scrypt, renouvellement sécurisé et session HttpOnly ;
-- espace personnel pour le profil, les accordéons enregistrés et les profils locaux de calibration du soufflet ;
+- espace personnel pour le profil, les accordéons enregistrés, les profils locaux de soufflet et les scans main gauche synchronisés ;
 - onboarding, tutoriel et préférences synchronisés par compte entre le web, Android et les nouveaux appareils ;
 - migrations SQLite incrémentales et données persistantes dans un volume Docker ;
 - configurations SQLite préchargées : variante Hohner Club I C/F 10+9+2 (P1 = F♯5) avec Gleichton, G/C 21+8 et D/G 21+8 ;
@@ -18,7 +18,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - quatre modes principaux compréhensibles — démonstration, lecture guidée, attente de la bonne note et performance — adaptés séparément à la mélodie, aux basses ou aux deux mains ;
 - ateliers rythme et soufflet conservés à part pour ne pas encombrer le parcours débutant ;
 - jeu « Défi des touches » accessible depuis la navigation principale sur web et Android : tuiles rythmiques, trois niveaux progressifs, pousser/tirer explicite, réponse au micro ou au toucher et bilan fiable ;
-- accordeur monophonique réel avec fréquence, cents et confiance, plus vérification guidée bouton par bouton en pousser puis tirer, sélection explicite de chaque rang, correction persistante de la configuration et export JSON des relevés confirmés ;
+- accordeur monophonique réel pour la main droite, analyse harmonique polyphonique pour les basses et accords, scan mains libres des 16 gestes du Club I, profil acoustique synchronisé, correction persistante de la configuration et export JSON des relevés confirmés ;
 - première leçon jouée sur l’instrument réel : écoute de trois notes, réussite automatique avec arrêt du micro, mini-mélodie de sept notes en attente de la bonne note, puis rappel de mémoire ;
 - évaluation automatique pendant l’entraînement, avec analyse YIN à deux fenêtres pour isoler les notes courtes, stabilisation des harmoniques parasites, compensation du retard de détection et conseils de note et de rythme ;
 - suivi personnel persistant : temps actif, séances, séries, notes et rythme évalués, tempo, tendances, répertoire, historique et insights sans données de démonstration ;

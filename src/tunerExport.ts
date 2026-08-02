@@ -1,21 +1,23 @@
 import { noteFromMidi } from './data';
-import type { AccordionConfig, TunerReading } from './types';
+import type { AccordionConfig, LeftHandAcousticProfile, TunerReading } from './types';
 
 export interface TunerExportReport {
-  schemaVersion: 1;
+  schemaVersion: 2;
   exportedAt: string;
   instrument: AccordionConfig;
   readings: Array<TunerReading & { expectedNote: string; detectedNote: string }>;
+  leftHandProfile: LeftHandAcousticProfile | null;
   diagnosticNote: string;
 }
 
 export function buildTunerExport(
   accordion: AccordionConfig,
   readings: TunerReading[],
+  leftHandProfile: LeftHandAcousticProfile | null = null,
   exportedAt = new Date().toISOString(),
 ): TunerExportReport {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt,
     instrument: structuredClone(accordion),
     readings: readings.map((reading) => ({
@@ -23,9 +25,12 @@ export function buildTunerExport(
       expectedNote: noteFromMidi(reading.expectedMidi),
       detectedNote: noteFromMidi(reading.detectedMidi),
     })),
+    leftHandProfile: leftHandProfile ? structuredClone(leftHandProfile) : null,
     diagnosticNote: readings.length
-      ? 'Les cents permettent d’évaluer l’accordage fin. Un changement de note MIDI indique d’abord une différence de cartographie.'
-      : 'Aucun relevé fin n’était archivé pour cette campagne. La cartographie complète de l’instrument reste incluse.',
+      ? 'Les cents permettent d’évaluer l’accordage fin des notes isolées. Le profil main gauche décrit des basses et accords sans mesurer séparément leurs anches.'
+      : leftHandProfile
+        ? 'Le profil main gauche décrit des basses et accords sans mesurer séparément leurs anches. Aucun relevé monophonique fin n’était archivé.'
+        : 'Aucun relevé fin n’était archivé pour cette campagne. La cartographie complète de l’instrument reste incluse.',
   };
 }
 

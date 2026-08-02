@@ -40,6 +40,30 @@ export interface StoredTunerReading {
   measuredAt: string;
 }
 
+export interface StoredLeftHandAcousticProfile {
+  accordionId: string;
+  accordionModel: string;
+  referencePitchHz: number;
+  completedAt: string;
+  samples: Array<{
+    buttonId: string;
+    buttonIndex: number;
+    row: number;
+    direction: 'push' | 'pull';
+    role: 'bass' | 'chord';
+    expectedLabel: string;
+    detectedLabel: string;
+    expectedRootPitchClass: number;
+    detectedRootPitchClass: number;
+    chordQuality?: 'major' | 'minor';
+    confidence: number;
+    tuningCents?: number;
+    chroma: number[];
+    outcome: 'matched' | 'uncertain' | 'mismatch';
+    measuredAt: string;
+  }>;
+}
+
 export class SouffletDatabase {
   private readonly db: DatabaseSync;
 
@@ -180,6 +204,19 @@ export class SouffletDatabase {
       `
         ALTER TABLE tuner_readings ADD COLUMN hand TEXT NOT NULL DEFAULT 'right'
           CHECK(hand IN ('right', 'left'));
+      `,
+      `
+        CREATE TABLE IF NOT EXISTS accordion_audio_profiles (
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          accordion_id TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK(kind IN ('left-hand')),
+          payload TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY(user_id, accordion_id, kind)
+        );
+        CREATE INDEX IF NOT EXISTS accordion_audio_profiles_user_idx
+          ON accordion_audio_profiles(user_id, updated_at DESC);
       `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
@@ -510,5 +547,25 @@ export class SouffletDatabase {
       outcome: row.outcome,
       measuredAt: row.measured_at,
     }));
+  }
+
+  saveLeftHandAcousticProfile(userId: string, profile: StoredLeftHandAcousticProfile) {
+    this.db.prepare(`
+      INSERT INTO accordion_audio_profiles (user_id, accordion_id, kind, payload)
+      VALUES (?, ?, 'left-hand', ?)
+      ON CONFLICT(user_id, accordion_id, kind) DO UPDATE SET
+        payload = excluded.payload,
+        updated_at = CURRENT_TIMESTAMP
+    `).run(userId, profile.accordionId, JSON.stringify(profile));
+    return profile;
+  }
+
+  listLeftHandAcousticProfiles(userId: string): StoredLeftHandAcousticProfile[] {
+    const rows = this.db.prepare(`
+      SELECT payload FROM accordion_audio_profiles
+      WHERE user_id = ? AND kind = 'left-hand'
+      ORDER BY updated_at DESC
+    `).all(userId) as Array<{ payload: string }>;
+    return rows.map((row) => JSON.parse(row.payload) as StoredLeftHandAcousticProfile);
   }
 }

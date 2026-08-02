@@ -96,6 +96,27 @@ describe('production data migrations', () => {
     expect(db.listTunerReadings('usr_tuner', 'campaign-old')).toMatchObject([{ id: 'reading-old' }]);
   });
 
+  it('synchronizes compact left-hand acoustic profiles without storing audio', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_left_profile', email: 'left@example.fr', displayName: 'Main gauche', passwordHash: 'test' });
+    const profile = {
+      accordionId: 'hohner-club-i-cf-10-9-2', accordionModel: 'Club I', referencePitchHz: 435,
+      completedAt: '2026-08-02T10:00:00.000Z',
+      samples: [{
+        buttonId: 'c1-chord-a-dm', buttonIndex: 1, row: 1, direction: 'push' as const, role: 'chord' as const,
+        expectedLabel: 'La', detectedLabel: 'La', expectedRootPitchClass: 9, detectedRootPitchClass: 9,
+        chordQuality: 'major' as const, confidence: .88, chroma: Array(12).fill(1 / 12), outcome: 'matched' as const,
+        measuredAt: '2026-08-02T09:59:59.000Z',
+      }],
+    };
+    db.saveLeftHandAcousticProfile('usr_left_profile', profile);
+    expect(db.listLeftHandAcousticProfiles('usr_left_profile')).toEqual([profile]);
+    expect(JSON.stringify(db.listLeftHandAcousticProfiles('usr_left_profile'))).not.toContain('audioData');
+
+    db.deleteUser('usr_left_profile');
+    expect(db.listLeftHandAcousticProfiles('usr_left_profile')).toEqual([]);
+  });
+
   it('synchronizes the complete learning journey across devices', () => {
     const db = makeDatabase();
     db.createUser({ id: 'usr_preferences', email: 'prefs@example.fr', displayName: 'Préférences', passwordHash: 'test' });

@@ -276,6 +276,57 @@ app.post('/api/tuner-readings', requireUser, (request, response) => {
   }
 });
 
+const leftHandScanSampleSchema = z.object({
+  buttonId: z.string().min(1).max(80),
+  buttonIndex: z.number().int().min(1).max(40),
+  row: z.number().int().min(0).max(8),
+  direction: z.enum(['push', 'pull']),
+  role: z.enum(['bass', 'chord']),
+  expectedLabel: z.string().min(1).max(20),
+  detectedLabel: z.string().min(1).max(20),
+  expectedRootPitchClass: z.number().int().min(0).max(11),
+  detectedRootPitchClass: z.number().int().min(0).max(11),
+  chordQuality: z.enum(['major', 'minor']).optional(),
+  confidence: z.number().min(0).max(1),
+  tuningCents: z.number().min(-100).max(100).optional(),
+  chroma: z.array(z.number().min(0).max(1)).length(12),
+  outcome: z.enum(['matched', 'uncertain', 'mismatch']),
+  measuredAt: z.string().datetime(),
+});
+
+const leftHandAcousticProfileSchema = z.object({
+  accordionId: z.string().min(1).max(100),
+  accordionModel: z.string().min(1).max(120),
+  referencePitchHz: z.number().min(400).max(480),
+  completedAt: z.string().datetime(),
+  samples: z.array(leftHandScanSampleSchema).min(1).max(80),
+});
+
+app.get('/api/audio-profiles/left-hand', requireUser, (_request, response) => {
+  response.json({ profiles: db.listLeftHandAcousticProfiles(response.locals.user.id as string) });
+});
+
+app.put('/api/audio-profiles/left-hand', requireUser, (request, response) => {
+  try {
+    const profile = leftHandAcousticProfileSchema.parse(request.body);
+    const userId = response.locals.user.id as string;
+    const accessible = db.listAccordions(userId) as Array<{ id: string; basses: Array<{ id: string; role?: 'bass' | 'chord' }> }>;
+    const selectedAccordion = accessible.find((accordion) => accordion.id === profile.accordionId);
+    if (!selectedAccordion) {
+      response.status(422).json({ error: 'Cet accordéon n’est pas disponible sur ton compte.' });
+      return;
+    }
+    const leftButtons = new Map(selectedAccordion.basses.map((button) => [button.id, button]));
+    if (profile.samples.some((sample) => !leftButtons.has(sample.buttonId) || leftButtons.get(sample.buttonId)?.role !== sample.role)) {
+      response.status(422).json({ error: 'Ce profil contient un bouton main gauche inconnu.' });
+      return;
+    }
+    response.json({ profile: db.saveLeftHandAcousticProfile(userId, profile) });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof z.ZodError ? error.issues[0]?.message : 'Profil acoustique invalide.' });
+  }
+});
+
 const accordionButtonSchema = z.object({
   id: z.string().min(1).max(80), row: z.number().int().min(0).max(5), index: z.number().int().min(1).max(30),
   push: z.string().min(1).max(8), pull: z.string().min(1).max(8), pushMidi: z.number().int().min(0).max(127), pullMidi: z.number().int().min(0).max(127),
