@@ -279,12 +279,14 @@ app.post('/api/tuner-readings', requireUser, (request, response) => {
 const accordionButtonSchema = z.object({
   id: z.string().min(1).max(80), row: z.number().int().min(0).max(5), index: z.number().int().min(1).max(30),
   push: z.string().min(1).max(8), pull: z.string().min(1).max(8), pushMidi: z.number().int().min(0).max(127), pullMidi: z.number().int().min(0).max(127),
+  pushChord: z.string().min(1).max(16).optional(), pullChord: z.string().min(1).max(16).optional(),
   finger: z.number().int().min(1).max(5).optional(), role: z.enum(['melody', 'accidental', 'bass', 'chord']).optional(), isGleichton: z.boolean().optional(),
 });
 const accordionSchema = z.object({
   maker: z.string().min(1).max(80), model: z.string().min(1).max(100), tuning: z.string().min(1).max(80), color: z.string().regex(/^#[0-9a-f]{6}$/i),
   rightRows: z.array(z.number().int().min(1).max(30)).min(1).max(4), bassCount: z.number().int().min(0).max(36), description: z.string().max(300),
   buttons: z.array(accordionButtonSchema).min(1).max(120), basses: z.array(accordionButtonSchema).max(40), verified: z.boolean(), sourceNote: z.string().max(300).optional(),
+  referencePitchHz: z.number().min(400).max(480).optional(),
 });
 
 app.post('/api/accordions', requireUser, (request, response) => {

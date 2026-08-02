@@ -91,7 +91,10 @@ export default function Accordion3DLab() {
     const button = [...accordion.buttons, ...accordion.basses].find((item) => item.id === buttonId);
     if (!button) return;
     activateButton(buttonId, 520);
-    playMidi(direction === 'push' ? button.pushMidi : button.pullMidi, 0.65, 0.08);
+    const midi = direction === 'push' ? button.pushMidi : button.pullMidi;
+    const chord = direction === 'push' ? button.pushChord : button.pullChord;
+    if (button.role === 'bass' || button.role === 'chord') playLeftHand(midi, button.role, chord, .65);
+    else playMidi(midi, .65, .08);
   };
 
   const playDemo = () => {

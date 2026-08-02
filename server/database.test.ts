@@ -127,6 +127,23 @@ describe('production data migrations', () => {
     }
   });
 
+  it('refreshes the measured Club I left-hand map for every account', () => {
+    const club = (makeDatabase().listAccordions() as Array<{
+      id: string; referencePitchHz?: number; basses: Array<{ id: string; role: string; pushChord?: string; pullChord?: string }>;
+    }>).find((accordion) => accordion.id === 'hohner-club-i-cf-10-9-2');
+    expect(club?.referencePitchHz).toBe(435);
+    expect(club?.basses.map((button) => [button.id, button.role, button.pushChord, button.pullChord])).toEqual([
+      ['c1-chord-a-dm', 'chord', 'A', 'Dm'],
+      ['c1-chord-c-g', 'chord', 'C', 'G'],
+      ['c1-bass-a-d', 'bass', undefined, undefined],
+      ['c1-bass-c-g', 'bass', undefined, undefined],
+      ['c1-chord-eb-bb', 'chord', 'Eb', 'Bb'],
+      ['c1-chord-f-c', 'chord', 'F', 'C'],
+      ['c1-bass-eb-bb', 'bass', undefined, undefined],
+      ['c1-bass-f-c', 'bass', undefined, undefined],
+    ]);
+  });
+
   it('starts every account at zero and aggregates only its real practice', () => {
     const db = makeDatabase();
     db.createUser({ id: 'usr_stats', email: 'stats@example.fr', displayName: 'Stats', passwordHash: 'test' });

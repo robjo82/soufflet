@@ -25,6 +25,17 @@ describe('accordion configurations', () => {
     expect(club?.buttons.filter((button) => button.row === 2).slice(2).map((button) => [button.push, button.pull])).toEqual([
       ['F4', 'G4'], ['A4', 'A#4'], ['C5', 'C5'], ['F5', 'E5'], ['A5', 'G5'], ['C6', 'A#5'], ['F6', 'D6'],
     ]);
+    expect(club?.referencePitchHz).toBe(435);
+    expect(club?.basses.map((button) => [button.id, button.role, button.push, button.pull, button.pushChord, button.pullChord])).toEqual([
+      ['c1-chord-a-dm', 'chord', 'A3', 'D4', 'A', 'Dm'],
+      ['c1-chord-c-g', 'chord', 'C4', 'G3', 'C', 'G'],
+      ['c1-bass-a-d', 'bass', 'A2', 'D3', undefined, undefined],
+      ['c1-bass-c-g', 'bass', 'C3', 'G2', undefined, undefined],
+      ['c1-chord-eb-bb', 'chord', 'D#4', 'A#3', 'Eb', 'Bb'],
+      ['c1-chord-f-c', 'chord', 'F3', 'C4', 'F', 'C'],
+      ['c1-bass-eb-bb', 'bass', 'D#3', 'A#2', undefined, undefined],
+      ['c1-bass-f-c', 'bass', 'F2', 'C3', undefined, undefined],
+    ]);
   });
 
   it('keeps every button mapping playable', () => {
@@ -245,6 +256,19 @@ describe('left-hand accompaniment', () => {
       expect(accompaniment.midi).toBe(accompaniment.direction === 'push' ? button?.pushMidi : button?.pullMidi);
       expect(accompaniment.note.replace(/-?\d+$/, '')).toBe(accompaniment.chord);
     }
+  });
+
+  it('preserves the measured minor chord on the Club I', () => {
+    const accordion = FALLBACK_ACCORDIONS.find((item) => item.id === 'hohner-club-i-cf-10-9-2')!;
+    const adapted = adaptSongToAccordion({
+      ...DEMO_SONG,
+      events: [{ ...DEMO_SONG.events[0], direction: 'pull' }],
+      accompaniment: [{
+        id: 'dm', beat: 0, duration: 1, rootMidi: 62, midi: 62, note: 'D4', chord: 'Dm',
+        role: 'chord', buttonId: '', direction: 'pull', confidence: 1,
+      }],
+    }, accordion);
+    expect(adapted.accompaniment?.[0]).toMatchObject({ buttonId: 'c1-chord-a-dm', chord: 'Dm', midi: 62 });
   });
 
   it('builds a dedicated bass-and-chord timeline when the left hand is selected', () => {

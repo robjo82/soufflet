@@ -19,6 +19,9 @@ export interface AccordionButton {
   pull: string;
   pushMidi: number;
   pullMidi: number;
+  /** Harmonic label for a left-hand chord button (for example C, Dm or G7). */
+  pushChord?: string;
+  pullChord?: string;
   finger?: number;
   role?: 'melody' | 'accidental' | 'bass' | 'chord';
   isGleichton?: boolean;
@@ -37,6 +40,8 @@ export interface AccordionConfig {
   basses: AccordionButton[];
   verified: boolean;
   sourceNote?: string;
+  /** Native diapason of the instrument. Vintage Club models are commonly below A4=440 Hz. */
+  referencePitchHz?: number;
 }
 
 export interface SongEvent {

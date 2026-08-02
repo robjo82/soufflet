@@ -41,7 +41,7 @@ export function AccordionView({
   showFingering = true,
   onButtonPress,
 }: AccordionViewProps) {
-  const { playMidi } = useSynth();
+  const { playMidi, playLeftHand } = useSynth();
   const rows = config.rightRows.map((_, index) => config.buttons.filter((button) => button.row === index + 1));
   const longestRow = Math.max(1, ...rows.map((row) => row.length));
   const melodyButtonSize = getMelodyButtonSize(longestRow);
@@ -95,7 +95,9 @@ export function AccordionView({
                   aria-pressed={active && depressActive}
                   aria-label={`${button.role === 'bass' ? 'Basse' : 'Accord'} ${button.index}`}
                   onPointerDown={() => {
-                    playMidi(direction === 'push' ? button.pushMidi : button.pullMidi, .5, .09);
+                    const midi = direction === 'push' ? button.pushMidi : button.pullMidi;
+                    const chord = direction === 'push' ? button.pushChord : button.pullChord;
+                    playLeftHand(midi, button.role === 'chord' ? 'chord' : 'bass', chord, .5);
                     onButtonPress?.(button.id, direction);
                   }}
                 >
