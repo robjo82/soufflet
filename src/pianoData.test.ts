@@ -5,7 +5,7 @@ describe('piano V1', () => {
   it('keeps Promenade du matin as an exercise and removes the placeholder pieces', () => {
     expect(PIANO_TECHNIQUE_EXERCISES.map((item) => item.title)).toEqual(['Promenade du matin']);
     expect(PIANO_EXERCISES.some((item) => ['Trois petits pas', 'Cinq lumières', 'Dialogue des deux mains'].includes(item.title))).toBe(false);
-    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(7);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(9);
     expect(PIANO_EXERCISES.filter((item) => item.kind === 'song').every((item) => !item.id.includes('beginner') && !item.id.includes('simplified') && !item.arrangement?.includes('simplifiée'))).toBe(true);
     expect(PIANO_EXERCISES.filter((item) => item.hand !== 'both').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
   });
@@ -116,14 +116,32 @@ describe('piano V1', () => {
     expect(Math.max(...adapted.notes.map((note) => note.midi))).toBeLessThanOrEqual(84);
     expect(adapted.notes.every((note, index) => note.beat === complete.notes[index].beat && note.duration === complete.notes[index].duration && note.hand === complete.notes[index].hand && note.finger === complete.notes[index].finger && (note.midi - complete.notes[index].midi) % 12 === 0)).toBe(true);
   });
+  it("offers the complete 100-measure Mia & Sebastian's Theme adaptations", () => {
+    const arrangements = PIANO_EXERCISES.filter((item) => item.title === "Mia & Sebastian's Theme");
+    expect(arrangements).toHaveLength(2);
+    const adapted = arrangements.find((item) => item.id === 'mia-sebastians-theme-complete-49')!;
+    const complete = arrangements.find((item) => item.id === 'mia-sebastians-theme-complete')!;
+    expect(arrangements.every((item) => item.artist === 'Justin Hurwitz' && item.level === 'Modéré' && item.hand === 'both' && item.bpm === 88 && item.beatsPerMeasure === 3)).toBe(true);
+    expect(arrangements.map((item) => item.notes.length)).toEqual([1520, 1520]);
+    expect(pianoNotesForHand(complete.notes, 'right')).toHaveLength(732);
+    expect(pianoNotesForHand(complete.notes, 'left')).toHaveLength(788);
+    expect(arrangements.map((item) => pianoExerciseEndBeat(item.notes))).toEqual([300, 300]);
+    expect(arrangements.map(pianoExerciseMeasureCount)).toEqual([100, 100]);
+    expect([Math.min(...complete.notes.map((note) => note.midi)), Math.max(...complete.notes.map((note) => note.midi))]).toEqual([23, 97]);
+    expect(Math.min(...adapted.notes.map((note) => note.midi))).toBeGreaterThanOrEqual(36);
+    expect(Math.max(...adapted.notes.map((note) => note.midi))).toBeLessThanOrEqual(84);
+    expect(adapted.notes.every((note, index) => note.beat === complete.notes[index].beat && note.duration === complete.notes[index].duration && note.hand === complete.notes[index].hand && note.finger === complete.notes[index].finger && (note.midi - complete.notes[index].midi) % 12 === 0)).toBe(true);
+    expect(new Set(complete.notes.map((note) => note.duration))).toEqual(new Set([.25, 1 / 3, .5, .75, .85, .9, 1, 2, 3]));
+  });
   it('groups arrangements by song before the level choice', () => {
-    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Experience', 'Le Brise-pied aveyronnais']);
+    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Experience', 'Le Brise-pied aveyronnais', "Mia & Sebastian's Theme"]);
     expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-advanced']);
     expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(1);
     expect(PIANO_SONGS.find((song) => song.title === 'Ne me quitte pas')?.levels).toHaveLength(1);
     expect(PIANO_SONGS.find((song) => song.title === 'Au clair de la lune')?.levels).toHaveLength(1);
     expect(PIANO_SONGS.find((song) => song.title === 'Experience')?.levels).toHaveLength(2);
     expect(PIANO_SONGS.find((song) => song.title === 'Le Brise-pied aveyronnais')?.levels).toHaveLength(1);
+    expect(PIANO_SONGS.find((song) => song.title === "Mia & Sebastian's Theme")?.levels.map((level) => level.id)).toEqual(['mia-sebastians-theme-complete-49', 'mia-sebastians-theme-complete']);
     expect(groupPianoExercises([PIANO_EXERCISES[0], { ...PIANO_EXERCISES[0], id: 'same-title-other-artist', artist: 'Autre artiste' }])).toHaveLength(2);
   });
   it('provides complete left-hand chord exercises with beginner fingerings', () => {
@@ -133,7 +151,8 @@ describe('piano V1', () => {
     const auClair = pianoChordExerciseForSong('Au clair de la lune', 'Traditionnel français')!;
     const experience = pianoChordExerciseForSong('Experience', 'Ludovico Einaudi')!;
     const brisePied = pianoChordExerciseForSong('Le Brise-pied aveyronnais', 'Traditionnel aveyronnais')!;
-    expect(PIANO_CHORD_EXERCISES).toHaveLength(6);
+    const miaSebastian = pianoChordExerciseForSong("Mia & Sebastian's Theme", 'Justin Hurwitz')!;
+    expect(PIANO_CHORD_EXERCISES).toHaveLength(7);
     expect(myWay.progression).toHaveLength(54);
     expect(new Set(myWay.progression.map((step) => step.name))).toHaveLength(12);
     expect(myWay.progression.at(-1)).toMatchObject({ beat: 213, name: 'Fa majeur' });
@@ -155,6 +174,10 @@ describe('piano V1', () => {
     expect(brisePied.progression).toHaveLength(16);
     expect(brisePied.progression.at(-1)).toMatchObject({ beat: 60, name: 'Do majeur' });
     expect(new Set(brisePied.progression.map((step) => step.name))).toEqual(new Set(['Do majeur', 'Fa majeur', 'Sol 7']));
+    expect(miaSebastian.progression).toHaveLength(100);
+    expect(miaSebastian.progression.at(0)).toMatchObject({ beat: 0, name: 'Mi majeur' });
+    expect(miaSebastian.progression.at(-1)).toMatchObject({ beat: 297, name: 'Ré♭ majeur' });
+    expect(new Set(miaSebastian.progression.map((step) => step.name)).size).toBe(22);
     for (const exercise of PIANO_CHORD_EXERCISES) for (const step of exercise.progression) {
       expect(step.fingers).toHaveLength(step.midis.length);
       expect(step.fingers.every((finger) => finger >= 1 && finger <= 5)).toBe(true);
@@ -190,9 +213,9 @@ describe('piano V1', () => {
     expect(pianoShowsFingerings('maestro')).toBe(false);
     expect(pianoSessionCounts(5, [-301, -300, 0, 300, 301], 300)).toEqual({ correctCount: 3, earlyCount: 1, lateCount: 1 });
   });
-  it('splits every version of Experience, My Way and Ne me quitte pas into three complete practice sections', () => {
-    const sectionedExercises = PIANO_EXERCISES.filter((item) => ['Experience', 'My Way', 'Ne me quitte pas'].includes(item.title));
-    expect(sectionedExercises).toHaveLength(4);
+  it('splits every long-form selected song into three complete practice sections', () => {
+    const sectionedExercises = PIANO_EXERCISES.filter((item) => ['Experience', 'My Way', 'Ne me quitte pas', "Mia & Sebastian's Theme"].includes(item.title));
+    expect(sectionedExercises).toHaveLength(6);
     for (const exercise of sectionedExercises) {
       const sections = pianoPracticeSections(exercise);
       expect(sections).toHaveLength(3);
@@ -202,7 +225,7 @@ describe('piano V1', () => {
       expect(sections[2].endBeat).toBeGreaterThanOrEqual(pianoExerciseEndBeat(exercise.notes));
       expect(sections.flatMap((section) => pianoNotesForSection(exercise.notes, section))).toHaveLength(exercise.notes.length);
     }
-    expect(sectionedExercises.map((exercise) => pianoExerciseMeasureCount(exercise))).toEqual([54, 82, 68, 68]);
+    expect(sectionedExercises.map((exercise) => pianoExerciseMeasureCount(exercise))).toEqual([54, 82, 68, 68, 100, 100]);
     expect(pianoPracticeSections(sectionedExercises[0]).map((section) => [section.description, section.startBeat, section.endBeat])).toEqual([
       ['Mesures 1 à 18', 0, 73],
       ['Mesures 19 à 36', 73, 145],
@@ -220,6 +243,13 @@ describe('piano V1', () => {
       ['Mesures 24 à 45', 92, 180],
       ['Mesures 46 à 68', 180, 272],
     ]);
+    for (const miaSebastian of sectionedExercises.filter((exercise) => exercise.title === "Mia & Sebastian's Theme")) {
+      expect(pianoPracticeSections(miaSebastian).map((section) => [section.description, section.startBeat, section.endBeat])).toEqual([
+        ['Mesures 1 à 33', 0, 99],
+        ['Mesures 34 à 67', 99, 201],
+        ['Mesures 68 à 100', 201, 300],
+      ]);
+    }
 
     const experience = PIANO_EXERCISES.find((item) => item.id === 'experience-complete-49')!;
     const sections = pianoPracticeSections(experience);
@@ -255,6 +285,10 @@ describe('piano V1', () => {
     expect(pianoKeyboardSizeForNotes(pianoNotesForHand(complete.notes, 'right'))).toBe(61);
     expect(pianoKeyboardSizeForNotes(pianoNotesForHand(complete.notes, 'left'))).toBe(76);
     expect(pianoKeyboardSizeForNotes(complete.notes)).toBe(76);
+    const miaSebastian49 = PIANO_EXERCISES.find((item) => item.id === 'mia-sebastians-theme-complete-49')!;
+    const miaSebastian = PIANO_EXERCISES.find((item) => item.id === 'mia-sebastians-theme-complete')!;
+    expect(pianoKeyboardSizeForNotes(miaSebastian49.notes)).toBe(49);
+    expect(pianoKeyboardSizeForNotes(miaSebastian.notes)).toBe(88);
   });
   it('lays black keys over adjacent white keys without consuming horizontal space', () => {
     const geometry = pianoKeyGeometry(25);

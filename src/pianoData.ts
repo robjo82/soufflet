@@ -1,5 +1,6 @@
 import type { PianoKeyboardSize } from './types';
 import { EXPERIENCE_49_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_FULL_NOTES } from './experienceData';
+import { MIA_SEBASTIAN_49_KEY_NOTES, MIA_SEBASTIAN_CHORD_PROGRESSION, MIA_SEBASTIAN_FULL_NOTES } from './miaSebastianData';
 
 export interface PianoExercise {
   id: string;
@@ -489,6 +490,7 @@ export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'au-clair-de-la-lune-chords', songTitle: 'Au clair de la lune', artist: 'Traditionnel français', progression: harmonyToChordProgression(AU_CLAIR_HARMONY) },
   { id: 'experience-chords', songTitle: 'Experience', artist: 'Ludovico Einaudi', progression: EXPERIENCE_CHORD_PROGRESSION },
   { id: 'brise-pied-aveyronnais-chords', songTitle: 'Le Brise-pied aveyronnais', artist: 'Traditionnel aveyronnais', progression: harmonyToChordProgression(BRISE_PIED_HARMONY) },
+  { id: 'mia-sebastians-theme-chords', songTitle: "Mia & Sebastian's Theme", artist: 'Justin Hurwitz', progression: MIA_SEBASTIAN_CHORD_PROGRESSION },
 ];
 
 export function pianoChordExerciseForSong(title: string, artist?: string) {
@@ -504,6 +506,8 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'experience-complete-49', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · 49 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_49_KEY_NOTES },
   { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · Tessiture originale', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
   { id: 'brise-pied-aveyronnais-advanced', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 104, hand: 'both', beatsPerMeasure: 4, notes: BRISE_PIED_TWO_HANDS },
+  { id: 'mia-sebastians-theme-complete-49', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · 49 touches', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_49_KEY_NOTES },
+  { id: 'mia-sebastians-theme-complete', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · Tessiture originale (88 touches)', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_FULL_NOTES },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -552,7 +556,7 @@ export function pianoShowsFingerings(mode: PianoPlayMode) {
   return mode === 'practice';
 }
 
-const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas']);
+const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas', "Mia & Sebastian's Theme"]);
 const PRACTICE_SECTION_IDS: PianoPracticeSection['id'][] = ['part-1', 'part-2', 'part-3'];
 const PRACTICE_SECTION_TITLES = ['Partie 1 · Début', 'Partie 2 · Milieu', 'Partie 3 · Fin'];
 
