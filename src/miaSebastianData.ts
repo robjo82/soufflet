@@ -237,13 +237,13 @@ for (const note of MIA_SEBASTIAN_FULL_NOTES) {
   measureHandRanges.set(key, range);
 }
 
-// Same complete performance mapped measure by measure to C2–C6. Moving a
+// Same complete performance mapped measure by measure to C2–C7. Moving a
 // whole hand passage preserves its contour, rhythm and fingering relationships.
-export const MIA_SEBASTIAN_49_KEY_NOTES = MIA_SEBASTIAN_FULL_NOTES.map((note) => {
+export const MIA_SEBASTIAN_61_KEY_NOTES = MIA_SEBASTIAN_FULL_NOTES.map((note) => {
   const range = measureHandRanges.get(noteRangeKey(note))!;
   let octaveShift = 0;
   while (range.lowest + octaveShift < 36) octaveShift += 12;
-  while (range.highest + octaveShift > 84) octaveShift -= 12;
+  while (range.highest + octaveShift > 96) octaveShift -= 12;
   return { ...note, midi: note.midi + octaveShift };
 });
 
