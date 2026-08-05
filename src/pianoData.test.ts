@@ -94,7 +94,7 @@ describe('piano V1', () => {
   });
   it('offers the two complete Experience variants without a simplified arrangement', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Experience');
-    const adapted = arrangements.find((item) => item.id === 'experience-complete-49')!;
+    const adapted = arrangements.find((item) => item.id === 'experience-complete-61')!;
     const complete = arrangements.find((item) => item.id === 'experience-complete')!;
     expect(arrangements).toHaveLength(2);
     expect(arrangements.map((item) => item.artist)).toEqual(['Ludovico Einaudi', 'Ludovico Einaudi']);
@@ -113,7 +113,7 @@ describe('piano V1', () => {
     expect(Math.max(...complete.notes.map((note) => note.midi))).toBe(86);
     expect(Math.min(...complete.notes.map((note) => note.midi))).toBe(30);
     expect(Math.min(...adapted.notes.map((note) => note.midi))).toBeGreaterThanOrEqual(36);
-    expect(Math.max(...adapted.notes.map((note) => note.midi))).toBeLessThanOrEqual(84);
+    expect(Math.max(...adapted.notes.map((note) => note.midi))).toBeLessThanOrEqual(96);
     expect(adapted.notes.every((note, index) => note.beat === complete.notes[index].beat && note.duration === complete.notes[index].duration && note.hand === complete.notes[index].hand && note.finger === complete.notes[index].finger && (note.midi - complete.notes[index].midi) % 12 === 0)).toBe(true);
   });
   it("offers the complete 100-measure Mia & Sebastian's Theme adaptations", () => {
@@ -237,8 +237,8 @@ describe('piano V1', () => {
       ['Mesures 28 à 55', 81, 165],
       ['Mesures 56 à 82', 165, 246],
     ]);
-    const experience49 = sectionedExercises.find((exercise) => exercise.id === 'experience-complete-49')!;
-    expect(pianoPracticeSections(experience49).map((section) => [section.description, section.startBeat, section.endBeat])).toEqual([
+    const experience61 = sectionedExercises.find((exercise) => exercise.id === 'experience-complete-61')!;
+    expect(pianoPracticeSections(experience61).map((section) => [section.description, section.startBeat, section.endBeat])).toEqual([
       ['Mesures 1 à 23', 0, 92],
       ['Mesures 24 à 45', 92, 180],
       ['Mesures 46 à 68', 180, 272],
@@ -251,7 +251,7 @@ describe('piano V1', () => {
       ]);
     }
 
-    const experience = PIANO_EXERCISES.find((item) => item.id === 'experience-complete-49')!;
+    const experience = PIANO_EXERCISES.find((item) => item.id === 'experience-complete-61')!;
     const sections = pianoPracticeSections(experience);
     const rightHand = pianoNotesForMode(experience, 'practice', 'right');
     const sectionNotes = sections.map((section) => pianoNotesForSection(rightHand, section));
@@ -279,9 +279,9 @@ describe('piano V1', () => {
     expect(pianoRange(88)).toEqual(expect.arrayContaining([21, 108]));
   });
   it('requires a keyboard that covers every selected note', () => {
-    const adapted = PIANO_EXERCISES.find((item) => item.id === 'experience-complete-49')!;
+    const adapted = PIANO_EXERCISES.find((item) => item.id === 'experience-complete-61')!;
     const complete = PIANO_EXERCISES.find((item) => item.id === 'experience-complete')!;
-    expect(pianoKeyboardSizeForNotes(adapted.notes)).toBe(49);
+    expect(pianoKeyboardSizeForNotes(adapted.notes)).toBe(61);
     expect(pianoKeyboardSizeForNotes(pianoNotesForHand(complete.notes, 'right'))).toBe(61);
     expect(pianoKeyboardSizeForNotes(pianoNotesForHand(complete.notes, 'left'))).toBe(76);
     expect(pianoKeyboardSizeForNotes(complete.notes)).toBe(76);

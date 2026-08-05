@@ -172,12 +172,14 @@ for (const note of EXPERIENCE_FULL_NOTES) {
   experienceMeasureRanges.set(key, range);
 }
 
-// The complete arrangement adapted to the C2–C6 range of a 49-key piano.
+// The complete arrangement adapted to the C2–C7 range of a 61-key piano.
 // Whole hand/measure passages move by an octave so their melodic contour and
 // every rhythmic event remain intact.
-export const EXPERIENCE_49_KEY_NOTES = EXPERIENCE_FULL_NOTES.map((note) => {
+export const EXPERIENCE_61_KEY_NOTES = EXPERIENCE_FULL_NOTES.map((note) => {
   const range = experienceMeasureRanges.get(experienceMeasureKey(note))!;
-  const octaveShift = range.lowest < 36 ? 12 : range.highest > 84 ? -12 : 0;
+  let octaveShift = 0;
+  while (range.lowest + octaveShift < 36) octaveShift += 12;
+  while (range.highest + octaveShift > 96) octaveShift -= 12;
   return { ...note, midi: note.midi + octaveShift };
 });
 

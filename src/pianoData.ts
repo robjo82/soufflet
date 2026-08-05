@@ -1,5 +1,5 @@
 import type { PianoKeyboardSize } from './types';
-import { EXPERIENCE_49_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_FULL_NOTES } from './experienceData';
+import { EXPERIENCE_61_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_FULL_NOTES } from './experienceData';
 import { MIA_SEBASTIAN_61_KEY_NOTES, MIA_SEBASTIAN_CHORD_PROGRESSION, MIA_SEBASTIAN_FULL_NOTES } from './miaSebastianData';
 
 export interface PianoExercise {
@@ -503,7 +503,7 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 3, measureStartBeat: 1, notes: SE_CANTA_TWO_HANDS, lyrics: SE_CANTA_LYRICS },
   { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', beatsPerMeasure: 3, notes: BREL_TWO_HANDS, lyrics: BREL_LYRICS },
   { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 4, notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
-  { id: 'experience-complete-49', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · 49 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_49_KEY_NOTES },
+  { id: 'experience-complete-61', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · 61 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_61_KEY_NOTES },
   { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · Tessiture originale', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
   { id: 'brise-pied-aveyronnais-advanced', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 104, hand: 'both', beatsPerMeasure: 4, notes: BRISE_PIED_TWO_HANDS },
   { id: 'mia-sebastians-theme-complete-61', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · 61 touches', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_61_KEY_NOTES },
