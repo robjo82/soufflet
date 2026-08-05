@@ -5,70 +5,71 @@ describe('piano V1', () => {
   it('keeps Promenade du matin as an exercise and removes the placeholder pieces', () => {
     expect(PIANO_TECHNIQUE_EXERCISES.map((item) => item.title)).toEqual(['Promenade du matin']);
     expect(PIANO_EXERCISES.some((item) => ['Trois petits pas', 'Cinq lumières', 'Dialogue des deux mains'].includes(item.title))).toBe(false);
-    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(8);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(7);
+    expect(PIANO_EXERCISES.filter((item) => item.kind === 'song').every((item) => !item.id.includes('beginner') && !item.id.includes('simplified') && !item.arrangement?.includes('simplifiée'))).toBe(true);
     expect(PIANO_EXERCISES.filter((item) => item.hand !== 'both').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
   });
-  it('offers simplified and complete versions of the supplied My Way score', () => {
+  it('offers the complete supplied My Way score with synchronized lyrics', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'My Way');
-    expect(arrangements).toHaveLength(2);
-    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Modéré']);
-    expect(arrangements.map((item) => item.artist)).toEqual(['Frank Sinatra', 'Frank Sinatra']);
-    expect(arrangements.map((item) => item.notes.length)).toEqual([74, 424]);
-    expect(arrangements[1]).toMatchObject({ hand: 'both', bpm: 72 });
-    expect(arrangements[1].notes.some((note) => note.midi < 60)).toBe(true);
-    expect(new Set(arrangements[1].notes.map((note) => note.beat)).size).toBeLessThan(arrangements[1].notes.length);
-    expect(pianoExerciseEndBeat(arrangements[0].notes)).toBe(216);
-    expect(pianoExerciseEndBeat(arrangements[1].notes)).toBe(216.5);
-    expect(pianoNotesForHand(arrangements[1].notes, 'right').some((note) => note.beat === 108 && note.midi === 60)).toBe(true);
+    expect(arrangements).toHaveLength(1);
+    const complete = arrangements[0];
+    expect(complete).toMatchObject({ artist: 'Frank Sinatra', level: 'Modéré', hand: 'both', bpm: 72 });
+    expect(complete.notes).toHaveLength(424);
+    expect(complete.notes.some((note) => note.midi < 60)).toBe(true);
+    expect(new Set(complete.notes.map((note) => note.beat)).size).toBeLessThan(complete.notes.length);
+    expect(pianoExerciseEndBeat(complete.notes)).toBe(216.5);
+    expect(pianoNotesForHand(complete.notes, 'right').some((note) => note.beat === 108 && note.midi === 60)).toBe(true);
+    expect(complete.lyrics).toHaveLength(28);
+    expect(complete.lyrics?.at(0)).toMatchObject({ beat: 1, section: 'Couplet 1' });
+    expect(complete.lyrics?.at(-1)).toMatchObject({ beat: 213, section: 'Finale' });
+    expect(complete.lyrics?.every((line, index) => index === 0 || line.beat > complete.lyrics![index - 1].beat)).toBe(true);
   });
-  it('offers simplified and complete versions of Se Canta', () => {
+  it('offers the complete Se Canta arrangement with the classic Occitan lyrics', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Se Canta');
-    expect(arrangements).toHaveLength(2);
-    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Modéré']);
-    expect(arrangements.map((item) => item.artist)).toEqual(['Traditionnel occitan', 'Traditionnel occitan']);
-    expect(arrangements.map((item) => item.notes.length)).toEqual([16, 61]);
-    expect(arrangements[1]).toMatchObject({ hand: 'both', bpm: 72 });
-    expect(pianoNotesForHand(arrangements[1].notes, 'left')).toHaveLength(36);
-    expect(pianoNotesForHand(arrangements[1].notes, 'right')).toHaveLength(25);
-    expect(pianoExerciseEndBeat(arrangements[1].notes)).toBe(28);
+    expect(arrangements).toHaveLength(1);
+    const complete = arrangements[0];
+    expect(complete).toMatchObject({ artist: 'Traditionnel occitan', level: 'Modéré', hand: 'both', bpm: 72 });
+    expect(complete.notes).toHaveLength(61);
+    expect(pianoNotesForHand(complete.notes, 'left')).toHaveLength(36);
+    expect(pianoNotesForHand(complete.notes, 'right')).toHaveLength(25);
+    expect(pianoExerciseEndBeat(complete.notes)).toBe(28);
+    expect(complete.lyrics).toHaveLength(8);
+    expect(complete.lyrics?.at(0)).toMatchObject({ beat: 0, text: 'Se canta, que cante', section: 'Couplet' });
+    expect(complete.lyrics?.at(-1)).toMatchObject({ beat: 22, text: 'Mas amors ont son', section: 'Refrain' });
   });
   it('offers the complete traditional Brise-pied in every piano mode', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Le Brise-pied aveyronnais');
-    const [beginner, advanced] = arrangements;
-    expect(arrangements).toHaveLength(2);
-    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Modéré']);
-    expect(arrangements.map((item) => item.artist)).toEqual(['Traditionnel aveyronnais', 'Traditionnel aveyronnais']);
-    expect(arrangements.map((item) => item.bpm)).toEqual([72, 104]);
-    expect(arrangements.map((item) => item.notes.length)).toEqual([62, 246]);
-    expect(arrangements.map((item) => pianoExerciseEndBeat(item.notes))).toEqual([64, 64]);
+    const [advanced] = arrangements;
+    expect(arrangements).toHaveLength(1);
+    expect(advanced).toMatchObject({ level: 'Modéré', artist: 'Traditionnel aveyronnais', bpm: 104 });
+    expect(advanced.notes).toHaveLength(246);
+    expect(pianoExerciseEndBeat(advanced.notes)).toBe(64);
     expect(pianoNotesForHand(advanced.notes, 'right').slice(0, 8).map((note) => [note.midi, note.beat, note.duration, note.finger])).toEqual([
       [67, 0, .5, 1], [76, .5, .5, 5], [76, 1, .5, 5], [76, 1.5, .5, 5],
       [67, 2, .5, 1], [76, 2.5, .5, 5], [76, 3, .5, 5], [76, 3.5, .5, 5],
     ]);
     expect(pianoNotesForHand(advanced.notes, 'right')).toHaveLength(106);
     expect(pianoNotesForHand(advanced.notes, 'left')).toHaveLength(140);
-    expect(pianoHandChoicesForMode(beginner, 'practice')).toEqual(['right']);
     expect(pianoHandChoicesForMode(advanced, 'practice')).toEqual(['left', 'right']);
     expect(pianoHandChoicesForMode(advanced, 'maestro')).toEqual(['both']);
     expect(pianoNotesForMode(advanced, 'practice', 'left')).toHaveLength(140);
     expect(pianoNotesForMode(advanced, 'maestro', 'right')).toHaveLength(246);
   });
-  it('offers simplified and complete versions of the supplied Ne me quitte pas form', () => {
+  it('offers only the complete supplied Ne me quitte pas form', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Ne me quitte pas');
-    expect(arrangements).toHaveLength(2);
-    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Modéré']);
-    expect(arrangements.map((item) => item.artist)).toEqual(['Jacques Brel', 'Jacques Brel']);
-    expect(arrangements.map((item) => item.notes.length)).toEqual([156, 715]);
-    expect(arrangements[1]).toMatchObject({ hand: 'both', bpm: 70 });
-    expect(pianoNotesForHand(arrangements[1].notes, 'left')).toHaveLength(330);
-    const completeMelody = pianoNotesForHand(arrangements[1].notes, 'right');
+    expect(arrangements).toHaveLength(1);
+    const complete = arrangements[0];
+    expect(complete).toMatchObject({ artist: 'Jacques Brel', level: 'Modéré', hand: 'both', bpm: 70 });
+    expect(complete.notes).toHaveLength(715);
+    expect(pianoNotesForHand(complete.notes, 'left')).toHaveLength(330);
+    const completeMelody = pianoNotesForHand(complete.notes, 'right');
     expect(completeMelody).toHaveLength(385);
-    expect(arrangements.map((item) => pianoExerciseEndBeat(item.notes))).toEqual([246, 246]);
+    expect(pianoExerciseEndBeat(complete.notes)).toBe(246);
     expect(completeMelody.filter((note) => note.midi === 60 && [9, 105, 201].includes(note.beat))).toHaveLength(3);
     expect(completeMelody.some((note) => note.beat === 55)).toBe(true);
     expect(completeMelody.some((note) => note.beat === 151)).toBe(true);
-    expect(arrangements.every((item) => item.lyrics?.length === 80)).toBe(true);
-    const lyrics = arrangements[0].lyrics!;
+    expect(complete.lyrics).toHaveLength(80);
+    const lyrics = complete.lyrics!;
     expect(lyrics.at(0)).toMatchObject({ beat: 7, text: 'Ne me quitte pas', section: 'Couplet 1' });
     expect(lyrics.at(-1)).toMatchObject({ beat: 243, text: 'Ne me quitte pas', section: 'Couplet 5' });
     expect(lyrics.every((line, index) => index === 0 || line.beat > lyrics[index - 1].beat)).toBe(true);
@@ -76,47 +77,39 @@ describe('piano V1', () => {
     expect(pianoLyricCueAtBeat(lyrics, 9)).toEqual({ current: lyrics[1], next: lyrics[2] });
     expect(pianoLyricCueAtBeat(lyrics, 246)).toEqual({ current: lyrics.at(-1), next: null });
   });
-  it('offers corrected simplified and complete versions of all four Au clair de la lune verses', () => {
+  it('offers only the corrected complete version of all four Au clair de la lune verses', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Au clair de la lune');
-    expect(arrangements).toHaveLength(2);
-    expect(arrangements.map((item) => item.level)).toEqual(['Très simple', 'Modéré']);
-    expect(arrangements.map((item) => item.artist)).toEqual(['Traditionnel français', 'Traditionnel français']);
-    expect(arrangements.map((item) => item.notes.length)).toEqual([124, 456]);
-    expect(arrangements[1]).toMatchObject({ hand: 'both', bpm: 88 });
-    expect(pianoNotesForHand(arrangements[1].notes, 'left')).toHaveLength(280);
-    expect(pianoNotesForHand(arrangements[1].notes, 'right')).toHaveLength(176);
-    expect(arrangements.map((item) => pianoExerciseEndBeat(item.notes))).toEqual([264, 264]);
-    expect(arrangements[0].notes.slice(0, 8).map((note) => [note.midi, note.beat, note.duration])).toEqual([
-      [60, 8, 3], [62, 11, 1], [64, 12, 2], [62, 14, 2],
-      [60, 16, 1], [64, 17, 1], [62, 18, 2], [60, 20, 4],
-    ]);
-    expect(arrangements.every((item) => item.lyrics?.length === 32)).toBe(true);
-    expect(arrangements[0].lyrics?.at(0)).toMatchObject({ beat: 8, text: 'Au clair de la lune', section: 'Couplet 1' });
-    expect(arrangements[0].lyrics?.at(-1)).toMatchObject({ beat: 256, text: 'Sur eux se ferma', section: 'Couplet 4' });
+    expect(arrangements).toHaveLength(1);
+    const complete = arrangements[0];
+    expect(complete).toMatchObject({ artist: 'Traditionnel français', level: 'Modéré', hand: 'both', bpm: 88 });
+    expect(complete.notes).toHaveLength(456);
+    expect(pianoNotesForHand(complete.notes, 'left')).toHaveLength(280);
+    const melody = pianoNotesForHand(complete.notes, 'right');
+    expect(melody).toHaveLength(176);
+    expect(pianoExerciseEndBeat(complete.notes)).toBe(264);
+    expect(melody.filter((note) => [44, 46, 108, 110, 172, 174, 236, 238].includes(note.beat)).map((note) => note.midi)).toEqual(Array(8).fill(57));
+    expect(complete.lyrics).toHaveLength(32);
+    expect(complete.lyrics?.at(0)).toMatchObject({ beat: 8, text: 'Au clair de la lune', section: 'Couplet 1' });
+    expect(complete.lyrics?.at(-1)).toMatchObject({ beat: 256, text: 'Sur eux se ferma', section: 'Couplet 4' });
   });
-  it('offers both supplied Experience scores plus a complete 49-key adaptation', () => {
+  it('offers the two complete Experience variants without a simplified arrangement', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Experience');
     const adapted = arrangements.find((item) => item.id === 'experience-complete-49')!;
     const complete = arrangements.find((item) => item.id === 'experience-complete')!;
-    expect(arrangements).toHaveLength(3);
-    expect(arrangements.map((item) => item.artist)).toEqual(['Ludovico Einaudi', 'Ludovico Einaudi', 'Ludovico Einaudi']);
-    expect(arrangements.map((item) => item.level)).toEqual(['Simple', 'Modéré', 'Modéré']);
-    expect(arrangements.map((item) => item.bpm)).toEqual([70, 92, 92]);
+    expect(arrangements).toHaveLength(2);
+    expect(arrangements.map((item) => item.artist)).toEqual(['Ludovico Einaudi', 'Ludovico Einaudi']);
+    expect(arrangements.map((item) => item.level)).toEqual(['Modéré', 'Modéré']);
+    expect(arrangements.map((item) => item.bpm)).toEqual([92, 92]);
     expect(arrangements.every((item) => item.hand === 'both' && item.beatsPerMeasure === 4)).toBe(true);
-    expect(arrangements.map((item) => item.notes.length)).toEqual([251, 1483, 1483]);
-    expect(arrangements.map((item) => pianoExerciseEndBeat(item.notes))).toEqual([96, 272, 272]);
-    expect(pianoNotesForHand(arrangements[0].notes, 'right')).toHaveLength(160);
-    expect(pianoNotesForHand(arrangements[0].notes, 'left')).toHaveLength(91);
+    expect(arrangements.map((item) => item.notes.length)).toEqual([1483, 1483]);
+    expect(arrangements.map((item) => pianoExerciseEndBeat(item.notes))).toEqual([272, 272]);
     expect(pianoNotesForHand(complete.notes, 'right')).toHaveLength(951);
     expect(pianoNotesForHand(complete.notes, 'left')).toHaveLength(532);
-    expect(pianoNotesForHand(arrangements[0].notes, 'right').slice(0, 4).map((note) => [note.midi, note.finger])).toEqual([[71, 3], [71, 3], [72, 4], [71, 3]]);
     expect(pianoNotesForHand(complete.notes, 'right').slice(0, 4).map((note) => [note.midi, note.beat, note.duration, note.finger])).toEqual([[73, 0, 1, 3], [73, 1, 1, 3], [74, 2, 1, 4], [73, 3, 1, 3]]);
     expect(pianoNotesForHand(complete.notes, 'right').filter((note) => note.beat >= 32 && note.beat < 33).map((note) => note.midi)).toEqual([73, 69, 61, 69]);
     expect(pianoNotesForHand(complete.notes, 'right').filter((note) => note.beat >= 32 && note.beat < 33).map((note) => note.finger)).toEqual([4, 2, 1, 2]);
     expect(pianoNotesForHand(complete.notes, 'right').filter((note) => note.beat >= 64 && note.beat < 65).map((note) => [note.midi, note.finger])).toEqual([[69, 2], [61, 1], [73, 4], [61, 1]]);
     expect(pianoNotesForHand(complete.notes, 'left').slice(0, 4).map((note) => [note.midi, note.finger])).toEqual([[54, 5], [61, 2], [66, 1], [61, 2]]);
-    expect(pianoNotesForHand(arrangements[0].notes, 'left').filter((note) => note.beat === 32).map((note) => note.finger)).toEqual([2]);
-    expect(pianoNotesForHand(arrangements[0].notes, 'left').filter((note) => note.beat === 64).map((note) => note.finger)).toEqual([5, 2]);
     expect(Math.max(...complete.notes.map((note) => note.midi))).toBe(86);
     expect(Math.min(...complete.notes.map((note) => note.midi))).toBe(30);
     expect(Math.min(...adapted.notes.map((note) => note.midi))).toBeGreaterThanOrEqual(36);
@@ -125,12 +118,12 @@ describe('piano V1', () => {
   });
   it('groups arrangements by song before the level choice', () => {
     expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Experience', 'Le Brise-pied aveyronnais']);
-    expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-beginner', 'my-way-advanced']);
-    expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(2);
-    expect(PIANO_SONGS.find((song) => song.title === 'Ne me quitte pas')?.levels).toHaveLength(2);
-    expect(PIANO_SONGS.find((song) => song.title === 'Au clair de la lune')?.levels).toHaveLength(2);
-    expect(PIANO_SONGS.find((song) => song.title === 'Experience')?.levels).toHaveLength(3);
-    expect(PIANO_SONGS.find((song) => song.title === 'Le Brise-pied aveyronnais')?.levels).toHaveLength(2);
+    expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-advanced']);
+    expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(1);
+    expect(PIANO_SONGS.find((song) => song.title === 'Ne me quitte pas')?.levels).toHaveLength(1);
+    expect(PIANO_SONGS.find((song) => song.title === 'Au clair de la lune')?.levels).toHaveLength(1);
+    expect(PIANO_SONGS.find((song) => song.title === 'Experience')?.levels).toHaveLength(2);
+    expect(PIANO_SONGS.find((song) => song.title === 'Le Brise-pied aveyronnais')?.levels).toHaveLength(1);
     expect(groupPianoExercises([PIANO_EXERCISES[0], { ...PIANO_EXERCISES[0], id: 'same-title-other-artist', artist: 'Autre artiste' }])).toHaveLength(2);
   });
   it('provides complete left-hand chord exercises with beginner fingerings', () => {
@@ -199,7 +192,7 @@ describe('piano V1', () => {
   });
   it('splits every version of Experience, My Way and Ne me quitte pas into three complete practice sections', () => {
     const sectionedExercises = PIANO_EXERCISES.filter((item) => ['Experience', 'My Way', 'Ne me quitte pas'].includes(item.title));
-    expect(sectionedExercises).toHaveLength(7);
+    expect(sectionedExercises).toHaveLength(4);
     for (const exercise of sectionedExercises) {
       const sections = pianoPracticeSections(exercise);
       expect(sections).toHaveLength(3);
@@ -209,13 +202,13 @@ describe('piano V1', () => {
       expect(sections[2].endBeat).toBeGreaterThanOrEqual(pianoExerciseEndBeat(exercise.notes));
       expect(sections.flatMap((section) => pianoNotesForSection(exercise.notes, section))).toHaveLength(exercise.notes.length);
     }
-    expect(sectionedExercises.map((exercise) => pianoExerciseMeasureCount(exercise))).toEqual([54, 54, 82, 82, 24, 68, 68]);
+    expect(sectionedExercises.map((exercise) => pianoExerciseMeasureCount(exercise))).toEqual([54, 82, 68, 68]);
     expect(pianoPracticeSections(sectionedExercises[0]).map((section) => [section.description, section.startBeat, section.endBeat])).toEqual([
       ['Mesures 1 à 18', 0, 73],
       ['Mesures 19 à 36', 73, 145],
       ['Mesures 37 à 54', 145, 217],
     ]);
-    const neMeQuittePas = sectionedExercises.find((exercise) => exercise.id === 'ne-me-quitte-pas-beginner')!;
+    const neMeQuittePas = sectionedExercises.find((exercise) => exercise.id === 'ne-me-quitte-pas-advanced')!;
     expect(pianoPracticeSections(neMeQuittePas).map((section) => [section.description, section.startBeat, section.endBeat])).toEqual([
       ['Mesures 1 à 27', 0, 81],
       ['Mesures 28 à 55', 81, 165],
@@ -228,19 +221,19 @@ describe('piano V1', () => {
       ['Mesures 46 à 68', 180, 272],
     ]);
 
-    const experience = PIANO_EXERCISES.find((item) => item.id === 'experience-simplified')!;
+    const experience = PIANO_EXERCISES.find((item) => item.id === 'experience-complete-49')!;
     const sections = pianoPracticeSections(experience);
     const rightHand = pianoNotesForMode(experience, 'practice', 'right');
     const sectionNotes = sections.map((section) => pianoNotesForSection(rightHand, section));
     expect(sections.map((section) => [section.id, section.startBeat, section.endBeat])).toEqual([
-      ['part-1', 0, 32],
-      ['part-2', 32, 64],
-      ['part-3', 64, 96],
+      ['part-1', 0, 92],
+      ['part-2', 92, 180],
+      ['part-3', 180, 272],
     ]);
-    expect(sectionNotes.every((notes) => notes.length > 0 && notes[0].beat >= 0 && pianoExerciseEndBeat(notes) === 32)).toBe(true);
+    expect(sectionNotes.every((sectionNotesForPart, index) => sectionNotesForPart.length > 0 && sectionNotesForPart[0].beat >= 0 && pianoExerciseEndBeat(sectionNotesForPart) <= sections[index].endBeat - sections[index].startBeat)).toBe(true);
     expect(sectionNotes.reduce((total, notes) => total + notes.length, 0)).toBe(rightHand.length);
     expect(pianoNotesForSection(rightHand)).toBe(rightHand);
-    expect(pianoPracticeSections(PIANO_EXERCISES.find((item) => item.id === 'se-canta-beginner')!)).toEqual([]);
+    expect(pianoPracticeSections(PIANO_EXERCISES.find((item) => item.id === 'se-canta-advanced')!)).toEqual([]);
   });
   it('adds a playable finger number to every falling note', () => {
     expect(PIANO_EXERCISES.every((exercise) => exercise.notes.every((note) => Number.isInteger(note.finger) && note.finger! >= 1 && note.finger! <= 5))).toBe(true);
@@ -256,10 +249,8 @@ describe('piano V1', () => {
     expect(pianoRange(88)).toEqual(expect.arrayContaining([21, 108]));
   });
   it('requires a keyboard that covers every selected note', () => {
-    const simplified = PIANO_EXERCISES.find((item) => item.id === 'experience-simplified')!;
     const adapted = PIANO_EXERCISES.find((item) => item.id === 'experience-complete-49')!;
     const complete = PIANO_EXERCISES.find((item) => item.id === 'experience-complete')!;
-    expect(pianoKeyboardSizeForNotes(simplified.notes)).toBe(49);
     expect(pianoKeyboardSizeForNotes(adapted.notes)).toBe(49);
     expect(pianoKeyboardSizeForNotes(pianoNotesForHand(complete.notes, 'right'))).toBe(61);
     expect(pianoKeyboardSizeForNotes(pianoNotesForHand(complete.notes, 'left'))).toBe(76);

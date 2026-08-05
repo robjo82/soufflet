@@ -1,5 +1,5 @@
 import type { PianoKeyboardSize } from './types';
-import { EXPERIENCE_49_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_EASY_NOTES, EXPERIENCE_FULL_NOTES } from './experienceData';
+import { EXPERIENCE_49_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_FULL_NOTES } from './experienceData';
 
 export interface PianoExercise {
   id: string;
@@ -90,29 +90,6 @@ const shiftHarmony = (steps: PianoHarmonyStep[], beats: number) => steps.map((st
 
 // The supplied score repeats the complete 26-measure form. The first ending
 // contains the pickup into the repeat; the second ending closes on F.
-const MY_WAY_EASY_COMMON = timedNotes([
-  [60, 0, 1],
-  [69, 1, 3], [69, 5, 3], [69, 9, 3],
-  [67, 13, 1], [66, 14, 2], [62, 16, 1],
-  [70, 17, 3], [70, 21, 3], [70, 25, 3],
-  [69, 29, 2], [67, 31, 2], [69, 33, 3],
-  [70, 37, 3], [70, 41, 1], [69, 42, 2], [67, 44, 1],
-  [69, 45, 3], [67, 49, 3], [65, 53, 4],
-  [65, 57, 2], [69, 59, 2], [69, 61, 2],
-  [72, 63.5, .5], [70, 64, .5], [68, 64.5, .5],
-  [69, 65, 3], [74, 69, 3], [74, 73, 3],
-  [76, 77, 3], [76, 81, 3], [79, 85, 3], [76, 89, 3],
-  [76, 93, 3], [76, 97, 3], [79, 101, 4],
-]);
-
-const MY_WAY_EASY = [
-  ...MY_WAY_EASY_COMMON,
-  { midi: 77, beat: 105, duration: 3 },
-  { midi: 60, beat: 108, duration: 1 },
-  ...shiftNotes(MY_WAY_EASY_COMMON.filter((note) => note.beat >= 1), 108),
-  { midi: 77, beat: 213, duration: 3 },
-];
-
 const MY_WAY_COMMON_MELODY = timedNotes([
   [60, 0, 1],
   [69, 1, 2], [60, 3.5, .5], [69, 4, .5], [67, 4.5, .5],
@@ -149,6 +126,38 @@ const MY_WAY_MELODY = [
   { midi: 60, beat: 108, duration: 1 },
   ...shiftNotes(MY_WAY_COMMON_MELODY.filter((note) => note.beat >= 1), 108),
   { midi: 77, beat: 213, duration: 3 },
+];
+
+// Phrase-level synchronization transcribed from the score supplied by the user.
+const MY_WAY_LYRICS: PianoLyricLine[] = [
+  { beat: 1, text: 'And now, the end is near', section: 'Couplet 1' },
+  { beat: 9, text: 'And so I face the final curtain', section: 'Couplet 1' },
+  { beat: 17, text: 'My friend, I’ll say it clear', section: 'Couplet 1' },
+  { beat: 25, text: 'I’ll state my case, of which I’m certain', section: 'Couplet 1' },
+  { beat: 33, text: 'I’ve lived a life that’s full', section: 'Couplet 1' },
+  { beat: 41, text: 'I traveled each and every highway', section: 'Couplet 1' },
+  { beat: 49, text: 'And more, much more than this', section: 'Couplet 1' },
+  { beat: 57, text: 'I did it my way', section: 'Couplet 1' },
+  { beat: 65, text: 'Yes, there were times, I’m sure you knew', section: 'Couplet 2' },
+  { beat: 73, text: 'When I bit off more than I could chew', section: 'Couplet 2' },
+  { beat: 81, text: 'But through it all, when there was doubt', section: 'Couplet 2' },
+  { beat: 89, text: 'I ate it up and spit it out', section: 'Couplet 2' },
+  { beat: 97, text: 'I faced it all and I stood tall', section: 'Couplet 2' },
+  { beat: 105, text: 'And did it my way', section: 'Couplet 2' },
+  { beat: 109, text: 'I’ve loved, I’ve laughed and cried', section: 'Couplet 3' },
+  { beat: 117, text: 'I’ve had my fill, my share of losing', section: 'Couplet 3' },
+  { beat: 125, text: 'And now, as tears subside', section: 'Couplet 3' },
+  { beat: 133, text: 'I find it all so amusing', section: 'Couplet 3' },
+  { beat: 141, text: 'To think I did all that', section: 'Couplet 3' },
+  { beat: 149, text: 'And may I say, not in a shy way', section: 'Couplet 3' },
+  { beat: 157, text: 'Oh no, oh no, not me', section: 'Couplet 3' },
+  { beat: 165, text: 'I did it my way', section: 'Couplet 3' },
+  { beat: 173, text: 'For what is a man, what has he got?', section: 'Finale' },
+  { beat: 181, text: 'If not himself, then he has naught', section: 'Finale' },
+  { beat: 189, text: 'To say the things he truly feels', section: 'Finale' },
+  { beat: 197, text: 'And not the words of one who kneels', section: 'Finale' },
+  { beat: 205, text: 'The record shows I took the blows', section: 'Finale' },
+  { beat: 213, text: 'And did it my way', section: 'Finale' },
 ];
 
 const MY_WAY_COMMON_HARMONY: PianoHarmonyStep[] = [
@@ -197,18 +206,6 @@ const MY_WAY_TWO_HANDS = [
 
 // Traditional melody transcribed in C major from the public-domain ABC source.
 // The opening G is an anacrusis; the following notes preserve the original 3/4 pulse.
-const SE_CANTA_EASY = timedNotes([
-  [67, 0, 1],
-  [72, 1, 2], [76, 3, 1],
-  [72, 4, 2], [74, 6, 1],
-  [76, 7, 3],
-  [74, 10, 2], [76, 12, 1],
-  [77, 13, 3],
-  [76, 16, 2], [72, 18, 1],
-  [74, 19, 2], [67, 21, 1],
-  [72, 22, 1.5], [67, 24, 1], [72, 25, 3],
-]);
-
 const SE_CANTA_MELODY = timedNotes([
   [67, 0, 1],
   [72, 1, 1], [72, 2, 1], [76, 3, .5], [74, 3.5, .5],
@@ -220,6 +217,17 @@ const SE_CANTA_MELODY = timedNotes([
   [74, 19, 2], [67, 21, 1],
   [72, 22, 1.5], [67, 24, 1], [72, 25, 3],
 ]);
+
+const SE_CANTA_LYRICS: PianoLyricLine[] = [
+  { beat: 0, text: 'Se canta, que cante', section: 'Couplet' },
+  { beat: 4, text: 'Canta pas per ieu', section: 'Couplet' },
+  { beat: 7, text: 'Canta per ma mia', section: 'Couplet' },
+  { beat: 10, text: 'Qu’es al luènh de ieu', section: 'Couplet' },
+  { beat: 13, text: 'Aquelas montanhas', section: 'Refrain' },
+  { beat: 16, text: 'Que tan nautas son', section: 'Refrain' },
+  { beat: 19, text: 'M’empachan de veire', section: 'Refrain' },
+  { beat: 22, text: 'Mas amors ont son', section: 'Refrain' },
+];
 
 const SE_CANTA_HARMONY: PianoHarmonyStep[] = [
   { beat: 1, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
@@ -274,33 +282,13 @@ const waltzMelody = (measures: WaltzMeasure[]) => measures.flatMap((measure, mea
   }));
 });
 
-const simplifiedWaltzMelody = (measures: WaltzMeasure[]) => measures.flatMap((measure, measureIndex) => {
-  if (measure.length === 1) return [{ midi: measure[0], beat: measureIndex * 3, duration: 3 }];
-  if (measure.length === 4) return [
-    { midi: measure[0], beat: measureIndex * 3 + 1, duration: 1 },
-    { midi: measure[2], beat: measureIndex * 3 + 2, duration: 1 },
-  ];
-  return [
-    { midi: measure[0], beat: measureIndex * 3, duration: 1.5 },
-    { midi: measure[2], beat: measureIndex * 3 + 1.5, duration: 1.5 },
-  ];
-});
-
 const BREL_A_MELODY = waltzMelody(BREL_A_MEASURES);
 const BREL_B_MELODY = waltzMelody(BREL_B_MEASURES);
-const BREL_A_EASY = simplifiedWaltzMelody(BREL_A_MEASURES);
-const BREL_B_EASY = simplifiedWaltzMelody(BREL_B_MEASURES);
 const BREL_MELODY = [
   ...shiftNotes(BREL_A_MELODY, 9), ...shiftNotes(BREL_B_MELODY, 54),
   ...shiftNotes(BREL_A_MELODY, 105), ...shiftNotes(BREL_B_MELODY, 150),
   ...shiftNotes(BREL_A_MELODY, 201),
 ];
-const BREL_EASY = [
-  ...shiftNotes(BREL_A_EASY, 9), ...shiftNotes(BREL_B_EASY, 54),
-  ...shiftNotes(BREL_A_EASY, 105), ...shiftNotes(BREL_B_EASY, 150),
-  ...shiftNotes(BREL_A_EASY, 201),
-];
-
 const BREL_VERSE_1 = [
   'Il faut oublier', 'Tout peut s’oublier', 'Qui s’enfuit déjà', 'Oublier le temps',
   'Des malentendus', 'Et le temps perdu', 'À savoir comment', 'Oublier ces heures',
@@ -410,25 +398,12 @@ const AU_CLAIR_VERSE = timedNotes([
   [60, 8, 1], [64, 9, 1], [62, 10, 1], [62, 11, 1], [60, 12, 4],
   [60, 16, 1], [60, 17, 1], [60, 18, 1], [62, 19, 1], [64, 20, 2], [62, 22, 2],
   [60, 24, 1], [64, 25, 1], [62, 26, 1], [62, 27, 1], [60, 28, 4],
-  [62, 32, 1], [62, 33, 1], [62, 34, 1], [62, 35, 1], [69, 36, 2], [69, 38, 2],
+  [62, 32, 1], [62, 33, 1], [62, 34, 1], [62, 35, 1], [57, 36, 2], [57, 38, 2],
   [62, 40, 1], [60, 41, 1], [59, 42, 1], [57, 43, 1], [55, 44, 4],
   [60, 48, 1], [60, 49, 1], [60, 50, 1], [62, 51, 1], [64, 52, 2], [62, 54, 2],
   [60, 56, 1], [64, 57, 1], [62, 58, 1], [62, 59, 1], [60, 60, 4],
 ]);
-// The simplified version preserves every melodic turn while grouping repeated
-// notes into longer values. Filtering every other beat made the tune incorrect.
-const AU_CLAIR_EASY_VERSE = timedNotes([
-  [60, 0, 3], [62, 3, 1], [64, 4, 2], [62, 6, 2],
-  [60, 8, 1], [64, 9, 1], [62, 10, 2], [60, 12, 4],
-  [60, 16, 3], [62, 19, 1], [64, 20, 2], [62, 22, 2],
-  [60, 24, 1], [64, 25, 1], [62, 26, 2], [60, 28, 4],
-  [62, 32, 4], [69, 36, 4],
-  [62, 40, 1], [60, 41, 1], [59, 42, 1], [57, 43, 1], [55, 44, 4],
-  [60, 48, 3], [62, 51, 1], [64, 52, 2], [62, 54, 2],
-  [60, 56, 1], [64, 57, 1], [62, 58, 2], [60, 60, 4],
-]);
 const AU_CLAIR_MELODY = [8, 72, 136, 200].flatMap((beat) => shiftNotes(AU_CLAIR_VERSE, beat));
-const AU_CLAIR_EASY = [8, 72, 136, 200].flatMap((beat) => shiftNotes(AU_CLAIR_EASY_VERSE, beat));
 const AU_CLAIR_LYRICS_1 = [
   'Au clair de la lune', 'Mon ami Pierrot', 'Prête-moi ta plume', 'Pour écrire un mot',
   'Ma chandelle est morte', 'Je n’ai plus de feu', 'Ouvre-moi ta porte', 'Pour l’amour de Dieu',
@@ -486,18 +461,6 @@ const BRISE_PIED_MELODY_CYCLE = fingeredTimedNotes([
 ]);
 const BRISE_PIED_MELODY = [...BRISE_PIED_MELODY_CYCLE, ...shiftNotes(BRISE_PIED_MELODY_CYCLE, 32)];
 
-const BRISE_PIED_EASY_CYCLE = fingeredTimedNotes([
-  [67, 0, 1, 1], [76, 1, 1, 5], [67, 2, 1, 1], [76, 3, 1, 5],
-  [67, 4, 1, 1], [76, 5, 1, 4], [76, 6, 1, 4], [74, 7, 1, 3],
-  [69, 8, 1, 1], [74, 9, 1, 4], [69, 10, 1, 1], [74, 11, 1, 4],
-  [69, 12, 1, 1], [74, 13, 1, 4], [72, 14, 1, 3], [77, 15, 1, 5],
-  [76, 16, 1, 3], [76, 17, 1, 3], [76, 18, 1, 3], [72, 19, 1, 1],
-  [74, 20, 1, 2], [74, 21, 1, 2], [72, 22, 1, 1], [79, 23, 1, 5],
-  [79, 24, 1, 4], [79, 25, 1, 4], [76, 26, 1, 2], [76, 27, 1, 3],
-  [76, 28, 1, 3], [72, 29, 1, 1], [72, 30, 2, 1],
-]);
-const BRISE_PIED_EASY = [...BRISE_PIED_EASY_CYCLE, ...shiftNotes(BRISE_PIED_EASY_CYCLE, 32)];
-
 type BrisePiedChordName = 'c-major' | 'f-major' | 'g-seven';
 const BRISE_PIED_CHORDS: Record<BrisePiedChordName, Omit<PianoHarmonyStep, 'beat'>> = {
   'c-major': { name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
@@ -534,18 +497,12 @@ export function pianoChordExerciseForSong(title: string, artist?: string) {
 
 export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'piano-morning-walk', title: 'Promenade du matin', kind: 'exercise', arrangement: 'Régularité et déplacements de la main droite', level: 'Modéré', bpm: 80, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(phrase([60, 62, 64, 65, 67, 69, 67, 65, 64, 62, 60, 64, 67, 69, 67, 64, 62, 65, 69, 67, 65, 64, 62, 60], [1, 1, .5, .5, 1, 2, 1, 1, .5, .5, 2, 1, 1, 2, .5, .5, 1, 1, 1, 2, .5, .5, 1, 2])) },
-  { id: 'my-way-beginner', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 54, hand: 'right', beatsPerMeasure: 4, measureStartBeat: 1, notes: withRightHandFingerings(MY_WAY_EASY, 'my-way') },
-  { id: 'my-way-advanced', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 4, measureStartBeat: 1, notes: MY_WAY_TWO_HANDS },
-  { id: 'se-canta-beginner', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 54, hand: 'right', beatsPerMeasure: 3, measureStartBeat: 1, notes: withRightHandFingerings(SE_CANTA_EASY) },
-  { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 3, measureStartBeat: 1, notes: SE_CANTA_TWO_HANDS },
-  { id: 'ne-me-quitte-pas-beginner', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 52, hand: 'right', beatsPerMeasure: 3, notes: withRightHandFingerings(BREL_EASY, 'brel'), lyrics: BREL_LYRICS },
+  { id: 'my-way-advanced', title: 'My Way', kind: 'song', artist: 'Frank Sinatra', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 4, measureStartBeat: 1, notes: MY_WAY_TWO_HANDS, lyrics: MY_WAY_LYRICS },
+  { id: 'se-canta-advanced', title: 'Se Canta', kind: 'song', artist: 'Traditionnel occitan', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 72, hand: 'both', beatsPerMeasure: 3, measureStartBeat: 1, notes: SE_CANTA_TWO_HANDS, lyrics: SE_CANTA_LYRICS },
   { id: 'ne-me-quitte-pas-advanced', title: 'Ne me quitte pas', kind: 'song', artist: 'Jacques Brel', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 70, hand: 'both', beatsPerMeasure: 3, notes: BREL_TWO_HANDS, lyrics: BREL_LYRICS },
-  { id: 'au-clair-de-la-lune-beginner', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 56, hand: 'right', beatsPerMeasure: 4, notes: withRightHandFingerings(AU_CLAIR_EASY), lyrics: AU_CLAIR_LYRICS },
   { id: 'au-clair-de-la-lune-advanced', title: 'Au clair de la lune', kind: 'song', artist: 'Traditionnel français', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 4, notes: AU_CLAIR_TWO_HANDS, lyrics: AU_CLAIR_LYRICS },
-  { id: 'experience-simplified', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version simplifiée', level: 'Simple', bpm: 70, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_EASY_NOTES },
   { id: 'experience-complete-49', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · 49 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_49_KEY_NOTES },
   { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · Tessiture originale', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
-  { id: 'brise-pied-aveyronnais-beginner', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Version simplifiée', level: 'Très simple', bpm: 72, hand: 'right', beatsPerMeasure: 4, notes: BRISE_PIED_EASY },
   { id: 'brise-pied-aveyronnais-advanced', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 104, hand: 'both', beatsPerMeasure: 4, notes: BRISE_PIED_TWO_HANDS },
 ];
 
