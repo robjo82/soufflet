@@ -105,6 +105,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
   const activeSongChord = songChordExercise?.progression[songChordIndex];
   const lyricBeat = elapsedBeats + (playMode === 'practice' ? selectedPracticeSection?.startBeat ?? 0 : 0);
   const lyricCue = pianoLyricCueAtBeat(showLyrics ? exercise.lyrics ?? [] : [], lyricBeat);
+  const lyricMeasureLabel = lyricCue.note?.measure === 0 ? 'ANACROUSE' : lyricCue.note ? `MESURE ${lyricCue.note.measure}` : 'PAROLES';
 
   useEffect(() => {
     if (previousViewRef.current === view) return;
@@ -354,7 +355,7 @@ export function PianoMode({ keyboardSize, input, onSessionUpdate, view, stats, o
       <section className="piano-roll">
         <div className="piano-roll-lanes">{keyGeometry.filter((key) => !key.black).map((key) => <span key={key.midi} style={{ left: `${key.left}%`, width: `${key.width}%` }} />)}</div>
         <div className="piano-measure-lines" aria-hidden="true">{measureBeats.map((beat) => <span key={beat} style={{ '--measure-offset': `${pianoNoteOffsetPx(beat, rollBeat)}px` } as React.CSSProperties} />)}</div>
-        {(lyricCue.current || lyricCue.next) && <div className="piano-player-lyrics" role="status" aria-live="polite" aria-atomic="true"><small>{(lyricCue.current ?? lyricCue.next)?.section} · PAROLES</small><strong>{lyricCue.current?.text ?? 'Prépare-toi…'}</strong>{lyricCue.next && <span><b>Ensuite</b> {lyricCue.next.text}</span>}</div>}
+        {(lyricCue.current || lyricCue.next) && <div className="piano-player-lyrics" role="status" aria-live="polite" aria-atomic="true"><small>{(lyricCue.current ?? lyricCue.next)?.section} · {lyricMeasureLabel}</small>{lyricCue.current ? <strong className="piano-player-lyric-line" aria-label={lyricCue.current.text}>{lyricCue.current.words.map((word, wordIndex) => <span key={`${word}-${wordIndex}`} className={lyricCue.note && wordIndex >= lyricCue.note.startWord && wordIndex <= lyricCue.note.endWord ? 'is-active' : lyricCue.note && wordIndex < lyricCue.note.startWord ? 'is-past' : ''}>{word}</span>)}</strong> : <strong>Prépare-toi…</strong>}{lyricCue.next && <span className="piano-player-next-lyric"><b>Ensuite</b> {lyricCue.next.text}</span>}</div>}
         <div className="hit-line" />
         {notes.map((note, index) => {
           const showFingering = pianoShowsFingerings(playMode);

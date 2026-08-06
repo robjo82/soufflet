@@ -19,8 +19,19 @@ export interface PianoExercise {
 
 export interface PianoLyricLine {
   beat: number;
+  endBeat: number;
   text: string;
   section: string;
+  words: string[];
+  noteCues: PianoLyricNoteCue[];
+}
+
+export interface PianoLyricNoteCue {
+  beat: number;
+  duration: number;
+  startWord: number;
+  endWord: number;
+  measure: number;
 }
 
 export interface PianoSong {
@@ -45,6 +56,7 @@ export interface PianoChordExercise {
 }
 
 type PianoNote = PianoExercise['notes'][number];
+type PianoLyricLineInput = Pick<PianoLyricLine, 'beat' | 'text' | 'section'>;
 export type PianoFinger = 1 | 2 | 3 | 4 | 5;
 type PianoHarmonyStep = { beat: number; name: string; root: number; intervals: number[]; fingers: PianoFinger[] };
 export type PianoPracticeHand = 'right' | 'left' | 'both';
@@ -69,6 +81,53 @@ const phrase = (midis: number[], durations?: number[]) => {
 
 const timedNotes = (entries: Array<[midi: number, beat: number, duration: number]>): PianoNote[] => entries.map(([midi, beat, duration]) => ({ midi, beat, duration }));
 const fingeredTimedNotes = (entries: Array<[midi: number, beat: number, duration: number, finger: PianoFinger]>): PianoNote[] => entries.map(([midi, beat, duration, finger]) => ({ midi, beat, duration, finger }));
+
+const lyricWords = (text: string) => text.match(/\S+/g) ?? [];
+const lyricSyllableCount = (word: string) => {
+  const normalized = word
+    .toLocaleLowerCase('fr-FR')
+    .replace(/[’']/g, '')
+    .replace(/[^a-zàâäéèêëîïôöùûüÿœæç]/g, '');
+  const contraction = /^(ive|ill|im|id|youre|were|thats|theres|dont|cant|wont)$/;
+  if (contraction.test(normalized)) return 1;
+  return Math.max(1, normalized.match(/[aeiouyàâäéèêëîïôöùûüÿœæ]+/g)?.length ?? 1);
+};
+
+const lyricWordRangesForNotes = (words: string[], noteCount: number) => {
+  if (!words.length || noteCount <= 0) return [];
+  const syllableUnits = words.flatMap((word, wordIndex) => Array.from({ length: lyricSyllableCount(word) }, () => wordIndex));
+  return Array.from({ length: noteCount }, (_, noteIndex) => {
+    if (noteCount >= syllableUnits.length) {
+      const wordIndex = syllableUnits[Math.min(noteIndex, syllableUnits.length - 1)];
+      return { startWord: wordIndex, endWord: wordIndex };
+    }
+    const firstUnit = Math.floor(noteIndex * syllableUnits.length / noteCount);
+    const lastUnit = Math.max(firstUnit, Math.ceil((noteIndex + 1) * syllableUnits.length / noteCount) - 1);
+    return { startWord: syllableUnits[firstUnit], endWord: syllableUnits[lastUnit] };
+  });
+};
+
+const synchronizeLyricsToMelody = (lines: PianoLyricLineInput[], melody: PianoNote[], beatsPerMeasure: number, measureStartBeat = 0): PianoLyricLine[] => {
+  const sortedMelody = [...melody].sort((left, right) => left.beat - right.beat);
+  const melodyEndBeat = sortedMelody.reduce((endBeat, note) => Math.max(endBeat, note.beat + note.duration), 0);
+  return lines.map((line, lineIndex) => {
+    const endBeat = lines[lineIndex + 1]?.beat ?? melodyEndBeat;
+    const notes = sortedMelody.filter((note) => note.beat >= line.beat && note.beat < endBeat);
+    const words = lyricWords(line.text);
+    const wordRanges = lyricWordRangesForNotes(words, notes.length);
+    return {
+      ...line,
+      endBeat,
+      words,
+      noteCues: notes.map((note, noteIndex) => ({
+        beat: note.beat,
+        duration: note.duration,
+        ...wordRanges[noteIndex],
+        measure: note.beat < measureStartBeat ? 0 : Math.floor((note.beat - measureStartBeat) / beatsPerMeasure) + 1,
+      })),
+    };
+  });
+};
 
 const C_POSITION_FINGERS: Record<number, PianoFinger> = { 0: 1, 1: 1, 2: 2, 3: 2, 4: 3, 5: 4, 6: 4, 7: 5, 8: 5, 9: 5, 10: 5, 11: 5 };
 const MY_WAY_FINGERS: Record<number, PianoFinger> = {
@@ -129,9 +188,8 @@ const MY_WAY_MELODY = [
   { midi: 77, beat: 213, duration: 3 },
 ];
 
-// Phrase-level synchronization transcribed from the score supplied by the user.
-const MY_WAY_LYRICS: PianoLyricLine[] = [
-  { beat: 1, text: 'And now, the end is near', section: 'Couplet 1' },
+const MY_WAY_LYRIC_LINES: PianoLyricLineInput[] = [
+  { beat: 0, text: 'And now, the end is near', section: 'Couplet 1' },
   { beat: 9, text: 'And so I face the final curtain', section: 'Couplet 1' },
   { beat: 17, text: 'My friend, I’ll say it clear', section: 'Couplet 1' },
   { beat: 25, text: 'I’ll state my case, of which I’m certain', section: 'Couplet 1' },
@@ -145,7 +203,7 @@ const MY_WAY_LYRICS: PianoLyricLine[] = [
   { beat: 89, text: 'I ate it up and spit it out', section: 'Couplet 2' },
   { beat: 97, text: 'I faced it all and I stood tall', section: 'Couplet 2' },
   { beat: 105, text: 'And did it my way', section: 'Couplet 2' },
-  { beat: 109, text: 'I’ve loved, I’ve laughed and cried', section: 'Couplet 3' },
+  { beat: 108, text: 'I’ve loved, I’ve laughed and cried', section: 'Couplet 3' },
   { beat: 117, text: 'I’ve had my fill, my share of losing', section: 'Couplet 3' },
   { beat: 125, text: 'And now, as tears subside', section: 'Couplet 3' },
   { beat: 133, text: 'I find it all so amusing', section: 'Couplet 3' },
@@ -160,6 +218,7 @@ const MY_WAY_LYRICS: PianoLyricLine[] = [
   { beat: 205, text: 'The record shows I took the blows', section: 'Finale' },
   { beat: 213, text: 'And did it my way', section: 'Finale' },
 ];
+const MY_WAY_LYRICS = synchronizeLyricsToMelody(MY_WAY_LYRIC_LINES, MY_WAY_MELODY, 4, 1);
 
 const MY_WAY_COMMON_HARMONY: PianoHarmonyStep[] = [
   { beat: 1, name: 'Fa majeur', root: 41, intervals: [0, 4, 7], fingers: [5, 3, 1] },
@@ -219,7 +278,7 @@ const SE_CANTA_MELODY = timedNotes([
   [72, 22, 1.5], [67, 24, 1], [72, 25, 3],
 ]);
 
-const SE_CANTA_LYRICS: PianoLyricLine[] = [
+const SE_CANTA_LYRIC_LINES: PianoLyricLineInput[] = [
   { beat: 0, text: 'Se canta, que cante', section: 'Couplet' },
   { beat: 4, text: 'Canta pas per ieu', section: 'Couplet' },
   { beat: 7, text: 'Canta per ma mia', section: 'Couplet' },
@@ -229,6 +288,7 @@ const SE_CANTA_LYRICS: PianoLyricLine[] = [
   { beat: 19, text: 'M’empachan de veire', section: 'Refrain' },
   { beat: 22, text: 'Mas amors ont son', section: 'Refrain' },
 ];
+const SE_CANTA_LYRICS = synchronizeLyricsToMelody(SE_CANTA_LYRIC_LINES, SE_CANTA_MELODY, 3, 1);
 
 const SE_CANTA_HARMONY: PianoHarmonyStep[] = [
   { beat: 1, name: 'Do majeur', root: 48, intervals: [0, 4, 7], fingers: [5, 3, 1] },
@@ -341,12 +401,12 @@ const BREL_VERSE_5_PARTS = [
 ];
 const BREL_VERSE_5 = [...BREL_VERSE_5_PARTS.slice(0, 4), BREL_VERSE_5_PARTS.slice(4, 6).join(' '), ...BREL_VERSE_5_PARTS.slice(6)];
 
-const brelLyricMeasures = (startBeat: number, section: string, lines: string[], pickup = false): PianoLyricLine[] => lines.map((text, index) => ({
+const brelLyricMeasures = (startBeat: number, section: string, lines: string[], pickup = false): PianoLyricLineInput[] => lines.map((text, index) => ({
   beat: startBeat + (pickup && index === 0 ? 1 : index * 3),
   text,
   section,
 }));
-const BREL_LYRICS: PianoLyricLine[] = [
+const BREL_LYRIC_LINES: PianoLyricLineInput[] = [
   { beat: 7, text: 'Ne me quitte pas', section: 'Couplet 1' },
   ...brelLyricMeasures(9, 'Couplet 1', BREL_VERSE_1),
   ...brelLyricMeasures(54, 'Couplet 2', BREL_VERSE_2, true),
@@ -356,6 +416,7 @@ const BREL_LYRICS: PianoLyricLine[] = [
   { beat: 198, text: 'Ne me quitte pas', section: 'Couplet 5' },
   ...brelLyricMeasures(201, 'Couplet 5', BREL_VERSE_5),
 ];
+const BREL_LYRICS = synchronizeLyricsToMelody(BREL_LYRIC_LINES, BREL_MELODY, 3);
 
 type BrelChordName = 'c-minor' | 'b-flat-major' | 'f-minor-over-a-flat' | 'a-flat-major' | 'g-seven' | 'e-flat-major' | 'f-minor';
 const BREL_CHORDS: Record<BrelChordName, Omit<PianoHarmonyStep, 'beat'>> = {
@@ -421,11 +482,12 @@ const AU_CLAIR_LYRICS_4 = [
   'Au clair de la lune', 'On n’y voit qu’un peu', 'On chercha la plume', 'On chercha du feu',
   'En cherchant de la sorte', 'Je n’sais ce qu’on trouva', 'Mais je sais que la porte', 'Sur eux se ferma',
 ];
-const AU_CLAIR_LYRICS: PianoLyricLine[] = [AU_CLAIR_LYRICS_1, AU_CLAIR_LYRICS_2, AU_CLAIR_LYRICS_3, AU_CLAIR_LYRICS_4].flatMap((verse, verseIndex) => verse.map((text, lineIndex) => ({
+const AU_CLAIR_LYRIC_LINES: PianoLyricLineInput[] = [AU_CLAIR_LYRICS_1, AU_CLAIR_LYRICS_2, AU_CLAIR_LYRICS_3, AU_CLAIR_LYRICS_4].flatMap((verse, verseIndex) => verse.map((text, lineIndex) => ({
   beat: 8 + verseIndex * 64 + lineIndex * 8,
   text,
   section: `Couplet ${verseIndex + 1}`,
 })));
+const AU_CLAIR_LYRICS = synchronizeLyricsToMelody(AU_CLAIR_LYRIC_LINES, AU_CLAIR_MELODY, 4);
 
 type AuClairChordName = 'c-major' | 'g-seven' | 'd-minor';
 const AU_CLAIR_CHORDS: Record<AuClairChordName, Omit<PianoHarmonyStep, 'beat'>> = {
@@ -527,9 +589,16 @@ export const PIANO_SONGS = groupPianoExercises(PIANO_EXERCISES.filter((exercise)
 export function pianoLyricCueAtBeat(lyrics: PianoLyricLine[], beat: number) {
   let currentIndex = -1;
   for (let index = 0; index < lyrics.length && lyrics[index].beat <= beat; index += 1) currentIndex = index;
+  const current = currentIndex >= 0 ? lyrics[currentIndex] : null;
+  let note: PianoLyricNoteCue | null = null;
+  if (current) for (const noteCue of current.noteCues) {
+    if (noteCue.beat > beat) break;
+    note = noteCue;
+  }
   return {
-    current: currentIndex >= 0 ? lyrics[currentIndex] : null,
+    current,
     next: lyrics[currentIndex + 1] ?? null,
+    note,
   };
 }
 

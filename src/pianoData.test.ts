@@ -20,7 +20,7 @@ describe('piano V1', () => {
     expect(pianoExerciseEndBeat(complete.notes)).toBe(216.5);
     expect(pianoNotesForHand(complete.notes, 'right').some((note) => note.beat === 108 && note.midi === 60)).toBe(true);
     expect(complete.lyrics).toHaveLength(28);
-    expect(complete.lyrics?.at(0)).toMatchObject({ beat: 1, section: 'Couplet 1' });
+    expect(complete.lyrics?.at(0)).toMatchObject({ beat: 0, section: 'Couplet 1' });
     expect(complete.lyrics?.at(-1)).toMatchObject({ beat: 213, section: 'Finale' });
     expect(complete.lyrics?.every((line, index) => index === 0 || line.beat > complete.lyrics![index - 1].beat)).toBe(true);
   });
@@ -73,9 +73,9 @@ describe('piano V1', () => {
     expect(lyrics.at(0)).toMatchObject({ beat: 7, text: 'Ne me quitte pas', section: 'Couplet 1' });
     expect(lyrics.at(-1)).toMatchObject({ beat: 243, text: 'Ne me quitte pas', section: 'Couplet 5' });
     expect(lyrics.every((line, index) => index === 0 || line.beat > lyrics[index - 1].beat)).toBe(true);
-    expect(pianoLyricCueAtBeat(lyrics, -1)).toEqual({ current: null, next: lyrics[0] });
-    expect(pianoLyricCueAtBeat(lyrics, 9)).toEqual({ current: lyrics[1], next: lyrics[2] });
-    expect(pianoLyricCueAtBeat(lyrics, 246)).toEqual({ current: lyrics.at(-1), next: null });
+    expect(pianoLyricCueAtBeat(lyrics, -1)).toEqual({ current: null, next: lyrics[0], note: null });
+    expect(pianoLyricCueAtBeat(lyrics, 9)).toMatchObject({ current: lyrics[1], next: lyrics[2], note: { beat: 9, duration: 1, startWord: 0, endWord: 0, measure: 4 } });
+    expect(pianoLyricCueAtBeat(lyrics, 246)).toMatchObject({ current: lyrics.at(-1), next: null, note: { beat: 245.5, measure: 82 } });
   });
   it('offers only the corrected complete version of all four Au clair de la lune verses', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Au clair de la lune');
@@ -91,6 +91,28 @@ describe('piano V1', () => {
     expect(complete.lyrics).toHaveLength(32);
     expect(complete.lyrics?.at(0)).toMatchObject({ beat: 8, text: 'Au clair de la lune', section: 'Couplet 1' });
     expect(complete.lyrics?.at(-1)).toMatchObject({ beat: 256, text: 'Sur eux se ferma', section: 'Couplet 4' });
+  });
+  it('synchronizes every sung melody note with words and its exact measure', () => {
+    const songsWithLyrics = PIANO_EXERCISES.filter((exercise) => exercise.lyrics?.length);
+    expect(songsWithLyrics.map((exercise) => exercise.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune']);
+    const expectedCueCounts: Record<string, number> = { 'My Way': 200, 'Se Canta': 25, 'Ne me quitte pas': 385, 'Au clair de la lune': 176 };
+    for (const exercise of songsWithLyrics) {
+      const melody = pianoNotesForHand(exercise.notes, 'right');
+      const noteCues = exercise.lyrics!.flatMap((line) => line.noteCues);
+      expect(noteCues).toHaveLength(expectedCueCounts[exercise.title]);
+      expect(noteCues.map(({ beat, duration }) => [beat, duration])).toEqual(melody.map(({ beat, duration }) => [beat, duration]));
+      expect(exercise.lyrics!.every((line, index) => line.words.join(' ') === line.text && line.endBeat === (exercise.lyrics![index + 1]?.beat ?? pianoExerciseEndBeat(melody)))).toBe(true);
+      expect(noteCues.every((cue) => cue.measure === (cue.beat < (exercise.measureStartBeat ?? 0) ? 0 : Math.floor((cue.beat - (exercise.measureStartBeat ?? 0)) / exercise.beatsPerMeasure) + 1))).toBe(true);
+      expect(noteCues.every((cue) => cue.startWord >= 0 && cue.endWord >= cue.startWord)).toBe(true);
+    }
+    const myWay = songsWithLyrics.find((exercise) => exercise.title === 'My Way')!;
+    expect(myWay.lyrics![0].noteCues.map((cue) => [cue.beat, cue.startWord, cue.endWord, cue.measure])).toEqual([
+      [0, 0, 0, 0], [1, 1, 1, 1], [3.5, 2, 2, 1], [4, 3, 3, 1], [4.5, 4, 4, 1], [5, 5, 5, 2], [7.5, 5, 5, 2], [8, 5, 5, 2], [8.5, 5, 5, 2],
+    ]);
+    const auClair = songsWithLyrics.find((exercise) => exercise.title === 'Au clair de la lune')!;
+    expect(auClair.lyrics![0].noteCues.map((cue) => [cue.beat, cue.startWord, cue.endWord, cue.measure])).toEqual([
+      [8, 0, 0, 3], [9, 1, 1, 3], [10, 2, 2, 3], [11, 3, 3, 3], [12, 4, 4, 4], [14, 4, 4, 4],
+    ]);
   });
   it('offers the two complete Experience variants without a simplified arrangement', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Experience');
