@@ -8,7 +8,7 @@ interface ImportModalProps {
   accordion: AccordionConfig;
   apiKey: string;
   onClose: () => void;
-  onImported: (song: Song) => void;
+  onImported: (song: Song) => Promise<void>;
 }
 
 const STEPS = ['Identifier la version', 'Chercher partitions et tablatures', 'Analyser toute la vidéo', 'Construire les deux mains', 'Contrôler la couverture'];
@@ -90,7 +90,7 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
         id: `spotify-${Date.now()}`, title: 'Lien Spotify', artist: 'Référence externe', sourceType: 'spotify', sourceUrl: url,
         bpm: 100, timeSignature: [4, 4], key: 'À analyser', duration: 0, difficulty: 0, status: 'reference-only', events: [],
       };
-      onImported(song); onClose(); return;
+      await onImported(song); onClose(); return;
     }
     setState('processing'); setError('');
     const ticker = window.setInterval(() => setActiveStep((step) => Math.min(STEPS.length - 1, step + 1)), 2200);
@@ -113,7 +113,7 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
       const payload = await response.json() as { result?: TranscriptionResult; error?: string };
       if (!response.ok || !payload.result) throw new Error(payload.error ?? 'Analyse impossible.');
       const sourceType = kind === 'youtube' ? 'youtube' : kind === 'tablature' ? 'tablature' : 'audio';
-      onImported(mapTranscription(payload.result, accordion, sourceType, kind === 'youtube' ? url : undefined));
+      await onImported(mapTranscription(payload.result, accordion, sourceType, kind === 'youtube' ? url : undefined));
       onClose();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Une erreur est survenue pendant l’analyse.');

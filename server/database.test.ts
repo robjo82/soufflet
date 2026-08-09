@@ -148,6 +148,24 @@ describe('production data migrations', () => {
     }
   });
 
+  it('keeps imported songs private and synchronizes them with their owner', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_library_a', email: 'library-a@example.fr', displayName: 'A', passwordHash: 'test' });
+    db.createUser({ id: 'usr_library_b', email: 'library-b@example.fr', displayName: 'B', passwordHash: 'test' });
+    const song = {
+      id: 'song-personal', title: 'Mon relevé', artist: 'Import personnel', builtIn: false,
+      sourceType: 'audio', bpm: 96, timeSignature: [4, 4], key: 'Do majeur', duration: 1,
+      difficulty: 1, status: 'needs-review', events: [],
+    };
+
+    db.saveUserSong('usr_library_a', song);
+
+    expect(db.listLibrarySongs('usr_library_a')).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal', builtIn: false })]));
+    expect(db.listLibrarySongs('usr_library_b')).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal' })]));
+    expect(db.deleteUserSong('usr_library_b', song.id)).toBe(false);
+    expect(db.deleteUserSong('usr_library_a', song.id)).toBe(true);
+  });
+
   it('refreshes the measured Club I left-hand map for every account', () => {
     const club = (makeDatabase().listAccordions() as Array<{
       id: string; referencePitchHz?: number; basses: Array<{ id: string; role: string; pushChord?: string; pullChord?: string }>;

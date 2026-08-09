@@ -3,6 +3,7 @@ import { config as loadEnv } from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
 import multer from 'multer';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -199,7 +200,67 @@ app.post('/api/account/delete', authRateLimit, async (request, response) => {
   }
 });
 
-app.get('/api/library', requireUser, (_request, response) => response.json({ songs: db.listCommonSongs() }));
+const songEventSchema = z.object({
+  id: z.string().min(1).max(160),
+  beat: z.number().min(0).max(1_000_000),
+  duration: z.number().positive().max(10_000),
+  midi: z.number().int().min(0).max(127),
+  note: z.string().min(1).max(16),
+  buttonId: z.string().max(120),
+  direction: z.enum(['push', 'pull']),
+  finger: z.number().int().min(1).max(5),
+  confidence: z.number().min(0).max(1).optional(),
+}).passthrough();
+
+const accompanimentEventSchema = z.object({
+  id: z.string().min(1).max(160),
+  beat: z.number().min(0).max(1_000_000),
+  duration: z.number().positive().max(10_000),
+  rootMidi: z.number().int().min(0).max(127),
+  midi: z.number().int().min(0).max(127),
+  note: z.string().min(1).max(16),
+  chord: z.string().min(1).max(32),
+  role: z.enum(['bass', 'chord']),
+  buttonId: z.string().max(120),
+  direction: z.enum(['push', 'pull']),
+  confidence: z.number().min(0).max(1).optional(),
+}).passthrough();
+
+const userSongSchema = z.object({
+  id: z.string().min(1).max(160),
+  title: z.string().trim().min(1).max(160),
+  artist: z.string().trim().min(1).max(160),
+  sourceType: z.enum(['lesson', 'audio', 'youtube', 'spotify', 'tablature']),
+  sourceUrl: z.string().url().max(2_048).optional(),
+  bpm: z.number().min(0).max(400),
+  timeSignature: z.tuple([z.number().int().min(1).max(32), z.number().int().min(1).max(32)]),
+  key: z.string().min(1).max(80),
+  duration: z.number().min(0).max(86_400),
+  difficulty: z.number().min(0).max(10),
+  status: z.enum(['ready', 'analyzing', 'needs-review', 'reference-only']),
+  events: z.array(songEventSchema).max(10_000),
+  accompaniment: z.array(accompanimentEventSchema).max(10_000).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  builtIn: z.literal(false).optional(),
+}).passthrough().transform((song) => ({ ...song, builtIn: false as const }));
+
+app.get('/api/library', requireUser, (_request, response) => response.json({
+  songs: db.listLibrarySongs(response.locals.user.id as string),
+}));
+
+app.post('/api/library', requireUser, (request, response) => {
+  try {
+    const song = userSongSchema.parse(request.body);
+    response.status(201).json({ song: db.saveUserSong(response.locals.user.id as string, song) });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof Error ? error.message : 'Morceau invalide.' });
+  }
+});
+
+app.delete('/api/library/:id', requireUser, (request, response) => {
+  const removed = db.deleteUserSong(response.locals.user.id as string, String(request.params.id));
+  response.status(removed ? 204 : 404).end();
+});
 
 const practiceSessionSchema = z.object({
   id: z.string().uuid(),
@@ -369,22 +430,88 @@ app.put('/api/accordions/:id', requireUser, (request, response) => {
   }
 });
 
+function transcriptionUserRef(userId: string) {
+  return createHash('sha256').update(userId).digest('hex').slice(0, 12);
+}
+
+function youtubeReference(value: unknown) {
+  if (typeof value !== 'string') return undefined;
+  try {
+    const url = new URL(value);
+    return url.hostname === 'youtu.be'
+      ? url.pathname.split('/').filter(Boolean)[0]
+      : url.searchParams.get('v') ?? url.pathname.split('/').filter(Boolean).at(-1);
+  } catch { return undefined; }
+}
+
+function transcriptionLog(level: 'info' | 'error', event: string, details: Record<string, unknown>) {
+  const line = `${JSON.stringify({ timestamp: new Date().toISOString(), event, ...details })}\n`;
+  if (level === 'error') process.stderr.write(line); else process.stdout.write(line);
+}
+
 app.post('/api/transcriptions', requireUser, upload.single('file'), async (request, response) => {
+  const requestId = randomUUID();
+  const startedAt = Date.now();
+  response.setHeader('X-Request-Id', requestId);
+  const details = {
+    requestId,
+    userRef: transcriptionUserRef(response.locals.user.id as string),
+    source: request.file ? 'upload' : 'tablature',
+    bytes: request.file?.size ?? Buffer.byteLength(typeof request.body.tablature === 'string' ? request.body.tablature : ''),
+    mimeType: request.file?.mimetype,
+    accordionId: String(request.body.accordionId ?? ''),
+  };
+  transcriptionLog('info', 'transcription.started', details);
   try {
     const result = await transcriber.fromUpload(request.file, typeof request.body.tablature === 'string' ? request.body.tablature : undefined, String(request.body.accordionId ?? ''), request.get('x-gemini-key'));
-    response.json({ result });
+    transcriptionLog('info', 'transcription.completed', {
+      ...details,
+      elapsedMs: Date.now() - startedAt,
+      title: result.title,
+      method: result.method,
+      events: result.events.length,
+      accompanimentEvents: result.accompaniment?.length ?? 0,
+      confidence: result.confidence,
+      coverage: result.coverage?.ratio,
+    });
+    response.json({ result, requestId });
   } catch (error) {
-    response.status(error instanceof multer.MulterError ? 413 : 422).json({ error: error instanceof Error ? error.message : 'Transcription impossible.' });
+    const message = error instanceof Error ? error.message : 'Transcription impossible.';
+    transcriptionLog('error', 'transcription.failed', { ...details, elapsedMs: Date.now() - startedAt, error: message });
+    response.status(error instanceof multer.MulterError ? 413 : 422).json({ error: message, requestId });
   }
 });
 
 app.post('/api/transcriptions/youtube', requireUser, async (request, response) => {
+  const requestId = randomUUID();
+  const startedAt = Date.now();
+  response.setHeader('X-Request-Id', requestId);
+  const details = {
+    requestId,
+    userRef: transcriptionUserRef(response.locals.user.id as string),
+    source: 'youtube',
+    videoId: youtubeReference(request.body?.url),
+    accordionId: String(request.body?.accordionId ?? ''),
+  };
+  transcriptionLog('info', 'transcription.started', details);
   try {
     const body = z.object({ url: z.string().url(), accordionId: z.string().min(1) }).parse(request.body);
     const result = await transcriber.fromYoutube(body.url, body.accordionId, request.get('x-gemini-key'));
-    response.json({ result });
+    transcriptionLog('info', 'transcription.completed', {
+      ...details,
+      elapsedMs: Date.now() - startedAt,
+      title: result.title,
+      method: result.method,
+      events: result.events.length,
+      accompanimentEvents: result.accompaniment?.length ?? 0,
+      confidence: result.confidence,
+      coverage: result.coverage?.ratio,
+    });
+    response.json({ result, requestId });
   } catch (error) {
-    response.status(422).json({ error: error instanceof Error ? error.message : 'Vidéo impossible à analyser.' });
+    const message = error instanceof Error ? error.message : 'Vidéo impossible à analyser.';
+    transcriptionLog('error', 'transcription.failed', { ...details, elapsedMs: Date.now() - startedAt, error: message });
+    response.status(422).json({ error: message, requestId });
   }
 });
 

@@ -221,6 +221,20 @@ export class SouffletDatabase {
       `
         ALTER TABLE practice_sessions ADD COLUMN assessment_breakdown TEXT NOT NULL DEFAULT '{}';
       `,
+      `
+        CREATE TABLE IF NOT EXISTS user_songs (
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          artist TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY(user_id, id)
+        );
+        CREATE INDEX IF NOT EXISTS user_songs_user_updated_idx
+          ON user_songs(user_id, updated_at DESC);
+      `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -308,6 +322,34 @@ export class SouffletDatabase {
   listCommonSongs() {
     const rows = this.db.prepare('SELECT payload FROM songs WHERE is_common = 1 ORDER BY title COLLATE NOCASE').all() as Array<{ payload: string }>;
     return rows.map((row) => JSON.parse(row.payload) as unknown);
+  }
+
+  listLibrarySongs(ownerUserId: string) {
+    const common = this.listCommonSongs();
+    const personal = this.db.prepare(`
+      SELECT payload FROM user_songs
+      WHERE user_id = ?
+      ORDER BY updated_at DESC
+    `).all(ownerUserId) as Array<{ payload: string }>;
+    return [...common, ...personal.map((row) => JSON.parse(row.payload) as unknown)];
+  }
+
+  saveUserSong(ownerUserId: string, song: { id: string; title: string; artist: string }) {
+    const stored = { ...song, builtIn: false };
+    this.db.prepare(`
+      INSERT INTO user_songs (user_id, id, title, artist, payload)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, id) DO UPDATE SET
+        title = excluded.title,
+        artist = excluded.artist,
+        payload = excluded.payload,
+        updated_at = CURRENT_TIMESTAMP
+    `).run(ownerUserId, stored.id, stored.title, stored.artist, JSON.stringify(stored));
+    return stored;
+  }
+
+  deleteUserSong(ownerUserId: string, id: string) {
+    return this.db.prepare('DELETE FROM user_songs WHERE user_id = ? AND id = ?').run(ownerUserId, id).changes > 0;
   }
 
   createUser(user: { id: string; email: string; displayName: string; passwordHash: string }) {
