@@ -77,6 +77,9 @@ function mapTranscription(result: TranscriptionResult, accordion: AccordionConfi
     transcriptionWarnings: result.warnings,
     transcriptionSources: result.sources,
     transcriptionCoverage: result.coverage,
+    lyrics: result.lyrics,
+    rightsStatus: result.rightsStatus,
+    rightsNote: result.rightsNote,
     events,
     ...(accompaniment?.length ? { accompaniment } : {}),
   };

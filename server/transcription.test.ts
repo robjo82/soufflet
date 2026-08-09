@@ -48,12 +48,16 @@ describe('multimodal transcription safeguards', () => {
     const result = sanitizeResearch({
       title: 'Valse test', artist: 'Test', composer: 'Traditionnel', bpm: 90, key: 'G', timeSignature: [3, 4],
       durationSeconds: 60, confidence: .8, sections: [], chordProgression: [], referenceEvents: [], referenceAccompaniment: [],
-      referenceNotation: 'Page 1 : anacrouse D4, puis G4 A4 B4', warnings: [],
-      sources: [{ title: 'Partition complète', url: 'https://example.com/valse.pdf', kind: 'pdf', usedFor: 'Page 1 : mélodie et accords', reliability: .9 }],
+      referenceNotation: 'Page 1 : anacrouse D4, puis G4 A4 B4', referenceLyrics: [{ beat: 0, text: 'Premier couplet', section: 'Couplet' }],
+      rightsStatus: 'public-domain', rightsNote: 'Air traditionnel documenté.', warnings: [],
+      sources: [{ title: 'Partition complète', url: 'https://example.com/valse.pdf', kind: 'pdf', usedFor: 'Page 1 : mélodie et accords', reliability: .9 }, { title: 'Paroles traditionnelles', url: 'https://example.com/paroles', kind: 'lyrics', usedFor: 'Texte complet', reliability: .8 }],
     });
 
     expect(result.sources[0]).toMatchObject({ kind: 'pdf', reliability: .9 });
     expect(result.referenceNotation).toContain('anacrouse');
+    expect(result.referenceLyrics).toEqual([{ beat: 0, text: 'Premier couplet', section: 'Couplet' }]);
+    expect(result.rightsStatus).toBe('public-domain');
+    expect(result.sources[1]?.kind).toBe('lyrics');
   });
 
   it('requires targeted PDF searches and independent source comparison', () => {
@@ -62,6 +66,8 @@ describe('multimodal transcription safeguards', () => {
     expect(prompt).toContain('filetype:pdf');
     expect(prompt).toContain('au moins deux éditions indépendantes');
     expect(prompt).toContain('lis réellement la portée');
+    expect(prompt).toContain('paroles complètes');
+    expect(prompt).toContain('Ne classe pas une œuvre comme protégée par simple prudence');
   });
 
   it('grounds natural-language discovery in readable musical sources', () => {
@@ -70,17 +76,32 @@ describe('multimodal transcription safeguards', () => {
     expect(prompt).toContain('filetype:pdf');
     expect(prompt).toContain('Compare au moins deux éditions indépendantes');
     expect(prompt).toContain('le serveur refusera alors de fabriquer une tablature');
+    expect(prompt).toContain('récupère sans réticence toute la partition et les paroles');
   });
 
   it('asks revisions to preserve supported parts and answer conversationally', () => {
     const prompt = discoveryRevisionPrompt('Complète la main gauche', [], {
       title: 'Valse test', artist: 'Test', composer: '', bpm: 90, key: 'G', timeSignature: [3, 4], durationSeconds: 0,
-      confidence: .8, sections: [], sources: [], chordProgression: [], referenceEvents: [], referenceAccompaniment: [], referenceNotation: 'GAB', warnings: [],
+      confidence: .8, sections: [], sources: [], chordProgression: [], referenceEvents: [], referenceAccompaniment: [], referenceNotation: 'GAB', referenceLyrics: [], rightsStatus: 'traditional', rightsNote: 'Air traditionnel.', warnings: [],
     }, 'Accordéon Sol/Do');
 
     expect(prompt).toContain('Applique exactement la demande actuelle');
     expect(prompt).toContain('assistantMessage répond en français');
     expect(prompt).toContain('N’invente aucune phrase');
+    expect(prompt).toContain('Conserve rightsStatus et rightsNote');
+  });
+
+  it('keeps public-domain lyrics and rights metadata in a transcription', () => {
+    const result = sanitizeTranscription({
+      title: 'Air ancien', artist: 'Traditionnel', bpm: 90, key: 'C', timeSignature: [4, 4], confidence: .9, warnings: [],
+      events: [{ beat: 0, duration: 1, note: 'C4', confidence: .9 }],
+      lyrics: [{ beat: 0, text: '  Une ligne ancienne  ', section: 'Couplet' }],
+      rightsStatus: 'public-domain', rightsNote: 'Auteur mort depuis plus de 70 ans.',
+    });
+
+    expect(result.lyrics).toEqual([{ beat: 0, text: 'Une ligne ancienne', section: 'Couplet' }]);
+    expect(result.rightsStatus).toBe('public-domain');
+    expect(result.rightsNote).toContain('70 ans');
   });
 
   it('reuses the current draft for cheap transformations and researches musical changes', () => {

@@ -4,7 +4,7 @@
 
 - UI responsive et navigation complète ;
 - comptes, sessions HttpOnly, isolation des configurations personnelles et migrations SQLite ;
-- bibliothèque commune avec licence et provenance ;
+- bibliothèque commune avec partitions, accompagnements et paroles complètes pour les œuvres traditionnelles ou du domaine public, avec statut, licence et provenance ;
 - représentation bisonore en volume, soufflet plissé synchronisé et touches animées ;
 - profil visuel procédural dédié au Hohner Club I, sans réutilisation des photographies de référence ;
 - lecture/synthèse au tempo, boucle, reprise en une action et raccourcis découvrables avec `Ctrl` ;
@@ -39,7 +39,7 @@
 - observabilité, sauvegardes restaurées en test, SLO et procédure d’incident ;
 - tests end-to-end CI sur Chromium/WebKit, audits axe/Lighthouse ;
 - créer des profils visuels vérifiés pour les autres fabricants ; leur rendu actuel reprend la géométrie et la couleur configurées, mais pas encore chaque détail de carrosserie ;
-- conditions d’utilisation, mentions légales complètes, licences musicales et procédure de retrait.
+- procédure simple de correction du statut ou de retrait d’une édition mal attribuée si le cercle d’utilisateurs s’élargit.
 
 ## Livraison actuelle
 

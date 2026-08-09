@@ -23,12 +23,15 @@ interface RawTranscription {
   }>;
   sources?: TranscriptionSource[];
   coverage?: TranscriptionCoverage;
+  lyrics?: Array<{ beat: number; text: string; section?: string }>;
+  rightsStatus?: 'public-domain' | 'traditional' | 'protected' | 'unknown';
+  rightsNote?: string;
 }
 
 interface TranscriptionSource {
   title: string;
   url: string;
-  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'pdf' | 'chords' | 'metadata' | 'other';
+  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'pdf' | 'chords' | 'lyrics' | 'metadata' | 'other';
   usedFor: string;
   reliability: number;
 }
@@ -56,6 +59,9 @@ interface ResearchBrief {
   referenceEvents: Array<{ beat: number; duration: number; note: string; confidence: number }>;
   referenceAccompaniment: Array<{ beat: number; duration: number; note: string; chord: string; role: 'bass' | 'chord'; confidence: number }>;
   referenceNotation: string;
+  referenceLyrics: Array<{ beat: number; text: string; section: string }>;
+  rightsStatus: 'public-domain' | 'traditional' | 'protected' | 'unknown';
+  rightsNote: string;
   warnings: string[];
 }
 
@@ -71,6 +77,9 @@ interface VerifiedSongCandidate {
   builtIn?: boolean;
   license?: string;
   provenance?: string;
+  lyrics?: RawTranscription['lyrics'];
+  rightsStatus?: RawTranscription['rightsStatus'];
+  rightsNote?: string;
   events: RawTranscription['events'];
   accompaniment?: RawTranscription['accompaniment'];
 }
@@ -156,7 +165,7 @@ export function sanitizeTranscription(value: unknown): RawTranscription {
   if (correctedPitchCount) warnings.unshift(`${correctedPitchCount} incohérence${correctedPitchCount > 1 ? 's' : ''} entre nom de note et valeur MIDI corrigée${correctedPitchCount > 1 ? 's' : ''} automatiquement.`);
   const sources = Array.isArray(data.sources) ? data.sources.flatMap((source) => {
     if (!source || typeof source !== 'object' || typeof source.url !== 'string' || !/^https?:\/\//i.test(source.url)) return [];
-    const kinds = ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'metadata', 'other'] as const;
+    const kinds = ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'lyrics', 'metadata', 'other'] as const;
     return [{
       title: typeof source.title === 'string' ? source.title.slice(0, 180) : 'Source musicale',
       url: source.url.slice(0, 1_500),
@@ -175,6 +184,18 @@ export function sanitizeTranscription(value: unknown): RawTranscription {
     sectionsFound: Math.max(0, Math.round(Number(rawCoverage.sectionsFound) || 0)),
     sectionsTranscribed: Math.max(0, Math.round(Number(rawCoverage.sectionsTranscribed) || 0)),
   } : undefined;
+  const rightsStatuses = ['public-domain', 'traditional', 'protected', 'unknown'] as const;
+  const rightsStatus = rightsStatuses.includes(data.rightsStatus as typeof rightsStatuses[number])
+    ? data.rightsStatus as typeof rightsStatuses[number]
+    : undefined;
+  const lyrics = Array.isArray(data.lyrics) ? data.lyrics.slice(0, 512).flatMap((line) => {
+    if (!line || typeof line.text !== 'string' || !line.text.trim()) return [];
+    return [{
+      beat: Math.max(0, Number(line.beat) || 0),
+      text: line.text.trim().slice(0, 500),
+      ...(typeof line.section === 'string' && line.section.trim() ? { section: line.section.trim().slice(0, 80) } : {}),
+    }];
+  }).sort((left, right) => left.beat - right.beat) : undefined;
   return {
     title: typeof data.title === 'string' ? data.title : 'Morceau importé', artist: typeof data.artist === 'string' ? data.artist : 'Artiste inconnu',
     bpm: Math.max(30, Math.min(260, Number(data.bpm) || 100)), key: typeof data.key === 'string' ? data.key : 'Inconnue',
@@ -183,6 +204,9 @@ export function sanitizeTranscription(value: unknown): RawTranscription {
     ...(accompaniment?.length ? { accompaniment } : {}),
     ...(sources?.length ? { sources } : {}),
     ...(coverage ? { coverage } : {}),
+    ...(lyrics?.length ? { lyrics } : {}),
+    ...(rightsStatus ? { rightsStatus } : {}),
+    ...(typeof data.rightsNote === 'string' && data.rightsNote.trim() ? { rightsNote: data.rightsNote.trim().slice(0, 500) } : {}),
   };
 }
 
@@ -218,7 +242,7 @@ const sourceSchema = {
   properties: {
     title: { type: 'string' },
     url: { type: 'string' },
-    kind: { type: 'string', enum: ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'metadata', 'other'] },
+    kind: { type: 'string', enum: ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'lyrics', 'metadata', 'other'] },
     usedFor: { type: 'string' },
     reliability: { type: 'number', minimum: 0, maximum: 1 },
   },
@@ -249,6 +273,16 @@ const researchSchema = {
     sources: { type: 'array', items: sourceSchema },
     chordProgression: { type: 'array', items: { type: 'string' } },
     referenceNotation: { type: 'string' },
+    referenceLyrics: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { beat: { type: 'number' }, text: { type: 'string' }, section: { type: 'string' } },
+        required: ['beat', 'text', 'section'],
+      },
+    },
+    rightsStatus: { type: 'string', enum: ['public-domain', 'traditional', 'protected', 'unknown'] },
+    rightsNote: { type: 'string' },
     referenceEvents: {
       type: 'array',
       items: {
@@ -270,7 +304,7 @@ const researchSchema = {
     },
     warnings: { type: 'array', items: { type: 'string' } },
   },
-  required: ['title', 'artist', 'composer', 'bpm', 'key', 'timeSignature', 'durationSeconds', 'confidence', 'sections', 'sources', 'chordProgression', 'referenceNotation', 'referenceEvents', 'referenceAccompaniment', 'warnings'],
+  required: ['title', 'artist', 'composer', 'bpm', 'key', 'timeSignature', 'durationSeconds', 'confidence', 'sections', 'sources', 'chordProgression', 'referenceNotation', 'referenceLyrics', 'referenceEvents', 'referenceAccompaniment', 'rightsStatus', 'rightsNote', 'warnings'],
 };
 
 const transcriptionSchema = {
@@ -313,8 +347,18 @@ const transcriptionSchema = {
       },
       required: ['sourceDurationSeconds', 'transcribedDurationSeconds', 'ratio', 'sectionsFound', 'sectionsTranscribed'],
     },
+    lyrics: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { beat: { type: 'number' }, text: { type: 'string' }, section: { type: 'string' } },
+        required: ['beat', 'text'],
+      },
+    },
+    rightsStatus: { type: 'string', enum: ['public-domain', 'traditional', 'protected', 'unknown'] },
+    rightsNote: { type: 'string' },
   },
-  required: ['title', 'artist', 'bpm', 'key', 'timeSignature', 'confidence', 'warnings', 'events', 'accompaniment', 'sources', 'coverage'],
+  required: ['title', 'artist', 'bpm', 'key', 'timeSignature', 'confidence', 'warnings', 'events', 'accompaniment', 'sources', 'coverage', 'lyrics', 'rightsStatus', 'rightsNote'],
 };
 
 const discoverySchema = {
@@ -375,7 +419,7 @@ export function sanitizeResearch(value: unknown, metadata?: YoutubeMetadata): Re
   const data = value && typeof value === 'object' ? value as Partial<ResearchBrief> : {};
   const sources = Array.isArray(data.sources) ? data.sources.flatMap((source) => {
     if (!source || typeof source.url !== 'string' || !/^https?:\/\//i.test(source.url)) return [];
-    const kinds = ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'metadata', 'other'] as const;
+    const kinds = ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'lyrics', 'metadata', 'other'] as const;
     return [{
       title: typeof source.title === 'string' ? source.title.slice(0, 180) : 'Source musicale',
       url: source.url.slice(0, 1_500),
@@ -419,6 +463,12 @@ export function sanitizeResearch(value: unknown, metadata?: YoutubeMetadata): Re
       }];
     }) : [],
     referenceNotation: typeof data.referenceNotation === 'string' ? data.referenceNotation.slice(0, 24_000) : '',
+    referenceLyrics: Array.isArray(data.referenceLyrics) ? data.referenceLyrics.slice(0, 512).flatMap((line) => {
+      if (!line || typeof line.text !== 'string' || !line.text.trim()) return [];
+      return [{ beat: Math.max(0, Number(line.beat) || 0), text: line.text.trim().slice(0, 500), section: typeof line.section === 'string' ? line.section.trim().slice(0, 80) : '' }];
+    }).sort((left, right) => left.beat - right.beat) : [],
+    rightsStatus: ['public-domain', 'traditional', 'protected'].includes(String(data.rightsStatus)) ? data.rightsStatus as ResearchBrief['rightsStatus'] : 'unknown',
+    rightsNote: typeof data.rightsNote === 'string' ? data.rightsNote.trim().slice(0, 500) : '',
     warnings: Array.isArray(data.warnings) ? data.warnings.filter((item): item is string => typeof item === 'string').slice(0, 10) : [],
   };
 }
@@ -427,7 +477,7 @@ function fallbackResearch(metadata?: YoutubeMetadata): ResearchBrief {
   return {
     title: metadata?.title ?? 'Morceau YouTube', artist: metadata?.authorName ?? 'Interprète inconnu', composer: '',
     bpm: 100, key: 'Inconnue', timeSignature: [4, 4], durationSeconds: 0, confidence: .3,
-    sections: [], sources: [], chordProgression: [], referenceEvents: [], referenceAccompaniment: [], referenceNotation: '', warnings: ['La recherche de partitions en ligne n’a pas abouti ; analyse directe de la vidéo.'],
+    sections: [], sources: [], chordProgression: [], referenceEvents: [], referenceAccompaniment: [], referenceNotation: '', referenceLyrics: [], rightsStatus: 'unknown', rightsNote: '', warnings: ['La recherche de partitions en ligne n’a pas abouti ; analyse directe de la vidéo.'],
   };
 }
 
@@ -464,6 +514,9 @@ async function curatedResearch(metadata: YoutubeMetadata | undefined): Promise<R
       referenceEvents: [],
       referenceAccompaniment: [],
       referenceNotation: notation,
+      referenceLyrics: [],
+      rightsStatus: 'unknown',
+      rightsNote: 'Le statut de l’œuvre et de cette édition doit être vérifié avant une intégration à la bibliothèque commune.',
       warnings: ['Une édition ABC publique a été retrouvée ; la vidéo reste prioritaire pour la tonalité, les variantes et les reprises.'],
     };
   } catch {
@@ -473,9 +526,11 @@ async function curatedResearch(metadata: YoutubeMetadata | undefined): Promise<R
 
 export const researchPrompt = (metadata?: YoutubeMetadata) => `Tu constitues rapidement un dossier documentaire musical avant l’analyse d’une vidéo d’accordéon diatonique. Ne cherche pas à regarder ou transcrire la vidéo à cette étape : pars uniquement de ses métadonnées fiables.
 Utilise Google Search de façon ciblée avec le titre exact, l’interprète et les variantes orthographiques. Lance notamment les recherches « titre exact partition accordéon diatonique filetype:pdf », « titre exact tablature filetype:pdf », puis cherche ABC, MIDI, MusicXML, tablature CADB et pages de l’auteur, de l’éditeur, d’une association musicale ou d’une archive reconnue. Retourne uniquement les URL canoniques directes effectivement consultées et publiquement accessibles ; ignore les contenus derrière une connexion, un paiement ou manifestement diffusés sans autorisation.
+Détermine séparément le statut de l’œuvre et celui de l’édition consultée. En France, une œuvre est en principe dans le domaine public à l’issue de l’année civile des 70 ans suivant le décès du dernier coauteur, sous réserve des prorogations particulières. Une chanson traditionnelle sans auteur identifié doit être marquée traditional. Ne classe pas une œuvre comme protégée par simple prudence si sa date ou sa tradition établit le domaine public.
 Ouvre avec URL context les meilleures pages et les PDF directs. Pour un PDF, lis réellement la portée, la tablature, les symboles d’accords et les numéros de page : ne prétends jamais l’avoir exploité sur la seule foi du résultat de recherche. Classe-le en kind=pdf et indique précisément les pages et éléments utilisés dans usedFor.
 Si plusieurs sources sérieuses existent, compare au moins deux éditions indépendantes et signale leurs divergences. Une source n’est pas indépendante si elle ne fait que recopier l’autre. Privilégie l’édition de l’auteur ou de l’éditeur, puis une partition/tablature complète, puis ABC/MusicXML/MIDI ; une simple grille d’accords ou une page de métadonnées ne suffit pas à confirmer la mélodie.
-Si une source contient une notation exploitable, résume-la brièvement dans referenceNotation (24 000 caractères maximum) et convertis-la surtout en referenceEvents et referenceAccompaniment sur une chronologie en temps musicaux. Pour une valse, distingue la basse du premier temps des accords des temps suivants. Laisse ces champs vides plutôt que d’inventer une partition absente.
+Si l’œuvre est public-domain ou traditional, exploite pleinement la mélodie, l’harmonie et les paroles publiques : convertis la partition dans referenceEvents et referenceAccompaniment, conserve dans referenceNotation les informations musicales utiles, et place les paroles complètes dans referenceLyrics avec leur section et leur beat de départ. Une gravure moderne sert de source factuelle : ne demande pas de reproduire son image ni sa mise en page. Si l’œuvre est protected ou unknown, n’intègre pas de paroles complètes et limite referenceNotation aux faits musicaux nécessaires à l’analyse personnelle.
+Pour une valse, distingue la basse du premier temps des accords des temps suivants. Laisse les champs absents vides plutôt que d’inventer. Renseigne rightsStatus et explique brièvement dans rightsNote les auteurs, dates et éventuelles limites de l’édition.
 Une source trouvée n’est qu’une hypothèse : distingue le compositeur de l’interprète, et la composition de l’arrangement joué. durationSeconds et sections peuvent rester à zéro/vides : ils seront déterminés par l’analyse audiovisuelle suivante.
 Décris les avertissements en français et ne fournis pas ton raisonnement interne.
 Métadonnées YouTube faisant autorité pour l’identité de la vidéo : ${metadata ? `« ${metadata.title} », chaîne « ${metadata.authorName} »` : 'indisponibles'}.`;
@@ -487,8 +542,9 @@ CONVERSATION UTILE : ${JSON.stringify(history.slice(-10))}
 
 Identifie précisément le morceau, son compositeur ou sa tradition et la version demandée. Utilise Google Search avec le titre exact et ses variantes. Cherche notamment « titre partition accordéon diatonique filetype:pdf », « titre tablature filetype:pdf », puis ABC, MusicXML, MIDI, tablature CADB et édition de l’auteur, de l’éditeur, d’une association musicale ou d’une archive reconnue.
 Ouvre réellement les meilleures pages et les PDF directs avec URL context. Retourne uniquement les URL canoniques effectivement consultées et publiquement accessibles. Ignore les contenus derrière une connexion, un paiement ou manifestement diffusés sans autorisation.
+Établis le statut de l’œuvre sans excès de prudence : public-domain si la durée légale est manifestement expirée, traditional si aucun auteur individuel n’est identifié, protected si l’œuvre est encore protégée, unknown si les éléments manquent. Distingue ce statut de celui d’une gravure ou d’un arrangement récent et documente la conclusion dans rightsNote.
 Compare au moins deux éditions indépendantes quand elles existent. Distingue la composition de l’arrangement et ne mélange jamais deux versions incompatibles. Si la demande reste ambiguë, choisis l’hypothèse la mieux étayée, baisse fortement la confiance et explique précisément l’ambiguïté dans warnings.
-Convertis toute notation réellement lisible en referenceEvents et referenceAccompaniment. Résume dans referenceNotation les informations nécessaires à la reconstruction, sans recopier inutilement une édition complète. Pour la main gauche, distingue basses et accords. Ne déduis pas une mélodie à partir d’une simple grille d’accords.
+Pour une œuvre public-domain ou traditional, récupère sans réticence toute la partition et les paroles disponibles : convertis la notation réellement lisible en referenceEvents et referenceAccompaniment, conserve les informations musicales utiles dans referenceNotation et les paroles complètes, sectionnées et synchronisées, dans referenceLyrics. Pour une œuvre protected ou unknown, ne copie pas de paroles complètes. Pour la main gauche, distingue basses et accords. Ne déduis pas une mélodie à partir d’une simple grille d’accords.
 Si aucune mélodie fiable n’est accessible, laisse referenceEvents et referenceNotation vides : le serveur refusera alors de fabriquer une tablature.
 Retourne uniquement le JSON demandé, sans raisonnement interne.`;
 
@@ -505,6 +561,7 @@ Règles obligatoires :
 - Applique exactement la demande actuelle : version, tonalité, tempo pédagogique, forme, niveau de simplification ou accompagnement. Une transposition doit conserver les intervalles et le rythme.
 - Produis une chronologie complète et linéaire, reprises dépliées. events contient la mélodie monophonique ; accompaniment contient des basses et accords séparés et alignés.
 - Les notes utilisent la notation scientifique (C4, F#5, Bb3). La couche suivante choisira les boutons et le soufflet.
+- Recopie dans lyrics les paroles du dossier uniquement quand rightsStatus vaut public-domain ou traditional. Conserve rightsStatus et rightsNote dans le résultat.
 - Conserve une confiance basse pour tout passage incertain et explique les limites dans warnings. sources ne contient que les sources du dossier documentaire.
 - assistantMessage répond en français, en 2 à 5 phrases courtes : résume ce qui a été trouvé ou modifié, cite les principales incertitudes et propose un ajustement utile. Ne prétends jamais avoir entendu un enregistrement absent.
 - Retourne uniquement le JSON demandé.`;
@@ -530,6 +587,9 @@ function researchFromPrevious(result: RawTranscription): ResearchBrief {
     referenceEvents: result.events.map((event) => ({ beat: event.beat, duration: event.duration, note: event.note, confidence: event.confidence })),
     referenceAccompaniment: result.accompaniment?.map((event) => ({ beat: event.beat, duration: event.duration, note: event.note, chord: event.chord, role: event.role, confidence: event.confidence })) ?? [],
     referenceNotation: '',
+    referenceLyrics: result.lyrics?.map((line) => ({ beat: line.beat, text: line.text, section: line.section ?? '' })) ?? [],
+    rightsStatus: result.rightsStatus ?? 'unknown',
+    rightsNote: result.rightsNote ?? '',
     warnings: result.warnings,
   };
 }
@@ -548,6 +608,7 @@ Règles obligatoires :
 - beat est exprimé depuis zéro dans l’unité du dénominateur de timeSignature. duration utilise la même unité. Le tempo doit correspondre à cette pulsation.
 - events contient la mélodie principale monophonique, y compris les anacrouses et ornements audibles. note est toujours une hauteur scientifique (C4, F#5, Bb3). N’écris pas de valeur MIDI : le serveur la calcule.
 - accompaniment contient la main gauche sur la même chronologie. Distingue chaque basse (role=bass) de chaque accord (role=chord), avec la fondamentale scientifique dans note et un symbole d’accord explicite dans chord (Am, F, G, E7…). Si la main gauche est masquée mais qu’une source et l’harmonie permettent une proposition pédagogique, inclus-la avec une confiance réduite et explique-le.
+- Si le dossier classe l’œuvre public-domain ou traditional, conserve les paroles disponibles dans lyrics et propage rightsStatus et rightsNote. Pour protected ou unknown, lyrics reste vide.
 - Quand plusieurs versions en ligne diffèrent, la vidéo gagne. Si une hauteur reste ambiguë, conserve la meilleure hypothèse avec une confiance inférieure à 0.55 et signale le passage au lieu de supprimer silencieusement toute la phrase.
 - Calcule coverage sur la durée musicale utile de la source. sectionsTranscribed doit refléter la réalité, pas l’intention.
 - sources ne contient que les pages effectivement consultées et précise exactement ce qu’elles ont permis de vérifier.
@@ -582,6 +643,11 @@ function finalizeDiscoveryResult(result: RawTranscription, research: ResearchBri
         : 'Le brouillon vérifié de la bibliothèque sert de référence. Contrôle les ajustements dans le studio avant de jouer.',
     ].filter((warning, index, all) => warning && all.indexOf(warning) === index).slice(0, 12),
     sources,
+    lyrics: research.rightsStatus === 'public-domain' || research.rightsStatus === 'traditional'
+      ? result.lyrics?.length ? result.lyrics : research.referenceLyrics
+      : undefined,
+    rightsStatus: research.rightsStatus,
+    rightsNote: research.rightsNote,
     ...(sourceDurationSeconds ? {
       coverage: {
         sourceDurationSeconds,
@@ -632,6 +698,11 @@ function finalizeYoutubeResult(result: RawTranscription, research: ResearchBrief
     warnings,
     method: 'multimodal-research',
     sources,
+    lyrics: research.rightsStatus === 'public-domain' || research.rightsStatus === 'traditional'
+      ? result.lyrics?.length ? result.lyrics : research.referenceLyrics
+      : undefined,
+    rightsStatus: research.rightsStatus,
+    rightsNote: research.rightsNote,
     coverage: {
       sourceDurationSeconds,
       transcribedDurationSeconds,
@@ -702,6 +773,9 @@ export function transcriptionFromVerifiedSong(song: VerifiedSongCandidate, metad
     ...(song.accompaniment?.length ? {
       accompaniment: song.accompaniment.map((event) => ({ ...event })),
     } : {}),
+    ...(song.lyrics?.length ? { lyrics: song.lyrics.map((line) => ({ ...line })) } : {}),
+    rightsStatus: song.rightsStatus ?? (song.license?.toLocaleLowerCase('fr-FR').includes('domaine public') ? 'public-domain' : 'unknown'),
+    rightsNote: song.rightsNote ?? song.license ?? '',
   };
 }
 

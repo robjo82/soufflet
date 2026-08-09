@@ -106,9 +106,15 @@ export interface AccompanimentEvent {
 export interface TranscriptionSource {
   title: string;
   url: string;
-  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'pdf' | 'chords' | 'metadata' | 'other';
+  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'pdf' | 'chords' | 'lyrics' | 'metadata' | 'other';
   usedFor: string;
   reliability: number;
+}
+
+export interface LyricLine {
+  beat: number;
+  text: string;
+  section?: string;
 }
 
 export interface TranscriptionCoverage {
@@ -139,6 +145,9 @@ export interface Song {
   transcriptionWarnings?: string[];
   transcriptionSources?: TranscriptionSource[];
   transcriptionCoverage?: TranscriptionCoverage;
+  lyrics?: LyricLine[];
+  rightsStatus?: 'public-domain' | 'traditional' | 'protected' | 'unknown';
+  rightsNote?: string;
   builtIn?: boolean;
   license?: string;
   provenance?: string;
@@ -322,6 +331,9 @@ export interface TranscriptionResult {
   }>;
   sources?: TranscriptionSource[];
   coverage?: TranscriptionCoverage;
+  lyrics?: LyricLine[];
+  rightsStatus?: 'public-domain' | 'traditional' | 'protected' | 'unknown';
+  rightsNote?: string;
 }
 
 export type Page = 'home' | 'learn' | 'game' | 'library' | 'studio' | 'tuner' | 'settings' | 'account';
