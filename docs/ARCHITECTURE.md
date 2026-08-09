@@ -71,6 +71,8 @@ Sans correspondance, le pipeline multimodal sépare les responsabilités :
 
 Le registre de sources vérifiées peut pointer vers une notation distante sans intégrer la partition dans le dépôt. Il contient actuellement l’édition ABC publique de *Valse à Ollu*. Une source n’augmente la confiance que si sa notation a réellement été chargée ; une simple page de métadonnées ne suffit pas. Le Studio expose la couverture, la provenance, les avertissements et deux pistes séparées. Une transcription reste une proposition à corriger, jamais une édition certifiée.
 
+La recherche distingue désormais le statut de l’œuvre de celui de l’édition consultée. Pour une œuvre traditionnelle ou dans le domaine public, elle peut conserver la partition reconstruite et les paroles complètes dans le morceau, avec leurs sources et un repère temporel. Une gravure moderne est utilisée comme source de faits musicaux sans recopier sa mise en page. Pour une œuvre encore protégée ou de statut inconnu, les paroles complètes ne sont pas intégrées à la bibliothèque commune et le statut reste visible dans les données.
+
 Avant une exposition publique intensive, ajouter au reverse proxy : quota par compte, limitation de débit distribuée, journal d’audit sans contenu musical et analyse antivirus des fichiers. Les mutations restent sur la même origine avec des cookies `SameSite=Lax`; le cookie passe en mode `Secure` derrière HTTPS.
 
 ## Progression et données utilisateur
