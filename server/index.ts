@@ -487,6 +487,50 @@ app.post('/api/transcriptions', requireUser, upload.single('file'), async (reque
   }
 });
 
+const discoveryRequestSchema = z.object({
+  request: z.string().trim().min(2).max(800),
+  accordionId: z.string().min(1).max(100),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().trim().min(1).max(1_500),
+  })).max(20).default([]),
+  previousResult: z.unknown().optional(),
+});
+
+app.post('/api/transcriptions/discover', requireUser, async (request, response) => {
+  const requestId = randomUUID();
+  const startedAt = Date.now();
+  response.setHeader('X-Request-Id', requestId);
+  const details = {
+    requestId,
+    userRef: transcriptionUserRef(response.locals.user.id as string),
+    source: 'natural-language-discovery',
+    accordionId: String(request.body?.accordionId ?? ''),
+    requestLength: typeof request.body?.request === 'string' ? request.body.request.length : 0,
+    revision: Boolean(request.body?.previousResult),
+  };
+  transcriptionLog('info', 'transcription.started', details);
+  try {
+    const body = discoveryRequestSchema.parse(request.body);
+    const proposal = await transcriber.fromDiscovery(body.request, body.accordionId, body.history, body.previousResult, request.get('x-gemini-key'));
+    transcriptionLog('info', 'transcription.completed', {
+      ...details,
+      elapsedMs: Date.now() - startedAt,
+      title: proposal.result.title,
+      method: proposal.result.method,
+      events: proposal.result.events.length,
+      accompanimentEvents: proposal.result.accompaniment?.length ?? 0,
+      confidence: proposal.result.confidence,
+      sources: proposal.result.sources?.length ?? 0,
+    });
+    response.json({ ...proposal, requestId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Recherche musicale impossible.';
+    transcriptionLog('error', 'transcription.failed', { ...details, elapsedMs: Date.now() - startedAt, error: message });
+    response.status(422).json({ error: message, requestId });
+  }
+});
+
 app.post('/api/transcriptions/youtube', requireUser, async (request, response) => {
   const requestId = randomUUID();
   const startedAt = Date.now();

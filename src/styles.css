@@ -1166,6 +1166,44 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .legal-note { margin-top: 18px; padding: 10px; border-radius: 9px; background: #f6ead1; color: #815a27; display: flex; align-items: center; gap: 8px; text-align: left; font-size: 9px; }
 .legal-note svg { width: 16px; }
 .text-import textarea { width: 100%; padding: 13px; resize: vertical; border: 1px solid var(--line); border-radius: 11px; background: #fbfaf7; outline: none; font: 12px/1.6 ui-monospace, monospace; }
+.discovery-import { max-width: 740px; margin: 0 auto; }
+.discovery-chat { height: 365px; padding: 5px 8px 12px; overflow-y: auto; scroll-behavior: smooth; }
+.discovery-message { max-width: 88%; margin: 0 0 12px; display: flex; align-items: flex-start; gap: 9px; }
+.discovery-message > span { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; color: white; background: var(--green); }
+.discovery-message > span svg { width: 15px; }
+.discovery-message > p { margin: 0; padding: 11px 13px; border-radius: 4px 14px 14px; color: #3d3933; background: #eef3ef; font-size: 11px; line-height: 1.55; }
+.discovery-message.is-user { margin-left: auto; flex-direction: row-reverse; }
+.discovery-message.is-user > span { color: var(--green); background: var(--green-soft); }
+.discovery-message.is-user > p { border-radius: 14px 4px 14px 14px; color: white; background: var(--green); }
+.discovery-message.is-error > span { background: #ad5949; }
+.discovery-message.is-error > p { color: #843c32; background: #f7ded7; }
+.discovery-message.is-thinking > span svg { animation: spin 1s linear infinite; }
+.discovery-message.is-thinking p { display: flex; flex-direction: column; }
+.discovery-message.is-thinking small { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.discovery-result-card { margin: 4px 0 16px 39px; padding: 15px; border: 1px solid #b9d2c5; border-radius: 15px; background: white; box-shadow: 0 8px 24px rgba(49,92,75,.08); }
+.discovery-result-card h3 { margin: 3px 0 2px; font-size: 19px; }
+.discovery-result-card > div:first-child > p { margin: 0; color: var(--muted); font-size: 9px; }
+.discovery-result-metrics { margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.discovery-result-metrics > span { min-height: 50px; padding: 8px; border-radius: 9px; background: #f3f0e9; display: flex; flex-direction: column; justify-content: center; }
+.discovery-result-metrics strong { font-size: 13px; }
+.discovery-result-metrics small { color: var(--muted); font-size: 7px; }
+.discovery-result-sources { margin-top: 9px; display: flex; gap: 6px; overflow-x: auto; }
+.discovery-result-sources a { min-width: 150px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; color: inherit; display: flex; align-items: center; gap: 7px; text-decoration: none; }
+.discovery-result-sources a > svg { width: 14px; color: #31566f; }
+.discovery-result-sources a span { min-width: 0; display: flex; flex-direction: column; }
+.discovery-result-sources a b { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.discovery-result-sources a small { margin-top: 2px; color: var(--muted); font-size: 7px; }
+.discovery-suggestions { margin: 0 0 9px 39px; display: flex; gap: 6px; overflow-x: auto; }
+.discovery-suggestions button { min-width: max-content; height: 29px; padding: 0 10px; border: 1px solid #b9d2c5; border-radius: 15px; color: var(--green); background: white; font-size: 8px; font-weight: 800; cursor: pointer; }
+.discovery-composer { min-height: 62px; padding: 7px 7px 7px 13px; border: 1px solid var(--line); border-radius: 14px; background: white; display: flex; align-items: center; gap: 9px; }
+.discovery-composer:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px rgba(49,92,75,.1); }
+.discovery-composer textarea { min-height: 42px; flex: 1; resize: none; border: 0; outline: 0; background: transparent; font: 11px/1.45 inherit; }
+.discovery-composer button { width: 42px; height: 42px; flex: 0 0 auto; border: 0; border-radius: 12px; color: white; background: var(--green); display: grid; place-items: center; cursor: pointer; }
+.discovery-composer button:disabled { opacity: .45; cursor: default; }
+.discovery-composer button svg { width: 17px; }
+.discovery-composer button:disabled svg { animation: none; }
+.discovery-caution { margin: 8px 0 0; color: var(--muted); display: flex; align-items: center; gap: 5px; font-size: 8px; }
+.discovery-caution svg { width: 13px; }
 .error-banner { margin-top: 13px; padding: 11px; border-radius: 9px; color: #963e31; background: #f7ded7; display: flex; align-items: center; gap: 9px; font-size: 10px; }
 .error-banner svg { width: 18px; }
 .error-banner span { display: flex; flex-direction: column; }
@@ -1959,6 +1997,12 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
   .import-modal > header, .import-body, .import-modal > footer { padding-inline: 17px; }
   .import-tabs { padding: 0 10px; overflow-x: auto; }
   .import-tabs button { min-width: max-content; }
+  .discovery-chat { height: min(43vh, 360px); padding-inline: 0; }
+  .discovery-message { max-width: 95%; }
+  .discovery-result-card, .discovery-suggestions { margin-left: 0; }
+  .discovery-result-metrics { gap: 4px; }
+  .discovery-result-sources a { min-width: 135px; }
+  .discovery-composer { position: sticky; bottom: 0; z-index: 2; }
   .privacy-inline { display: none; }
   .import-modal > footer { justify-content: end; }
   .tuner-settings { flex-direction: column; }
