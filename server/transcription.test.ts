@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { calculateTimelineCoverage, midiFromNote, sanitizeTranscription, youtubeResultNeedsRepair } from './transcription.js';
+import { calculateTimelineCoverage, DEFAULT_GEMINI_MODEL, midiFromNote, researchPrompt, sanitizeResearch, sanitizeTranscription, youtubeResultNeedsRepair } from './transcription.js';
 
 describe('multimodal transcription safeguards', () => {
+  it('pins the current stable Gemini model', () => {
+    expect(DEFAULT_GEMINI_MODEL).toBe('gemini-3.6-flash');
+  });
+
   it('derives MIDI from scientific note names, including flats', () => {
     expect(midiFromNote('C4')).toBe(60);
     expect(midiFromNote('F♯5')).toBe(78);
@@ -38,6 +42,26 @@ describe('multimodal transcription safeguards', () => {
     expect(result.accompaniment?.map((event) => event.role)).toEqual(['bass', 'chord']);
     expect(result.sources?.[0]).toMatchObject({ kind: 'abc', reliability: .9 });
     expect(result.coverage?.ratio).toBe(.98);
+  });
+
+  it('keeps an actually consulted PDF as first-class musical evidence', () => {
+    const result = sanitizeResearch({
+      title: 'Valse test', artist: 'Test', composer: 'Traditionnel', bpm: 90, key: 'G', timeSignature: [3, 4],
+      durationSeconds: 60, confidence: .8, sections: [], chordProgression: [], referenceEvents: [], referenceAccompaniment: [],
+      referenceNotation: 'Page 1 : anacrouse D4, puis G4 A4 B4', warnings: [],
+      sources: [{ title: 'Partition complète', url: 'https://example.com/valse.pdf', kind: 'pdf', usedFor: 'Page 1 : mélodie et accords', reliability: .9 }],
+    });
+
+    expect(result.sources[0]).toMatchObject({ kind: 'pdf', reliability: .9 });
+    expect(result.referenceNotation).toContain('anacrouse');
+  });
+
+  it('requires targeted PDF searches and independent source comparison', () => {
+    const prompt = researchPrompt({ title: 'Valse à Ollu', authorName: 'Interprète test' });
+
+    expect(prompt).toContain('filetype:pdf');
+    expect(prompt).toContain('au moins deux éditions indépendantes');
+    expect(prompt).toContain('lis réellement la portée');
   });
 
   it('requests a repair when coverage or the left hand is incomplete', () => {

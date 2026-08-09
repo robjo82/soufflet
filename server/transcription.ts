@@ -28,7 +28,7 @@ interface RawTranscription {
 interface TranscriptionSource {
   title: string;
   url: string;
-  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'chords' | 'metadata' | 'other';
+  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'pdf' | 'chords' | 'metadata' | 'other';
   usedFor: string;
   reliability: number;
 }
@@ -81,6 +81,7 @@ interface YoutubeMetadata {
 }
 
 const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash';
 const noteFromMidi = (midi: number) => `${noteNames[midi % 12]}${Math.floor(midi / 12) - 1}`;
 
 export function midiFromNote(note: string) {
@@ -145,7 +146,7 @@ export function sanitizeTranscription(value: unknown): RawTranscription {
   if (correctedPitchCount) warnings.unshift(`${correctedPitchCount} incohérence${correctedPitchCount > 1 ? 's' : ''} entre nom de note et valeur MIDI corrigée${correctedPitchCount > 1 ? 's' : ''} automatiquement.`);
   const sources = Array.isArray(data.sources) ? data.sources.flatMap((source) => {
     if (!source || typeof source !== 'object' || typeof source.url !== 'string' || !/^https?:\/\//i.test(source.url)) return [];
-    const kinds = ['abc', 'midi', 'musicxml', 'tablature', 'score', 'chords', 'metadata', 'other'] as const;
+    const kinds = ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'metadata', 'other'] as const;
     return [{
       title: typeof source.title === 'string' ? source.title.slice(0, 180) : 'Source musicale',
       url: source.url.slice(0, 1_500),
@@ -181,12 +182,12 @@ function parseJsonText(text: string) {
 }
 
 async function callGemini(apiKey: string, parts: Array<Record<string, unknown>>, prompt = PROMPT) {
-  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+  const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({ contents: [{ role: 'user', parts: [...parts, { text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } }),
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [...parts, { text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
       signal: AbortSignal.timeout(120_000),
     });
     const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; error?: { message?: string } };
@@ -207,7 +208,7 @@ const sourceSchema = {
   properties: {
     title: { type: 'string' },
     url: { type: 'string' },
-    kind: { type: 'string', enum: ['abc', 'midi', 'musicxml', 'tablature', 'score', 'chords', 'metadata', 'other'] },
+    kind: { type: 'string', enum: ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'metadata', 'other'] },
     usedFor: { type: 'string' },
     reliability: { type: 'number', minimum: 0, maximum: 1 },
   },
@@ -237,6 +238,7 @@ const researchSchema = {
     },
     sources: { type: 'array', items: sourceSchema },
     chordProgression: { type: 'array', items: { type: 'string' } },
+    referenceNotation: { type: 'string' },
     referenceEvents: {
       type: 'array',
       items: {
@@ -258,7 +260,7 @@ const researchSchema = {
     },
     warnings: { type: 'array', items: { type: 'string' } },
   },
-  required: ['title', 'artist', 'composer', 'bpm', 'key', 'timeSignature', 'durationSeconds', 'confidence', 'sections', 'sources', 'chordProgression', 'referenceEvents', 'referenceAccompaniment', 'warnings'],
+  required: ['title', 'artist', 'composer', 'bpm', 'key', 'timeSignature', 'durationSeconds', 'confidence', 'sections', 'sources', 'chordProgression', 'referenceNotation', 'referenceEvents', 'referenceAccompaniment', 'warnings'],
 };
 
 const transcriptionSchema = {
@@ -314,7 +316,7 @@ interface StructuredOptions {
 }
 
 async function callGeminiStructured<T>(apiKey: string, parts: Array<Record<string, unknown>>, prompt: string, options: StructuredOptions): Promise<T> {
-  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+  const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
@@ -325,7 +327,6 @@ async function callGeminiStructured<T>(apiKey: string, parts: Array<Record<strin
         generationConfig: {
           responseMimeType: 'application/json',
           responseJsonSchema: options.schema,
-          temperature: .1,
           maxOutputTokens: options.maxOutputTokens,
           thinkingConfig: { thinkingLevel: options.thinkingLevel },
         },
@@ -351,11 +352,11 @@ async function callGeminiStructured<T>(apiKey: string, parts: Array<Record<strin
   throw new Error('Gemini est temporairement indisponible.');
 }
 
-function sanitizeResearch(value: unknown, metadata?: YoutubeMetadata): ResearchBrief {
+export function sanitizeResearch(value: unknown, metadata?: YoutubeMetadata): ResearchBrief {
   const data = value && typeof value === 'object' ? value as Partial<ResearchBrief> : {};
   const sources = Array.isArray(data.sources) ? data.sources.flatMap((source) => {
     if (!source || typeof source.url !== 'string' || !/^https?:\/\//i.test(source.url)) return [];
-    const kinds = ['abc', 'midi', 'musicxml', 'tablature', 'score', 'chords', 'metadata', 'other'] as const;
+    const kinds = ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf', 'chords', 'metadata', 'other'] as const;
     return [{
       title: typeof source.title === 'string' ? source.title.slice(0, 180) : 'Source musicale',
       url: source.url.slice(0, 1_500),
@@ -398,7 +399,7 @@ function sanitizeResearch(value: unknown, metadata?: YoutubeMetadata): ResearchB
         role: event.role === 'chord' ? 'chord' as const : 'bass' as const, confidence: Math.max(0, Math.min(1, Number(event.confidence) || .5)),
       }];
     }) : [],
-    referenceNotation: '',
+    referenceNotation: typeof data.referenceNotation === 'string' ? data.referenceNotation.slice(0, 24_000) : '',
     warnings: Array.isArray(data.warnings) ? data.warnings.filter((item): item is string => typeof item === 'string').slice(0, 10) : [],
   };
 }
@@ -451,9 +452,11 @@ async function curatedResearch(metadata: YoutubeMetadata | undefined): Promise<R
   }
 }
 
-const researchPrompt = (metadata?: YoutubeMetadata) => `Tu constitues rapidement un dossier documentaire musical avant l’analyse d’une vidéo d’accordéon diatonique. Ne cherche pas à regarder ou transcrire la vidéo à cette étape : pars uniquement de ses métadonnées fiables.
-Utilise Google Search de façon ciblée avec le titre exact, l’interprète et les variantes orthographiques. Cherche en priorité des sources musicales consultables : ABC, MIDI, MusicXML, tablature CADB, partition de l’auteur ou page de référence. Retourne leurs URL canoniques directes quand elles sont publiques.
-Ouvre les meilleures sources textuelles avec URL context. Si elles contiennent une notation exploitable, convertis l’édition de référence en referenceEvents et referenceAccompaniment sur une chronologie en temps musicaux. Pour une valse, distingue la basse du premier temps des accords des temps suivants. Laisse ces tableaux vides plutôt que d’inventer une partition absente.
+export const researchPrompt = (metadata?: YoutubeMetadata) => `Tu constitues rapidement un dossier documentaire musical avant l’analyse d’une vidéo d’accordéon diatonique. Ne cherche pas à regarder ou transcrire la vidéo à cette étape : pars uniquement de ses métadonnées fiables.
+Utilise Google Search de façon ciblée avec le titre exact, l’interprète et les variantes orthographiques. Lance notamment les recherches « titre exact partition accordéon diatonique filetype:pdf », « titre exact tablature filetype:pdf », puis cherche ABC, MIDI, MusicXML, tablature CADB et pages de l’auteur, de l’éditeur, d’une association musicale ou d’une archive reconnue. Retourne uniquement les URL canoniques directes effectivement consultées et publiquement accessibles ; ignore les contenus derrière une connexion, un paiement ou manifestement diffusés sans autorisation.
+Ouvre avec URL context les meilleures pages et les PDF directs. Pour un PDF, lis réellement la portée, la tablature, les symboles d’accords et les numéros de page : ne prétends jamais l’avoir exploité sur la seule foi du résultat de recherche. Classe-le en kind=pdf et indique précisément les pages et éléments utilisés dans usedFor.
+Si plusieurs sources sérieuses existent, compare au moins deux éditions indépendantes et signale leurs divergences. Une source n’est pas indépendante si elle ne fait que recopier l’autre. Privilégie l’édition de l’auteur ou de l’éditeur, puis une partition/tablature complète, puis ABC/MusicXML/MIDI ; une simple grille d’accords ou une page de métadonnées ne suffit pas à confirmer la mélodie.
+Si une source contient une notation exploitable, résume-la brièvement dans referenceNotation (24 000 caractères maximum) et convertis-la surtout en referenceEvents et referenceAccompaniment sur une chronologie en temps musicaux. Pour une valse, distingue la basse du premier temps des accords des temps suivants. Laisse ces champs vides plutôt que d’inventer une partition absente.
 Une source trouvée n’est qu’une hypothèse : distingue le compositeur de l’interprète, et la composition de l’arrangement joué. durationSeconds et sections peuvent rester à zéro/vides : ils seront déterminés par l’analyse audiovisuelle suivante.
 Décris les avertissements en français et ne fournis pas ton raisonnement interne.
 Métadonnées YouTube faisant autorité pour l’identité de la vidéo : ${metadata ? `« ${metadata.title} », chaîne « ${metadata.authorName} »` : 'indisponibles'}.`;
@@ -467,7 +470,7 @@ ${review ? `\nPREMIÈRE TRANSCRIPTION À AUDITER ET RÉPARER :\n${JSON.stringify
 ${review?.coverage?.sourceDurationSeconds ? `\nCONTRAT DE RÉPARATION MESURABLE : la chronologie précédente finit au beat ${Math.max(0, ...review.events.map((event) => event.beat + event.duration))}, alors que la durée source et son tempo imposent environ ${Math.round(review.coverage.sourceDurationSeconds * review.bpm / 60)} beats. Le nouveau dernier beat doit atteindre au moins 90 % de cette cible. Déplie réellement les reprises et variantes dans events et accompaniment ; modifier seulement coverage, les avertissements ou la confiance est un échec.` : ''}
 
 Règles obligatoires :
-- Analyse conjointement l’audio, les gestes visibles et le dossier documentaire déjà consulté par la passe de recherche. Vérifie dans la vidéo la tonalité, les variantes, les reprises et l’alignement avant d’utiliser une notation de référence.
+- Analyse conjointement l’audio, les gestes visibles et le dossier documentaire déjà consulté par la passe de recherche. Une partition PDF ou une autre édition fournit la structure et des hypothèses, mais la vidéo reste prioritaire pour la tonalité, l’arrangement, le rythme, les reprises et l’alignement.
 - Transcris toutes les sections réellement jouées, reprises comprises. Déplie les répétitions sur une chronologie linéaire. N’impose aucune limite artificielle à 256 notes.
 - beat est exprimé depuis zéro dans l’unité du dénominateur de timeSignature. duration utilise la même unité. Le tempo doit correspondre à cette pulsation.
 - events contient la mélodie principale monophonique, y compris les anacrouses et ornements audibles. note est toujours une hauteur scientifique (C4, F#5, Bb3). N’écris pas de valeur MIDI : le serveur la calcule.
@@ -509,7 +512,7 @@ function finalizeYoutubeResult(result: RawTranscription, research: ResearchBrief
   const transcribedDurationSeconds = measuredCoverage.transcribedDurationSeconds;
   const ratio = sourceDurationSeconds ? measuredCoverage.ratio : result.coverage?.ratio ?? 0;
   const notationSource = Boolean(research.referenceNotation || research.referenceEvents.length)
-    && sources.some((source) => ['abc', 'midi', 'musicxml', 'tablature', 'score'].includes(source.kind) && source.reliability >= .6);
+    && sources.some((source) => ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf'].includes(source.kind) && source.reliability >= .6);
   const confidenceCap = notationSource ? .94 : .76;
   const modelWarnings = result.warnings.filter((warning) => ratio >= .85 || !/couvr(?:e|ent).*intégralit|couverture (?:est )?(?:intégrale|complète)/i.test(warning));
   const warnings = [
