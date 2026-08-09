@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ACCORDION_SEEDS } from './seed.js';
 import { SONG_SEEDS } from './songSeed.js';
+import { withBuiltInArrangements } from './arrangements.js';
+import { BUILT_IN_INSTRUMENTS, type StoredInstrumentConfig } from './instruments.js';
 import { summarizePractice, type StoredPracticeSession } from './progress.js';
 
 interface PublicUserRow {
@@ -14,6 +16,9 @@ interface PublicUserRow {
 
 interface StoredUserPreferences {
   accordionId: string;
+  instrumentType?: 'accordion' | 'piano' | 'guitar';
+  pianoId?: string;
+  guitarId?: string;
   notation: 'french' | 'english' | 'tablature' | 'button';
   countIn: boolean;
   onboardingDone: boolean;
@@ -235,6 +240,26 @@ export class SouffletDatabase {
         CREATE INDEX IF NOT EXISTS user_songs_user_updated_idx
           ON user_songs(user_id, updated_at DESC);
       `,
+      `
+        CREATE TABLE IF NOT EXISTS instrument_configs (
+          id TEXT PRIMARY KEY,
+          instrument_type TEXT NOT NULL CHECK(instrument_type IN ('piano', 'guitar')),
+          name TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          is_builtin INTEGER NOT NULL DEFAULT 0,
+          owner_user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS instrument_configs_owner_idx
+          ON instrument_configs(owner_user_id, instrument_type);
+        ALTER TABLE user_preferences ADD COLUMN instrument_type TEXT NOT NULL DEFAULT 'accordion'
+          CHECK(instrument_type IN ('accordion', 'piano', 'guitar'));
+        ALTER TABLE user_preferences ADD COLUMN piano_id TEXT NOT NULL DEFAULT 'piano-standard-61';
+        ALTER TABLE user_preferences ADD COLUMN guitar_id TEXT NOT NULL DEFAULT 'guitar-standard-6';
+        ALTER TABLE practice_sessions ADD COLUMN instrument_type TEXT NOT NULL DEFAULT 'accordion'
+          CHECK(instrument_type IN ('accordion', 'piano', 'guitar'));
+      `,
     ];
     const applied = this.db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>;
     const versions = new Set(applied.map((row) => row.version));
@@ -275,10 +300,24 @@ export class SouffletDatabase {
         updated_at = CURRENT_TIMESTAMP
       WHERE songs.is_common = 1
     `);
+    const insertInstrument = this.db.prepare(`
+      INSERT INTO instrument_configs (id, instrument_type, name, payload, is_builtin)
+      VALUES (?, ?, ?, ?, 1)
+      ON CONFLICT(id) DO UPDATE SET
+        instrument_type = excluded.instrument_type,
+        name = excluded.name,
+        payload = excluded.payload,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE instrument_configs.is_builtin = 1
+    `);
     this.db.exec('BEGIN');
     try {
       for (const config of ACCORDION_SEEDS) insertAccordion.run(config.id, config.maker, config.model, config.tuning, JSON.stringify(config));
-      for (const song of SONG_SEEDS) insertSong.run(song.id, song.title, song.artist, JSON.stringify(song));
+      for (const config of BUILT_IN_INSTRUMENTS) insertInstrument.run(config.id, config.instrumentType, config.name, JSON.stringify(config));
+      for (const rawSong of SONG_SEEDS) {
+        const song = withBuiltInArrangements(rawSong);
+        insertSong.run(song.id, song.title, song.artist, JSON.stringify(song));
+      }
       this.db.exec('COMMIT');
     } catch (error) {
       this.db.exec('ROLLBACK');
@@ -291,6 +330,31 @@ export class SouffletDatabase {
       ? this.db.prepare('SELECT payload FROM accordion_configs WHERE is_builtin = 1 OR owner_user_id = ? ORDER BY is_builtin DESC, maker, model').all(ownerUserId)
       : this.db.prepare('SELECT payload FROM accordion_configs WHERE is_builtin = 1 ORDER BY maker, model').all()) as Array<{ payload: string }>;
     return rows.map((row) => JSON.parse(row.payload) as unknown);
+  }
+
+  listInstruments(ownerUserId?: string, instrumentType?: 'piano' | 'guitar') {
+    const conditions = ['(is_builtin = 1' + (ownerUserId ? ' OR owner_user_id = ?)' : ')')];
+    const parameters: string[] = ownerUserId ? [ownerUserId] : [];
+    if (instrumentType) { conditions.push('instrument_type = ?'); parameters.push(instrumentType); }
+    const rows = this.db.prepare(`
+      SELECT payload FROM instrument_configs
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY is_builtin DESC, name COLLATE NOCASE
+    `).all(...parameters) as Array<{ payload: string }>;
+    return rows.map((row) => JSON.parse(row.payload) as StoredInstrumentConfig);
+  }
+
+  saveInstrument(config: StoredInstrumentConfig, ownerUserId: string) {
+    const stored = { ...config, builtIn: false };
+    this.db.prepare(`
+      INSERT INTO instrument_configs (id, instrument_type, name, payload, is_builtin, owner_user_id)
+      VALUES (?, ?, ?, ?, 0, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        instrument_type = excluded.instrument_type, name = excluded.name,
+        payload = excluded.payload, updated_at = CURRENT_TIMESTAMP
+      WHERE instrument_configs.is_builtin = 0 AND instrument_configs.owner_user_id = excluded.owner_user_id
+    `).run(stored.id, stored.instrumentType, stored.name, JSON.stringify(stored), ownerUserId);
+    return stored;
   }
 
   getAccordion(id: string) {
@@ -393,10 +457,13 @@ export class SouffletDatabase {
 
   getUserPreferences(userId: string) {
     const row = this.db.prepare(`
-      SELECT accordion_id, notation, count_in, onboarding_done, tutorial_done, updated_at
+      SELECT accordion_id, instrument_type, piano_id, guitar_id, notation, count_in, onboarding_done, tutorial_done, updated_at
       FROM user_preferences WHERE user_id = ?
     `).get(userId) as {
       accordion_id: string;
+      instrument_type: 'accordion' | 'piano' | 'guitar';
+      piano_id: string;
+      guitar_id: string;
       notation: StoredUserPreferences['notation'];
       count_in: number;
       onboarding_done: number;
@@ -405,6 +472,9 @@ export class SouffletDatabase {
     } | undefined;
     return row ? {
       accordionId: row.accordion_id,
+      instrumentType: row.instrument_type,
+      pianoId: row.piano_id,
+      guitarId: row.guitar_id,
       notation: row.notation,
       countIn: Boolean(row.count_in),
       onboardingDone: Boolean(row.onboarding_done),
@@ -415,10 +485,13 @@ export class SouffletDatabase {
 
   saveUserPreferences(userId: string, preferences: StoredUserPreferences) {
     this.db.prepare(`
-      INSERT INTO user_preferences (user_id, accordion_id, notation, count_in, onboarding_done, tutorial_done)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO user_preferences (user_id, accordion_id, instrument_type, piano_id, guitar_id, notation, count_in, onboarding_done, tutorial_done)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         accordion_id = excluded.accordion_id,
+        instrument_type = excluded.instrument_type,
+        piano_id = excluded.piano_id,
+        guitar_id = excluded.guitar_id,
         notation = excluded.notation,
         count_in = excluded.count_in,
         onboarding_done = MAX(user_preferences.onboarding_done, excluded.onboarding_done),
@@ -427,6 +500,9 @@ export class SouffletDatabase {
     `).run(
       userId,
       preferences.accordionId,
+      preferences.instrumentType ?? 'accordion',
+      preferences.pianoId ?? 'piano-standard-61',
+      preferences.guitarId ?? 'guitar-standard-6',
       preferences.notation,
       Number(preferences.countIn),
       Number(preferences.onboardingDone),
@@ -460,15 +536,16 @@ export class SouffletDatabase {
   savePracticeSession(userId: string, session: StoredPracticeSession) {
     this.db.prepare(`
       INSERT INTO practice_sessions (
-        id, user_id, song_id, song_title, mode, hand, started_at, ended_at, active_seconds,
+        id, user_id, song_id, song_title, mode, hand, instrument_type, started_at, ended_at, active_seconds,
         correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged,
         assessment_breakdown
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         song_id = excluded.song_id,
         song_title = excluded.song_title,
         mode = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.mode ELSE practice_sessions.mode END,
         hand = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.hand ELSE practice_sessions.hand END,
+        instrument_type = CASE WHEN excluded.ended_at >= practice_sessions.ended_at THEN excluded.instrument_type ELSE practice_sessions.instrument_type END,
         started_at = excluded.started_at,
         ended_at = MAX(practice_sessions.ended_at, excluded.ended_at),
         active_seconds = MAX(practice_sessions.active_seconds, excluded.active_seconds),
@@ -485,7 +562,7 @@ export class SouffletDatabase {
         updated_at = CURRENT_TIMESTAMP
       WHERE practice_sessions.user_id = excluded.user_id
     `).run(
-      session.id, userId, session.songId, session.songTitle, session.mode, session.hand, session.startedAt, session.endedAt,
+      session.id, userId, session.songId, session.songTitle, session.mode, session.hand, session.instrumentType ?? 'accordion', session.startedAt, session.endedAt,
       session.activeSeconds, session.correctCount, session.earlyCount, session.lateCount, session.wrongCount,
       session.completionPercent, session.tempoPercent, Number(session.flagged),
       JSON.stringify(session.assessmentBreakdown ?? {}),
@@ -495,14 +572,14 @@ export class SouffletDatabase {
 
   listPracticeSessions(userId: string): StoredPracticeSession[] {
     const rows = this.db.prepare(`
-      SELECT id, song_id, song_title, mode, hand, started_at, ended_at, active_seconds,
+      SELECT id, song_id, song_title, mode, hand, instrument_type, started_at, ended_at, active_seconds,
              correct_count, early_count, late_count, wrong_count, completion_percent, tempo_percent, flagged,
              assessment_breakdown
       FROM practice_sessions
       WHERE user_id = ? AND active_seconds > 0
       ORDER BY ended_at DESC
     `).all(userId) as Array<{
-      id: string; song_id: string; song_title: string; mode: string; hand: 'right' | 'left' | 'both'; started_at: string; ended_at: string;
+      id: string; song_id: string; song_title: string; mode: string; hand: 'right' | 'left' | 'both'; instrument_type: StoredPracticeSession['instrumentType']; started_at: string; ended_at: string;
       active_seconds: number; correct_count: number; early_count: number; late_count: number; wrong_count: number;
       completion_percent: number; tempo_percent: number; flagged: number; assessment_breakdown: string;
     }>;
@@ -512,6 +589,7 @@ export class SouffletDatabase {
       songTitle: row.song_title,
       mode: row.mode,
       hand: row.hand,
+      instrumentType: row.instrument_type,
       startedAt: row.started_at,
       endedAt: row.ended_at,
       activeSeconds: row.active_seconds,

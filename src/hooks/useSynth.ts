@@ -167,6 +167,38 @@ export function useSynth() {
     });
   }, [getContext, playFallbackMidi]);
 
+  const playPianoMidi = useCallback((midi: number, duration = .55, volume = .13) => {
+    const context = getContext();
+    const now = context.currentTime;
+    const output = context.createGain();
+    const filter = context.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(Math.min(9_000, 2_600 + midi * 55), now);
+    filter.frequency.exponentialRampToValueAtTime(1_500, now + Math.max(.35, duration));
+    output.gain.setValueAtTime(.0001, now);
+    output.gain.exponentialRampToValueAtTime(volume, now + .006);
+    output.gain.exponentialRampToValueAtTime(Math.max(.0001, volume * .18), now + Math.max(.22, duration * .72));
+    output.gain.exponentialRampToValueAtTime(.0001, now + duration + .35);
+    filter.connect(output).connect(masterBus(context));
+
+    [
+      { ratio: 1, gain: 1, type: 'triangle' as OscillatorType },
+      { ratio: 2.01, gain: .26, type: 'sine' as OscillatorType },
+      { ratio: 3.98, gain: .08, type: 'sine' as OscillatorType },
+    ].forEach((voice) => {
+      const oscillator = context.createOscillator();
+      const voiceGain = context.createGain();
+      oscillator.type = voice.type;
+      oscillator.frequency.value = 440 * 2 ** ((midi - 69) / 12) * voice.ratio;
+      voiceGain.gain.value = voice.gain;
+      oscillator.connect(voiceGain).connect(filter);
+      activeRef.current.add(oscillator);
+      oscillator.start(now);
+      oscillator.stop(now + duration + .38);
+      oscillator.onended = () => activeRef.current.delete(oscillator);
+    });
+  }, [getContext]);
+
   const click = useCallback((accent = false) => {
     const context = getContext();
     const oscillator = context.createOscillator();
@@ -198,5 +230,5 @@ export function useSynth() {
     };
   }, []);
 
-  return { playMidi, playLeftHand, click };
+  return { playMidi, playPianoMidi, playLeftHand, click };
 }

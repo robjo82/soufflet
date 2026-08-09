@@ -138,14 +138,32 @@ describe('production data migrations', () => {
   });
 
   it('seeds the shared, licensed learning library', () => {
-    const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }> }>;
+    const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }>; arrangements?: { piano?: { events: Array<{ hand: string }> } } }>;
     expect(songs.length).toBeGreaterThanOrEqual(10);
     expect(songs.find((song) => song.id === 'au-clair-de-la-lune')?.license).toBe('Domaine public');
     expect(songs.find((song) => song.id === 'vesoul-reference')?.license).toContain('protégée');
     for (const song of songs.filter((item) => item.status === 'ready')) {
       expect(song.accompaniment.length).toBeGreaterThan(0);
       expect(new Set(song.accompaniment.map((event) => event.role))).toEqual(new Set(['bass', 'chord']));
+      expect(song.arrangements?.piano?.events.some((event) => event.hand === 'right')).toBe(true);
+      expect(song.arrangements?.piano?.events.some((event) => event.hand === 'left')).toBe(true);
     }
+  });
+
+  it('stores piano equipment and the active learning instrument on the account', () => {
+    const db = makeDatabase();
+    db.createUser({ id: 'usr_piano', email: 'piano@example.fr', displayName: 'Piano', passwordHash: 'test' });
+    expect(db.listInstruments('usr_piano', 'piano')).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'piano-standard-61', keyboardSize: 61, builtIn: true }),
+    ]));
+    db.saveInstrument({ id: 'piano-home', instrumentType: 'piano', name: 'Mon clavier', keyboardSize: 49, input: 'midi', notation: 'french', builtIn: false }, 'usr_piano');
+    expect(db.listInstruments('usr_piano', 'piano')).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'piano-home', name: 'Mon clavier', builtIn: false }),
+    ]));
+    expect(db.saveUserPreferences('usr_piano', {
+      accordionId: 'standard-gc-21-8', instrumentType: 'piano', pianoId: 'piano-home', guitarId: 'guitar-standard-6',
+      notation: 'french', countIn: true, onboardingDone: true, tutorialDone: true,
+    })).toMatchObject({ instrumentType: 'piano', pianoId: 'piano-home' });
   });
 
   it('ships a complete and sourced 6/8 learning edition of Le 31 du mois d’août', () => {

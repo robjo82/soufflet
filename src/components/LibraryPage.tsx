@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Check, Clock3, FileMusic, Filter, Import, LayoutGrid, List, LoaderCircle, Music2, Pencil, Play, RefreshCw, Save, Search, Sparkles, Trash2, X, Youtube } from 'lucide-react';
-import type { Song } from '../types';
+import type { InstrumentType, Song } from '../types';
 
 interface LibraryPageProps {
   songs: Song[];
   userId: string;
+  instrumentType: InstrumentType;
   onImport: () => void;
   onRefresh: () => Promise<void>;
   onPractice: (song: Song) => void;
@@ -28,7 +29,7 @@ function statusLabel(song: Song) {
   return song.status === 'ready' ? 'Prêt à jouer' : song.status === 'needs-review' ? 'À vérifier' : song.status === 'reference-only' ? 'Lien externe' : 'Analyse…';
 }
 
-export function LibraryPage({ songs, userId, onImport, onRefresh, onPractice, onEdit, onRename, onDelete }: LibraryPageProps) {
+export function LibraryPage({ songs, userId, instrumentType, onImport, onRefresh, onPractice, onEdit, onRename, onDelete }: LibraryPageProps) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'ready' | 'review'>('all');
   const [view, setView] = useState<LibraryView>(() => storedLibraryView(userId));
@@ -46,6 +47,7 @@ export function LibraryPage({ songs, userId, onImport, onRefresh, onPractice, on
     return matchesQuery && matchesFilter;
   }), [filter, query, songs]);
   const iconFor = (song: Song) => song.sourceType === 'youtube' ? <Youtube /> : song.sourceType === 'spotify' ? <Music2 /> : <FileMusic />;
+  const isPlayable = (song: Song) => instrumentType === 'accordion' ? song.events.length > 0 : Boolean(song.arrangements?.[instrumentType]?.events.length);
   const changeView = (next: LibraryView) => {
     setView(next);
     try { localStorage.setItem(`soufflet.libraryView.${userId}`, next); } catch { /* local preferences are optional */ }
@@ -124,7 +126,7 @@ export function LibraryPage({ songs, userId, onImport, onRefresh, onPractice, on
         <button type="button" className="add-song-card" onClick={onImport}><span><Sparkles /></span><strong>Transformer un nouveau morceau</strong><p>Audio, vidéo, partition, tablature ou lien</p><em>Importer <Import /></em></button>
         {filteredSongs.map((song, index) => (
           <article className="song-card" key={song.id} title={song.provenance}>
-            <div className={`song-cover cover-${index % 4}`}><span>{iconFor(song)}</span><button type="button" aria-label={song.events.length ? `Jouer ${song.title}` : `Ouvrir ${song.title}`} onClick={() => song.events.length ? onPractice(song) : onEdit(song)}><Play fill="currentColor" /></button><small>{song.duration ? `${Math.floor(song.duration / 60)}:${String(song.duration % 60).padStart(2, '0')}` : 'Référence'}</small></div>
+            <div className={`song-cover cover-${index % 4}`}><span>{iconFor(song)}</span><button type="button" aria-label={isPlayable(song) ? `Jouer ${song.title}` : `Ouvrir ${song.title}`} onClick={() => isPlayable(song) ? onPractice(song) : onEdit(song)}><Play fill="currentColor" /></button><small>{song.duration ? `${Math.floor(song.duration / 60)}:${String(song.duration % 60).padStart(2, '0')}` : 'Référence'}</small></div>
             <div className="song-card-body"><div><span className={`status-pill status-${song.status}`}>{statusLabel(song)}</span></div><h3>{song.title}</h3><p>{song.artist}</p><div className="song-facts"><span>{song.bpm} BPM</span><span>{song.key}</span><span>Niveau {Math.max(1, song.difficulty)}</span></div>{song.status === 'needs-review' && <button type="button" className="review-link" onClick={() => onEdit(song)}><AlertTriangle /> Vérifier {song.uncertainBeats?.length ?? 0} passage(s)</button>}{song.status === 'reference-only' && <a href={song.sourceUrl} target="_blank" rel="noreferrer" className="review-link"><Music2 /> Ouvrir la source</a>}</div>
           </article>
         ))}
@@ -142,7 +144,7 @@ export function LibraryPage({ songs, userId, onImport, onRefresh, onPractice, on
             <span className={`status-pill status-${song.status}`}>{statusLabel(song)}</span>
             <div className="song-list-facts"><span>{song.bpm ? `${song.bpm} BPM` : 'Tempo à définir'}</span><span>{song.key}</span><span>Niveau {Math.max(1, song.difficulty)}</span></div>
             <div className="song-list-actions">
-              {confirmingDelete ? <div className="song-delete-confirm"><span>Supprimer ?</span><button type="button" disabled={working} onClick={() => setConfirmDeleteId(null)}>Annuler</button><button type="button" className="is-danger" disabled={working} onClick={() => void deleteSong(song)}>{working ? <LoaderCircle /> : <Trash2 />} Confirmer</button></div> : <><button type="button" className="song-list-play" onClick={() => song.events.length ? onPractice(song) : onEdit(song)}><Play fill="currentColor" /> {song.events.length ? 'Jouer' : 'Ouvrir'}</button>{!song.builtIn && <><button type="button" className="icon-button" aria-label={`Renommer ${song.title}`} title="Renommer" onClick={() => beginRename(song)}><Pencil /></button><button type="button" className="icon-button is-danger" aria-label={`Supprimer ${song.title}`} title="Supprimer" onClick={() => { setConfirmDeleteId(song.id); setEditingId(null); setActionError(''); }}><Trash2 /></button></>}</>}
+              {confirmingDelete ? <div className="song-delete-confirm"><span>Supprimer ?</span><button type="button" disabled={working} onClick={() => setConfirmDeleteId(null)}>Annuler</button><button type="button" className="is-danger" disabled={working} onClick={() => void deleteSong(song)}>{working ? <LoaderCircle /> : <Trash2 />} Confirmer</button></div> : <><button type="button" className="song-list-play" onClick={() => isPlayable(song) ? onPractice(song) : onEdit(song)}><Play fill="currentColor" /> {isPlayable(song) ? 'Jouer' : 'Ouvrir'}</button>{!song.builtIn && <><button type="button" className="icon-button" aria-label={`Renommer ${song.title}`} title="Renommer" onClick={() => beginRename(song)}><Pencil /></button><button type="button" className="icon-button is-danger" aria-label={`Supprimer ${song.title}`} title="Supprimer" onClick={() => { setConfirmDeleteId(song.id); setEditingId(null); setActionError(''); }}><Trash2 /></button></>}</>}
             </div>
           </article>;
         })}
