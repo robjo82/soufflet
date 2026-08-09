@@ -9,7 +9,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { SouffletDatabase } from './database.js';
-import { createTranscriber } from './transcription.js';
+import { createTranscriber, DEFAULT_GEMINI_MODEL } from './transcription.js';
 import { clearSession, createUserId, hashPassword, readSessionToken, sessionHash, setSession, verifyPassword } from './auth.js';
 import { inferSessionHand } from './progress.js';
 import { staticAssetCacheControl } from './staticAssets.js';
@@ -52,7 +52,12 @@ function requireUser(request: express.Request, response: express.Response, next:
   next();
 }
 
-app.get('/api/health', (_request, response) => response.json({ status: 'ok', version: process.env.APP_VERSION ?? 'development', aiConfigured: Boolean(process.env.GEMINI_API_KEY) }));
+app.get('/api/health', (_request, response) => response.json({
+  status: 'ok',
+  version: process.env.APP_VERSION ?? 'development',
+  aiConfigured: Boolean(process.env.GEMINI_API_KEY),
+  aiModel: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+}));
 app.get('/api/accordions', (request, response) => response.json({ accordions: db.listAccordions(currentUser(request)?.id) }));
 
 const credentialsSchema = z.object({

@@ -106,7 +106,7 @@ export interface AccompanimentEvent {
 export interface TranscriptionSource {
   title: string;
   url: string;
-  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'chords' | 'metadata' | 'other';
+  kind: 'abc' | 'midi' | 'musicxml' | 'tablature' | 'score' | 'pdf' | 'chords' | 'metadata' | 'other';
   usedFor: string;
   reliability: number;
 }

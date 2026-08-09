@@ -1083,12 +1083,21 @@ kbd { border: 0; color: #9c978f; background: none; font: 8px 'DM Sans'; }
 .coming-roadmap small { color: var(--muted); font-size: 9px; }
 
 /* Library and import */
+.library-pull-indicator { height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--green); font-size: 10px; font-weight: 800; transition: height .18s ease; }
+.library-pull-indicator svg { width: 18px; transition: transform .18s ease; }
+.library-pull-indicator svg.is-ready { transform: rotate(180deg); }
+.library-pull-indicator.is-refreshing svg, .library-refresh-button.is-refreshing svg { animation: library-refresh-spin .8s linear infinite; }
+@keyframes library-refresh-spin { to { transform: rotate(360deg); } }
 .library-tools { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
 .search-box { width: 390px; height: 44px; padding: 0 13px; border: 1px solid var(--line); border-radius: 11px; background: white; display: flex; align-items: center; gap: 9px; }
 .search-box svg { width: 17px; color: var(--muted); }
 .search-box input { border: 0; outline: 0; flex: 1; background: none; font-size: 12px; }
 .filter-button { height: 44px; padding: 0 13px; border: 1px solid var(--line); border-radius: 11px; background: white; display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 11px; font-weight: 700; }
 .filter-button svg { width: 16px; }
+.filter-button:disabled { cursor: wait; opacity: .7; }
+.library-refresh-status { min-height: 0; margin: -15px 0 14px; color: var(--muted); font-size: 10px; transition: min-height .2s; }
+.library-refresh-status.is-success, .library-refresh-status.is-error { min-height: 15px; }
+.library-refresh-status.is-error { color: #a76426; }
 .library-count { margin-left: auto; color: var(--muted); font-size: 11px; }
 .song-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px; }
 .add-song-card { min-height: 352px; padding: 30px; border: 2px dashed #bfb8ac; border-radius: 20px; background: rgba(255,255,255,.25); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-align: center; transition: background .2s, border-color .2s; }

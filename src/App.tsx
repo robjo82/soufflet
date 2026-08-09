@@ -15,6 +15,7 @@ import { AccountPage } from './components/AccountPage';
 import { ButtonMemoryGame } from './components/ButtonMemoryGame';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
 import { isAndroidOnboardingPreview, isAndroidPreview, setNativePracticeMode } from './nativeApp';
+import { reconcileLibrarySongs } from './librarySync';
 import type { AccordionConfig, Notation, Page, PracticeSessionInput, PracticeStats, Song, UserAccount } from './types';
 
 interface UserPreferences {
@@ -199,6 +200,14 @@ export function App() {
     setSongs((items) => items.map((item) => item.id === payload.song!.id ? payload.song! : item));
   }, [user]);
 
+  const refreshLibrary = useCallback(async () => {
+    if (!user) throw new Error('Connecte-toi pour actualiser ta bibliothèque.');
+    const response = await fetch('/api/library', { cache: 'no-store' });
+    if (!response.ok) throw new Error('La bibliothèque ne peut pas être actualisée pour le moment.');
+    const payload = await response.json() as { songs: Song[] };
+    setSongs((current) => reconcileLibrarySongs(payload.songs, current));
+  }, [user]);
+
   const startPractice = useCallback((song: Song) => {
     if (selectedAccordion) {
       window.scrollTo({ top: 0 });
@@ -284,7 +293,7 @@ export function App() {
     <AppShell page={page} onNavigate={navigate} user={user} practiceStats={practiceStats} onLogout={logout}>
       {page === 'home' && <HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} stats={practiceStats} onPractice={startPractice} onNavigateLearn={() => navigate('learn')} displayName={user.displayName} />}
       {page === 'learn' && <LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} onStartButtonGame={() => navigate('game')} />}
-      {page === 'library' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
+      {page === 'library' && <LibraryPage songs={songs} onImport={() => setShowImport(true)} onRefresh={refreshLibrary} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} />}
       {page === 'studio' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} onSave={saveSong} onPractice={startPractice} />}
       {page === 'tuner' && <TunerPage accordion={selectedAccordion} notation={preferences.notation} onBack={() => navigate('home')} onAccordionChange={(updated) => { setAccordions((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); savePreferences({ ...preferences, accordionId: updated.id }); }} />}
       {page === 'settings' && <SettingsPage accordions={accordions} selectedId={preferences.accordionId} notation={preferences.notation} countIn={preferences.countIn} apiKey={apiKey} onSave={(accordionId, notation, countIn, nextKey) => {
