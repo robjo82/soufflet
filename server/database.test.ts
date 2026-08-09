@@ -138,7 +138,7 @@ describe('production data migrations', () => {
   });
 
   it('seeds the shared, licensed learning library', () => {
-    const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }>; arrangements?: { piano?: { events: Array<{ hand: string }> } } }>;
+    const songs = makeDatabase().listCommonSongs() as Array<{ id: string; license: string; status: string; accompaniment: Array<{ role: string }>; arrangements?: { piano?: { events: Array<{ hand: string }> }; guitar?: { events: Array<{ part: string }> } } }>;
     expect(songs.length).toBeGreaterThanOrEqual(10);
     expect(songs.find((song) => song.id === 'au-clair-de-la-lune')?.license).toBe('Domaine public');
     expect(songs.find((song) => song.id === 'vesoul-reference')?.license).toContain('protégée');
@@ -147,6 +147,8 @@ describe('production data migrations', () => {
       expect(new Set(song.accompaniment.map((event) => event.role))).toEqual(new Set(['bass', 'chord']));
       expect(song.arrangements?.piano?.events.some((event) => event.hand === 'right')).toBe(true);
       expect(song.arrangements?.piano?.events.some((event) => event.hand === 'left')).toBe(true);
+      expect(song.arrangements?.guitar?.events.some((event) => event.part === 'melody')).toBe(true);
+      expect(song.arrangements?.guitar?.events.some((event) => event.part === 'accompaniment')).toBe(true);
     }
   });
 
@@ -164,6 +166,14 @@ describe('production data migrations', () => {
       accordionId: 'standard-gc-21-8', instrumentType: 'piano', pianoId: 'piano-home', guitarId: 'guitar-standard-6',
       notation: 'french', countIn: true, onboardingDone: true, tutorialDone: true,
     })).toMatchObject({ instrumentType: 'piano', pianoId: 'piano-home' });
+  });
+
+  it('ships standard and DADGAD guitar configurations', () => {
+    const guitars = makeDatabase().listInstruments(undefined, 'guitar');
+    expect(guitars).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'guitar-standard-6', fretCount: 20 }),
+      expect.objectContaining({ id: 'guitar-dadgad-6', strings: expect.arrayContaining([expect.objectContaining({ note: 'D2', midi: 38 })]) }),
+    ]));
   });
 
   it('ships a complete and sourced 6/8 learning edition of Le 31 du mois d’août', () => {
@@ -192,12 +202,13 @@ describe('production data migrations', () => {
     const song = {
       id: 'song-personal', title: 'Mon relevé', artist: 'Import personnel', builtIn: false,
       sourceType: 'audio', bpm: 96, timeSignature: [4, 4], key: 'Do majeur', duration: 1,
-      difficulty: 1, status: 'needs-review', events: [],
+      difficulty: 1, status: 'needs-review', events: [{ id: 'n1', beat: 0, duration: 1, midi: 60 }],
     };
 
     db.saveUserSong('usr_library_a', song);
 
     expect(db.listLibrarySongs('usr_library_a')).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal', builtIn: false })]));
+    expect(db.listLibrarySongs('usr_library_a')).toEqual(expect.arrayContaining([expect.objectContaining({ arrangements: expect.objectContaining({ piano: expect.any(Object), guitar: expect.any(Object) }) })]));
     expect(db.listLibrarySongs('usr_library_b')).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal' })]));
     db.saveUserSong('usr_library_a', { ...song, title: 'Mon relevé renommé' });
     expect(db.listLibrarySongs('usr_library_a')).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal', title: 'Mon relevé renommé' })]));

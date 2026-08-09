@@ -2,6 +2,7 @@ export type Direction = 'push' | 'pull';
 export type InstrumentType = 'accordion' | 'piano' | 'guitar';
 export type PianoInput = 'midi' | 'microphone' | 'computer-keyboard';
 export type PianoKeyboardSize = 25 | 32 | 49 | 61 | 76 | 88;
+export type GuitarInput = 'microphone' | 'midi' | 'touch';
 export type BellowsStyle = 'balanced' | 'push-pull' | 'cross-row';
 export type Hand = 'right' | 'left' | 'both';
 export type Notation = 'french' | 'english' | 'button' | 'tablature';
@@ -57,6 +58,30 @@ export interface PianoConfig {
   builtIn?: boolean;
 }
 
+export interface GuitarStringConfig {
+  number: number;
+  note: string;
+  midi: number;
+}
+
+export interface GuitarConfig {
+  id: string;
+  instrumentType: 'guitar';
+  name: string;
+  strings: GuitarStringConfig[];
+  fretCount: number;
+  capo: number;
+  handedness: 'right' | 'left';
+  input: GuitarInput;
+  builtIn?: boolean;
+}
+
+export interface InstrumentPosition {
+  string: number;
+  fret: number;
+  finger?: number;
+}
+
 export interface InstrumentArrangementEvent {
   id: string;
   beat: number;
@@ -66,6 +91,8 @@ export interface InstrumentArrangementEvent {
   fingers?: number[];
   label?: string;
   sourceEventId?: string;
+  part?: 'melody' | 'accompaniment';
+  positions?: InstrumentPosition[];
 }
 
 export interface InstrumentArrangement {

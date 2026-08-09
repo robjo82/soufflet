@@ -158,11 +158,32 @@ const pianoConfigSchema = z.object({
   input: z.enum(['midi', 'microphone', 'computer-keyboard']),
   notation: z.enum(['french', 'english']),
   builtIn: z.boolean().optional(),
-}).transform((config) => ({ ...config, builtIn: false }));
+});
+
+const guitarConfigSchema = z.object({
+  id: z.string().min(1).max(120),
+  instrumentType: z.literal('guitar'),
+  name: z.string().trim().min(2).max(120),
+  strings: z.array(z.object({
+    number: z.number().int().min(1).max(12),
+    note: z.string().min(1).max(8),
+    midi: z.number().int().min(20).max(100),
+  })).min(4).max(12),
+  fretCount: z.number().int().min(12).max(36),
+  capo: z.number().int().min(0).max(12),
+  handedness: z.enum(['right', 'left']),
+  input: z.enum(['microphone', 'midi', 'touch']),
+  builtIn: z.boolean().optional(),
+});
+
+const instrumentConfigSchema = z.discriminatedUnion('instrumentType', [
+  pianoConfigSchema,
+  guitarConfigSchema,
+]).transform((config) => ({ ...config, builtIn: false }));
 
 app.post('/api/instruments', requireUser, (request, response) => {
   try {
-    const config = pianoConfigSchema.parse(request.body);
+    const config = instrumentConfigSchema.parse(request.body);
     response.status(201).json({ instrument: db.saveInstrument(config, response.locals.user.id as string) });
   } catch (error) {
     response.status(422).json({ error: error instanceof z.ZodError ? error.issues[0]?.message : 'Configuration invalide.' });

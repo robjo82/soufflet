@@ -25,6 +25,7 @@ Soufflet est une web-app d’apprentissage de l’accordéon diatonique pensée 
 - bibliothèque commune de 12 airs du domaine public ou traditionnels, dont le Brise-pieds en 12 mesures, plus une référence protégée sans transcription ;
 - bibliothèque, import audio/vidéo/PDF/image/tablature, liens YouTube et références Spotify ;
 - socle multi-instruments : bibliothèque unique, parcours piano avec pistes droite/gauche, MIDI, microphone et clavier tactile ;
+- parcours guitare : tablature corde/case, mélodie et accords séparés, microphone, manche interactif et accordeur chromatique EADGBE/DADGAD ;
 - transcription YouTube Gemini 3.5 Flash en deux passes : recherche web et sources musicales, puis analyse audiovisuelle complète avec mélodie, main gauche, contrôle de couverture et scores de confiance ;
 - parseur déterministe des tablatures simples et structurées (`4P`, `4′T`, ornements, subdivisions, mesures et notes tenues) sans IA ;
 - studio de correction des notes, boutons, directions, doigtés et durées avec annulation, autosauvegarde locale, rapport de couverture, provenance consultable et pistes séparées main droite/main gauche ;
