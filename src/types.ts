@@ -1,4 +1,7 @@
 export type Direction = 'push' | 'pull';
+export type InstrumentType = 'accordion' | 'piano' | 'guitar';
+export type PianoInput = 'midi' | 'microphone' | 'computer-keyboard';
+export type PianoKeyboardSize = 25 | 32 | 49 | 61 | 76 | 88;
 export type BellowsStyle = 'balanced' | 'push-pull' | 'cross-row';
 export type Hand = 'right' | 'left' | 'both';
 export type Notation = 'french' | 'english' | 'button' | 'tablature';
@@ -42,6 +45,34 @@ export interface AccordionConfig {
   sourceNote?: string;
   /** Native diapason of the instrument. Vintage Club models are commonly below A4=440 Hz. */
   referencePitchHz?: number;
+}
+
+export interface PianoConfig {
+  id: string;
+  instrumentType: 'piano';
+  name: string;
+  keyboardSize: PianoKeyboardSize;
+  input: PianoInput;
+  notation: 'french' | 'english';
+  builtIn?: boolean;
+}
+
+export interface InstrumentArrangementEvent {
+  id: string;
+  beat: number;
+  duration: number;
+  midis: number[];
+  hand: 'right' | 'left' | 'both';
+  fingers?: number[];
+  label?: string;
+  sourceEventId?: string;
+}
+
+export interface InstrumentArrangement {
+  instrumentType: InstrumentType;
+  difficulty: number;
+  events: InstrumentArrangementEvent[];
+  provenance: string;
 }
 
 export interface SongEvent {
@@ -148,6 +179,7 @@ export interface Song {
   lyrics?: LyricLine[];
   rightsStatus?: 'public-domain' | 'traditional' | 'protected' | 'unknown';
   rightsNote?: string;
+  arrangements?: Partial<Record<InstrumentType, InstrumentArrangement>>;
   builtIn?: boolean;
   license?: string;
   provenance?: string;
@@ -201,6 +233,7 @@ export interface PracticeSessionInput {
   completionPercent: number;
   tempoPercent: number;
   flagged: boolean;
+  instrumentType?: InstrumentType;
   assessmentBreakdown?: PracticeAssessmentBreakdown;
 }
 

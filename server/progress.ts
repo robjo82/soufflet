@@ -4,6 +4,7 @@ export interface StoredPracticeSession {
   songTitle: string;
   mode: string;
   hand: 'right' | 'left' | 'both';
+  instrumentType?: 'accordion' | 'piano' | 'guitar';
   startedAt: string;
   endedAt: string;
   activeSeconds: number;

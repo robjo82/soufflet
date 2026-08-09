@@ -59,6 +59,10 @@ app.get('/api/health', (_request, response) => response.json({
   aiModel: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
 }));
 app.get('/api/accordions', (request, response) => response.json({ accordions: db.listAccordions(currentUser(request)?.id) }));
+app.get('/api/instruments', (request, response) => {
+  const instrumentType = z.enum(['piano', 'guitar']).optional().catch(undefined).parse(request.query.type);
+  response.json({ instruments: db.listInstruments(currentUser(request)?.id, instrumentType) });
+});
 
 const credentialsSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -108,6 +112,9 @@ app.post('/api/auth/logout', (request, response) => {
 
 const preferencesSchema = z.object({
   accordionId: z.string().min(1).max(120),
+  instrumentType: z.enum(['accordion', 'piano', 'guitar']).default('accordion'),
+  pianoId: z.string().min(1).max(120).default('piano-standard-61'),
+  guitarId: z.string().min(1).max(120).default('guitar-standard-6'),
   notation: z.enum(['french', 'english', 'tablature', 'button']),
   countIn: z.boolean(),
   onboardingDone: z.boolean(),
@@ -129,9 +136,36 @@ app.put('/api/preferences', requireUser, (request, response) => {
       response.status(422).json({ error: 'Cet accordéon n’est pas disponible sur ton compte.' });
       return;
     }
+    if (preferences.instrumentType !== 'accordion') {
+      const instruments = db.listInstruments(userId, preferences.instrumentType);
+      const selectedId = preferences.instrumentType === 'piano' ? preferences.pianoId : preferences.guitarId;
+      if (!instruments.some((instrument) => instrument.id === selectedId)) {
+        response.status(422).json({ error: 'Cet instrument n’est pas disponible sur ton compte.' });
+        return;
+      }
+    }
     response.json({ preferences: db.saveUserPreferences(userId, preferences) });
   } catch (error) {
     response.status(422).json({ error: error instanceof z.ZodError ? error.issues[0]?.message : 'Préférences invalides.' });
+  }
+});
+
+const pianoConfigSchema = z.object({
+  id: z.string().min(1).max(120),
+  instrumentType: z.literal('piano'),
+  name: z.string().trim().min(2).max(120),
+  keyboardSize: z.union([z.literal(25), z.literal(32), z.literal(49), z.literal(61), z.literal(76), z.literal(88)]),
+  input: z.enum(['midi', 'microphone', 'computer-keyboard']),
+  notation: z.enum(['french', 'english']),
+  builtIn: z.boolean().optional(),
+}).transform((config) => ({ ...config, builtIn: false }));
+
+app.post('/api/instruments', requireUser, (request, response) => {
+  try {
+    const config = pianoConfigSchema.parse(request.body);
+    response.status(201).json({ instrument: db.saveInstrument(config, response.locals.user.id as string) });
+  } catch (error) {
+    response.status(422).json({ error: error instanceof z.ZodError ? error.issues[0]?.message : 'Configuration invalide.' });
   }
 });
 
@@ -273,6 +307,7 @@ const practiceSessionSchema = z.object({
   songTitle: z.string().trim().min(1).max(160),
   mode: z.enum(['demo', 'guided', 'wait', 'notes', 'rhythm', 'bellows', 'right', 'left', 'combined', 'game', 'performance']),
   hand: z.enum(['right', 'left', 'both']).optional(),
+  instrumentType: z.enum(['accordion', 'piano', 'guitar']).default('accordion'),
   startedAt: z.string().datetime(),
   endedAt: z.string().datetime(),
   activeSeconds: z.number().int().min(0).max(43_200),
