@@ -199,6 +199,31 @@ export function useSynth() {
     });
   }, [getContext]);
 
+  const playGuitarMidi = useCallback((midi: number, duration = .65, volume = .12) => {
+    const context = getContext();
+    const now = context.currentTime;
+    const frequency = 440 * 2 ** ((midi - 69) / 12);
+    const output = context.createGain();
+    const body = context.createBiquadFilter();
+    body.type = 'bandpass'; body.frequency.value = Math.min(2_600, frequency * 3.2); body.Q.value = .75;
+    output.gain.setValueAtTime(.0001, now);
+    output.gain.exponentialRampToValueAtTime(volume, now + .004);
+    output.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    body.connect(output).connect(masterBus(context));
+    const real = new Float32Array([0, 1, .44, .27, .16, .1, .06]);
+    const wave = context.createPeriodicWave(real, new Float32Array(real.length));
+    const oscillator = context.createOscillator();
+    oscillator.setPeriodicWave(wave); oscillator.frequency.value = frequency;
+    oscillator.detune.setValueAtTime(-3, now); oscillator.detune.linearRampToValueAtTime(0, now + .04);
+    oscillator.connect(body); activeRef.current.add(oscillator); oscillator.start(now); oscillator.stop(now + duration + .02);
+    oscillator.onended = () => activeRef.current.delete(oscillator);
+    const noiseBuffer = context.createBuffer(1, Math.ceil(context.sampleRate * .018), context.sampleRate);
+    const noise = noiseBuffer.getChannelData(0);
+    for (let index = 0; index < noise.length; index += 1) noise[index] = (Math.random() * 2 - 1) * (1 - index / noise.length);
+    const pick = context.createBufferSource(); const pickGain = context.createGain();
+    pick.buffer = noiseBuffer; pickGain.gain.value = volume * .32; pick.connect(pickGain).connect(body); pick.start(now);
+  }, [getContext]);
+
   const click = useCallback((accent = false) => {
     const context = getContext();
     const oscillator = context.createOscillator();
@@ -230,5 +255,5 @@ export function useSynth() {
     };
   }, []);
 
-  return { playMidi, playPianoMidi, playLeftHand, click };
+  return { playMidi, playPianoMidi, playGuitarMidi, playLeftHand, click };
 }

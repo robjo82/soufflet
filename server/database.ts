@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ACCORDION_SEEDS } from './seed.js';
 import { SONG_SEEDS } from './songSeed.js';
-import { withBuiltInArrangements } from './arrangements.js';
+import { withGeneratedArrangements } from './arrangements.js';
 import { BUILT_IN_INSTRUMENTS, type StoredInstrumentConfig } from './instruments.js';
 import { summarizePractice, type StoredPracticeSession } from './progress.js';
 
@@ -315,7 +315,7 @@ export class SouffletDatabase {
       for (const config of ACCORDION_SEEDS) insertAccordion.run(config.id, config.maker, config.model, config.tuning, JSON.stringify(config));
       for (const config of BUILT_IN_INSTRUMENTS) insertInstrument.run(config.id, config.instrumentType, config.name, JSON.stringify(config));
       for (const rawSong of SONG_SEEDS) {
-        const song = withBuiltInArrangements(rawSong);
+        const song = withGeneratedArrangements(rawSong);
         insertSong.run(song.id, song.title, song.artist, JSON.stringify(song));
       }
       this.db.exec('COMMIT');
@@ -398,8 +398,8 @@ export class SouffletDatabase {
     return [...common, ...personal.map((row) => JSON.parse(row.payload) as unknown)];
   }
 
-  saveUserSong(ownerUserId: string, song: { id: string; title: string; artist: string }) {
-    const stored = { ...song, builtIn: false };
+  saveUserSong(ownerUserId: string, song: { id: string; title: string; artist: string; status: string; difficulty: number; events: Array<{ id: string; beat: number; duration: number; midi: number }>; accompaniment?: Array<{ id: string; beat: number; duration: number; rootMidi: number; chord: string; role: 'bass' | 'chord' }>; [key: string]: unknown }) {
+    const stored = { ...withGeneratedArrangements(song), builtIn: false };
     this.db.prepare(`
       INSERT INTO user_songs (user_id, id, title, artist, payload)
       VALUES (?, ?, ?, ?, ?)
