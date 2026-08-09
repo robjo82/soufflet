@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateTimelineCoverage, DEFAULT_GEMINI_MODEL, midiFromNote, researchPrompt, sanitizeResearch, sanitizeTranscription, youtubeResultNeedsRepair } from './transcription.js';
+import { calculateTimelineCoverage, DEFAULT_GEMINI_MODEL, discoveryAdjustmentNeedsResearch, discoveryResearchPrompt, discoveryRevisionPrompt, midiFromNote, researchPrompt, sanitizeResearch, sanitizeTranscription, youtubeResultNeedsRepair } from './transcription.js';
 
 describe('multimodal transcription safeguards', () => {
   it('pins the current stable Gemini model', () => {
@@ -62,6 +62,34 @@ describe('multimodal transcription safeguards', () => {
     expect(prompt).toContain('filetype:pdf');
     expect(prompt).toContain('au moins deux éditions indépendantes');
     expect(prompt).toContain('lis réellement la portée');
+  });
+
+  it('grounds natural-language discovery in readable musical sources', () => {
+    const prompt = discoveryResearchPrompt('Trouve-moi la Valse à Ollu, version pour débutant');
+
+    expect(prompt).toContain('filetype:pdf');
+    expect(prompt).toContain('Compare au moins deux éditions indépendantes');
+    expect(prompt).toContain('le serveur refusera alors de fabriquer une tablature');
+  });
+
+  it('asks revisions to preserve supported parts and answer conversationally', () => {
+    const prompt = discoveryRevisionPrompt('Complète la main gauche', [], {
+      title: 'Valse test', artist: 'Test', composer: '', bpm: 90, key: 'G', timeSignature: [3, 4], durationSeconds: 0,
+      confidence: .8, sections: [], sources: [], chordProgression: [], referenceEvents: [], referenceAccompaniment: [], referenceNotation: 'GAB', warnings: [],
+    }, 'Accordéon Sol/Do');
+
+    expect(prompt).toContain('Applique exactement la demande actuelle');
+    expect(prompt).toContain('assistantMessage répond en français');
+    expect(prompt).toContain('N’invente aucune phrase');
+  });
+
+  it('reuses the current draft for cheap transformations and researches musical changes', () => {
+    expect(discoveryAdjustmentNeedsResearch('Ralentis à 80 BPM', true)).toBe(false);
+    expect(discoveryAdjustmentNeedsResearch('Transpose en Do majeur', true)).toBe(false);
+    expect(discoveryAdjustmentNeedsResearch('Simplifie pour débutant', true)).toBe(false);
+    expect(discoveryAdjustmentNeedsResearch('Complète la main gauche', true)).toBe(true);
+    expect(discoveryAdjustmentNeedsResearch('Prends une autre version', true)).toBe(true);
+    expect(discoveryAdjustmentNeedsResearch('Au clair de la lune', false)).toBe(true);
   });
 
   it('requests a repair when coverage or the left hand is incomplete', () => {

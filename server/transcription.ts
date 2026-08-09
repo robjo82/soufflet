@@ -80,6 +80,16 @@ interface YoutubeMetadata {
   authorName: string;
 }
 
+interface DiscoveryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface DiscoveryGeneration {
+  assistantMessage: string;
+  result: unknown;
+}
+
 const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 export const DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash';
 const noteFromMidi = (midi: number) => `${noteNames[midi % 12]}${Math.floor(midi / 12) - 1}`;
@@ -307,6 +317,15 @@ const transcriptionSchema = {
   required: ['title', 'artist', 'bpm', 'key', 'timeSignature', 'confidence', 'warnings', 'events', 'accompaniment', 'sources', 'coverage'],
 };
 
+const discoverySchema = {
+  type: 'object',
+  properties: {
+    assistantMessage: { type: 'string' },
+    result: transcriptionSchema,
+  },
+  required: ['assistantMessage', 'result'],
+};
+
 interface StructuredOptions {
   schema: Record<string, unknown>;
   thinkingLevel: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -461,6 +480,60 @@ Une source trouvée n’est qu’une hypothèse : distingue le compositeur de l�
 Décris les avertissements en français et ne fournis pas ton raisonnement interne.
 Métadonnées YouTube faisant autorité pour l’identité de la vidéo : ${metadata ? `« ${metadata.title} », chaîne « ${metadata.authorName} »` : 'indisponibles'}.`;
 
+export const discoveryResearchPrompt = (request: string, history: DiscoveryMessage[] = []) => `Tu constitues un dossier documentaire musical pour un élève d’accordéon diatonique à partir de sa demande en langage naturel.
+
+DEMANDE ACTUELLE : ${request}
+CONVERSATION UTILE : ${JSON.stringify(history.slice(-10))}
+
+Identifie précisément le morceau, son compositeur ou sa tradition et la version demandée. Utilise Google Search avec le titre exact et ses variantes. Cherche notamment « titre partition accordéon diatonique filetype:pdf », « titre tablature filetype:pdf », puis ABC, MusicXML, MIDI, tablature CADB et édition de l’auteur, de l’éditeur, d’une association musicale ou d’une archive reconnue.
+Ouvre réellement les meilleures pages et les PDF directs avec URL context. Retourne uniquement les URL canoniques effectivement consultées et publiquement accessibles. Ignore les contenus derrière une connexion, un paiement ou manifestement diffusés sans autorisation.
+Compare au moins deux éditions indépendantes quand elles existent. Distingue la composition de l’arrangement et ne mélange jamais deux versions incompatibles. Si la demande reste ambiguë, choisis l’hypothèse la mieux étayée, baisse fortement la confiance et explique précisément l’ambiguïté dans warnings.
+Convertis toute notation réellement lisible en referenceEvents et referenceAccompaniment. Résume dans referenceNotation les informations nécessaires à la reconstruction, sans recopier inutilement une édition complète. Pour la main gauche, distingue basses et accords. Ne déduis pas une mélodie à partir d’une simple grille d’accords.
+Si aucune mélodie fiable n’est accessible, laisse referenceEvents et referenceNotation vides : le serveur refusera alors de fabriquer une tablature.
+Retourne uniquement le JSON demandé, sans raisonnement interne.`;
+
+export const discoveryRevisionPrompt = (request: string, history: DiscoveryMessage[], research: ResearchBrief, instrumentContext: string, previous?: RawTranscription) => `Tu es le copiste et assistant pédagogique d’un élève d’accordéon diatonique. Construis ou révise une transcription à partir du dossier documentaire vérifié ci-dessous.
+
+DEMANDE ACTUELLE : ${request}
+CONVERSATION : ${JSON.stringify(history.slice(-10))}
+INSTRUMENT CIBLE : ${instrumentContext}
+DOSSIER DOCUMENTAIRE : ${JSON.stringify(research)}
+${previous ? `BROUILLON PRÉCÉDENT À MODIFIER SANS DÉGRADER LES PARTIES NON CONCERNÉES : ${JSON.stringify(previous)}` : 'AUCUN BROUILLON PRÉCÉDENT.'}
+
+Règles obligatoires :
+- Le dossier documentaire est la seule autorité pour la mélodie. N’invente aucune phrase absente des sources consultées.
+- Applique exactement la demande actuelle : version, tonalité, tempo pédagogique, forme, niveau de simplification ou accompagnement. Une transposition doit conserver les intervalles et le rythme.
+- Produis une chronologie complète et linéaire, reprises dépliées. events contient la mélodie monophonique ; accompaniment contient des basses et accords séparés et alignés.
+- Les notes utilisent la notation scientifique (C4, F#5, Bb3). La couche suivante choisira les boutons et le soufflet.
+- Conserve une confiance basse pour tout passage incertain et explique les limites dans warnings. sources ne contient que les sources du dossier documentaire.
+- assistantMessage répond en français, en 2 à 5 phrases courtes : résume ce qui a été trouvé ou modifié, cite les principales incertitudes et propose un ajustement utile. Ne prétends jamais avoir entendu un enregistrement absent.
+- Retourne uniquement le JSON demandé.`;
+
+export function discoveryAdjustmentNeedsResearch(request: string, hasPrevious: boolean) {
+  if (!hasPrevious) return true;
+  return /(?:autre|originale?|version|interpr[èe]te|source|partition|tablature|pdf|main gauche|basses?|accords?|rythme|mesures?|reprises?|compl[èe]te?|v[ée]rif)/i.test(request);
+}
+
+function researchFromPrevious(result: RawTranscription): ResearchBrief {
+  return {
+    title: result.title,
+    artist: result.artist,
+    composer: '',
+    bpm: result.bpm,
+    key: result.key,
+    timeSignature: result.timeSignature,
+    durationSeconds: result.coverage?.sourceDurationSeconds ?? 0,
+    confidence: result.confidence,
+    sections: [],
+    sources: result.sources ?? [],
+    chordProgression: [...new Set(result.accompaniment?.map((event) => event.chord) ?? [])],
+    referenceEvents: result.events.map((event) => ({ beat: event.beat, duration: event.duration, note: event.note, confidence: event.confidence })),
+    referenceAccompaniment: result.accompaniment?.map((event) => ({ beat: event.beat, duration: event.duration, note: event.note, chord: event.chord, role: event.role, confidence: event.confidence })) ?? [],
+    referenceNotation: '',
+    warnings: result.warnings,
+  };
+}
+
 const transcriptionPrompt = (research: ResearchBrief, instrumentContext: string, review?: RawTranscription) => `Tu es un transcripteur expert de musique traditionnelle et d’accordéon diatonique. Produis une transcription complète et vérifiable de TOUTE la performance de la vidéo, pas seulement son premier thème.
 
 DOSSIER DE RECHERCHE (à contrôler, jamais à recopier aveuglément) :
@@ -489,6 +562,36 @@ function mergeSources(...groups: Array<TranscriptionSource[] | undefined>) {
     if (!previous || source.reliability > previous.reliability) merged.set(key, source);
   }
   return [...merged.values()].slice(0, 12);
+}
+
+function finalizeDiscoveryResult(result: RawTranscription, research: ResearchBrief, trustedDraft = false) {
+  const sources = mergeSources(research.sources);
+  const notationSource = Boolean(research.referenceNotation || research.referenceEvents.length)
+    && sources.some((source) => ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf'].includes(source.kind) && source.reliability >= .55);
+  const sourceDurationSeconds = result.coverage?.sourceDurationSeconds || research.durationSeconds;
+  const measured = calculateTimelineCoverage(result.events, result.bpm, sourceDurationSeconds);
+  return {
+    ...result,
+    method: 'multimodal-research' as const,
+    confidence: Math.min(result.confidence, notationSource || trustedDraft ? .92 : .62),
+    warnings: [
+      ...research.warnings,
+      ...result.warnings,
+      sources.length
+        ? `${sources.length} source${sources.length > 1 ? 's' : ''} musicale${sources.length > 1 ? 's' : ''} consultée${sources.length > 1 ? 's' : ''}. Vérifie le brouillon dans le studio avant de jouer.`
+        : 'Le brouillon vérifié de la bibliothèque sert de référence. Contrôle les ajustements dans le studio avant de jouer.',
+    ].filter((warning, index, all) => warning && all.indexOf(warning) === index).slice(0, 12),
+    sources,
+    ...(sourceDurationSeconds ? {
+      coverage: {
+        sourceDurationSeconds,
+        transcribedDurationSeconds: measured.transcribedDurationSeconds,
+        ratio: measured.ratio,
+        sectionsFound: result.coverage?.sectionsFound || research.sections.length,
+        sectionsTranscribed: result.coverage?.sectionsTranscribed || research.sections.length,
+      },
+    } : {}),
+  };
 }
 
 export function calculateTimelineCoverage(events: RawTranscription['events'], bpm: number, sourceDurationSeconds: number) {
@@ -692,6 +795,51 @@ export function createTranscriber(db: SouffletDatabase) {
       const key = requestKey || process.env.GEMINI_API_KEY;
       if (!key) throw new Error('Aucune clé Gemini n’est configurée. Ajoute GEMINI_API_KEY au serveur ou une clé personnelle dans Réglages.');
       return callGemini(key, [{ inlineData: { mimeType: inferMimeType(file), data: file.buffer.toString('base64') } }]);
+    },
+    async fromDiscovery(request: string, accordionId: string, history: DiscoveryMessage[] = [], previousValue?: unknown, requestKey?: string) {
+      const accordion = db.getAccordion(accordionId);
+      if (!accordion) throw new Error('Configuration d’accordéon inconnue.');
+      const previous = previousValue ? sanitizeTranscription(previousValue) : undefined;
+      const verifiedSong = !previous ? findVerifiedSongByTitle(request, db.listCommonSongs() as unknown[]) : undefined;
+      if (verifiedSong) {
+        const result = transcriptionFromVerifiedSong(verifiedSong, { title: request, authorName: verifiedSong.artist });
+        return {
+          result,
+          assistantMessage: `J’ai reconnu « ${verifiedSong.title} » dans la bibliothèque vérifiée. J’ai repris cette édition pédagogique plutôt que de relancer une transcription incertaine. Tu peux me demander de changer le tempo ou de simplifier la proposition.`,
+        };
+      }
+      const key = requestKey || process.env.GEMINI_API_KEY;
+      if (!key) throw new Error('Aucune clé Gemini n’est configurée.');
+      const needsResearch = discoveryAdjustmentNeedsResearch(request, Boolean(previous));
+      const research = previous && !needsResearch
+        ? researchFromPrevious(previous)
+        : sanitizeResearch(await callGeminiStructured<unknown>(key, [], discoveryResearchPrompt(request, history), {
+          schema: researchSchema,
+          thinkingLevel: 'MEDIUM',
+          maxOutputTokens: 32_768,
+          tools: true,
+          timeoutMs: 180_000,
+        }));
+      const notationSources = research.sources.filter((source) => ['abc', 'midi', 'musicxml', 'tablature', 'score', 'pdf'].includes(source.kind));
+      if (needsResearch && ((!research.referenceEvents.length && !research.referenceNotation.trim()) || !notationSources.length)) {
+        throw new Error(`Je n’ai pas trouvé de partition ou tablature publique assez précise pour « ${research.title || request} ». Précise l’interprète, la région ou la version, ou ajoute toi-même un PDF ou une vidéo.`);
+      }
+      const bassRoots = [...new Set(accordion.basses.flatMap((button) => [noteFromMidi(button.pushMidi).replace(/-?\d+$/, ''), noteFromMidi(button.pullMidi).replace(/-?\d+$/, '')]))];
+      const instrumentContext = `${accordion.maker} ${accordion.model}, accordage ${accordion.tuning}, ${accordion.buttons.length} boutons main droite, fondamentales main gauche ${bassRoots.join(', ') || 'non renseignées'}`;
+      const generated = await callGeminiStructured<DiscoveryGeneration>(key, [], discoveryRevisionPrompt(request, history, research, instrumentContext, previous), {
+        schema: discoverySchema,
+        thinkingLevel: 'MEDIUM',
+        maxOutputTokens: 65_536,
+        tools: false,
+        timeoutMs: 300_000,
+      });
+      const result = finalizeDiscoveryResult(sanitizeTranscription(generated.result), research, Boolean(previous && !needsResearch));
+      return {
+        result,
+        assistantMessage: typeof generated.assistantMessage === 'string' && generated.assistantMessage.trim()
+          ? generated.assistantMessage.trim().slice(0, 900)
+          : `J’ai préparé une proposition pour « ${result.title} » à partir de ${result.sources?.length ?? 0} source(s). Vérifie les passages signalés avant de l’enregistrer.`,
+      };
     },
     async fromYoutube(url: string, accordionId: string, requestKey?: string) {
       if (!/^https:\/\/(?:www\.)?(?:youtube\.com\/|youtu\.be\/)/i.test(url)) throw new Error('L’URL YouTube n’est pas valide.');
