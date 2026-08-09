@@ -280,6 +280,71 @@ function laJumentDeMichao(): SeedSong {
   );
 }
 
+function leTrenteEtUnDuMoisDAout(): SeedSong {
+  // Édition transposée de Sol vers Do pour rester immédiatement jouable sur les
+  // accordéons Do/Fa et Sol/Do. La levée de trois croches est conservée : le
+  // premier temps fort arrive donc au début de la deuxième mesure affichée.
+  const melody: SeedStep[] = [
+    [null, 1.5], [G4, .5], [G4, .5], [G4, .5],
+    [C5, 1.5], [E5, .5], [E5, .5], [E5, .5],
+    [C5, 1.5], [E5, .5], [E5, .5], [E5, .5],
+    [E5, 1.5], [C5, .5], [E5, 1], [C5, .5],
+    [D5, 1.5], [G4, .5], [G4, .5], [G4, .5],
+    [C5, 1.5], [E5, .5], [E5, .5], [E5, .5],
+    [C5, 1.5], [E5, .5], [E5, .5], [E5, .5],
+    [E5, 1.5], [C5, .5], [E5, 1], [C5, .5],
+    [D5, 1.5], [D5, .5], [E5, .5], [F5, .5],
+    [G5, 1], [C5, .5], [C5, .5], [C5, 1], [B4, .5],
+    [F5, 1.5], [E5, 1], [G4, .5],
+    [C5, .75], [B4, .25], [C5, .5], [D5, .5], [C5, .5], [D5, .5],
+    [E5, 1.5], [D5, .5], [E5, .5], [F5, .5],
+    [E5, 1.5], [D5, .5], [C5, .5], [D5, .5],
+    [C5, 1.5],
+  ];
+  const events = eventsFromMidi([...melody, ...melody]);
+  const harmonicCycle = [48, 48, 48, 43, 48, 48, 48, 43, 48, 41, 48, 43, 48, 48];
+  const accompaniment = [0, 45].flatMap((cycleBeat) => harmonicCycle.flatMap((rootMidi, measureIndex) => {
+    const beat = cycleBeat + 3 + measureIndex * 3;
+    return [
+      { role: 'bass' as const, offset: 0 },
+      { role: 'chord' as const, offset: 1 },
+      { role: 'chord' as const, offset: 2 },
+    ].map(({ role, offset }, pulseIndex) => ({
+      id: `31-aout-left-${measureIndex + 1}-${pulseIndex + 1}`,
+      beat: beat + offset,
+      duration: .72,
+      rootMidi,
+      midi: rootMidi,
+      note: noteFromMidi(rootMidi),
+      chord: NOTE_NAMES[rootMidi % 12],
+      role,
+      buttonId: '',
+      direction: 'push' as const,
+      confidence: 1,
+    }));
+  }));
+  const finalEvent = events.at(-1)!;
+  return {
+    id: 'le-31-du-mois-daout',
+    title: 'Le 31 du mois d’août',
+    artist: 'Chant de marins traditionnel',
+    sourceType: 'lesson',
+    sourceUrl: 'https://fr.wikipedia.org/wiki/Au_31_du_mois_d%27ao%C3%BBt',
+    bpm: 135,
+    timeSignature: [6, 8],
+    key: 'Do majeur',
+    duration: Math.ceil((finalEvent.beat + finalEvent.duration) * 60 / 135),
+    difficulty: 3,
+    status: 'ready',
+    events,
+    accompaniment,
+    confidence: 1,
+    builtIn: true,
+    license: 'Domaine public — chant traditionnel du début du XIXe siècle',
+    provenance: 'Mélodie, rythme 6/8 et harmonie contrôlés sur la partition LilyPond publique de Wikipédia, puis confrontés à l’édition MusicXML Weckerlin/Gallica de Project Gutenberg. Forme pédagogique complète : un couplet et son refrain, chantés sur la même mélodie.',
+  };
+}
+
 function brisePieds(): SeedSong {
   type TabNote = [number, number, number, string, 'push' | 'pull'];
   const measures: TabNote[][] = [
@@ -318,6 +383,7 @@ function brisePieds(): SeedSong {
 
 export const SONG_SEEDS: SeedSong[] = [
   brisePieds(),
+  leTrenteEtUnDuMoisDAout(),
   auClairDeLaLune(),
   frereJacques(),
   traditional('ah-vous-dirai-je-maman', 'Ah ! vous dirai-je, maman', 88, 'Do majeur', [C4, C4, G4, G4, A4, A4, [G4, 2], F4, F4, E4, E4, D4, D4, [C4, 2], G4, G4, F4, F4, E4, E4, [D4, 2], G4, G4, F4, F4, E4, E4, [D4, 2], C4, C4, G4, G4, A4, A4, [G4, 2], F4, F4, E4, E4, D4, D4, [C4, 2]]),

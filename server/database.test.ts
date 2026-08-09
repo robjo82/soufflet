@@ -148,6 +148,25 @@ describe('production data migrations', () => {
     }
   });
 
+  it('ships a complete and sourced 6/8 learning edition of Le 31 du mois d’août', () => {
+    const song = SONG_SEEDS.find((item) => item.id === 'le-31-du-mois-daout')!;
+    const firstCycle = song.events.filter((event) => event.beat < 45);
+    const secondCycle = song.events.filter((event) => event.beat >= 45);
+
+    expect(song).toMatchObject({
+      title: 'Le 31 du mois d’août', bpm: 135, timeSignature: [6, 8], key: 'Do majeur',
+      status: 'ready', confidence: 1, builtIn: true,
+    });
+    expect(song.license).toContain('Domaine public');
+    expect(song.provenance).toContain('MusicXML');
+    expect(firstCycle.map((event) => event.midi)).toEqual(secondCycle.map((event) => event.midi));
+    expect(firstCycle.slice(0, 7).map((event) => [event.midi, event.duration])).toEqual([
+      [67, .5], [67, .5], [67, .5], [72, 1.5], [76, .5], [76, .5], [76, .5],
+    ]);
+    expect(song.accompaniment).toHaveLength(84);
+    expect(new Set(song.accompaniment.map((event) => event.role))).toEqual(new Set(['bass', 'chord']));
+  });
+
   it('keeps imported songs private and synchronizes them with their owner', () => {
     const db = makeDatabase();
     db.createUser({ id: 'usr_library_a', email: 'library-a@example.fr', displayName: 'A', passwordHash: 'test' });
