@@ -181,6 +181,9 @@ describe('production data migrations', () => {
 
     expect(db.listLibrarySongs('usr_library_a')).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal', builtIn: false })]));
     expect(db.listLibrarySongs('usr_library_b')).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal' })]));
+    db.saveUserSong('usr_library_a', { ...song, title: 'Mon relevé renommé' });
+    expect(db.listLibrarySongs('usr_library_a')).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal', title: 'Mon relevé renommé' })]));
+    expect(db.listLibrarySongs('usr_library_b')).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'song-personal', title: 'Mon relevé renommé' })]));
     expect(db.deleteUserSong('usr_library_b', song.id)).toBe(false);
     expect(db.deleteUserSong('usr_library_a', song.id)).toBe(true);
   });
