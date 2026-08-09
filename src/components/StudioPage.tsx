@@ -9,7 +9,7 @@ interface StudioPageProps {
   songs: Song[];
   initialSong?: Song;
   accordion: AccordionConfig;
-  onSave: (song: Song) => void;
+  onSave: (song: Song) => Promise<void>;
   onPractice: (song: Song) => void;
 }
 
@@ -17,7 +17,7 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
   const editableSongs = songs.filter((song) => song.events.length > 0);
   const [song, setSong] = useState<Song>(initialSong ?? editableSongs[0]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [saved, setSaved] = useState(true);
+  const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved');
   const [history, setHistory] = useState<Song[]>([]);
   const active = song?.events[activeIndex];
   const deferredSong = useDeferredValue(song);
@@ -27,10 +27,12 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
 
   useEffect(() => { if (initialSong) { setSong(initialSong); setActiveIndex(0); } }, [initialSong]);
   useEffect(() => {
-    if (!song || saved) return;
-    const timer = window.setTimeout(() => { onSave(song); setSaved(true); }, 1200);
+    if (!song || saveState !== 'saving') return;
+    const timer = window.setTimeout(() => {
+      void onSave(song).then(() => setSaveState('saved')).catch(() => setSaveState('error'));
+    }, 1200);
     return () => clearTimeout(timer);
-  }, [onSave, saved, song]);
+  }, [onSave, saveState, song]);
 
   if (!song) return <main className="page-content empty-studio"><WandSparkles /><h1>Le studio est prêt</h1><p>Importe un morceau pour corriger les notes, le rythme, les doigtés et le soufflet.</p></main>;
   const finalBeat = Math.max(0, ...song.events.map((event) => event.beat + event.duration), ...(song.accompaniment ?? []).map((event) => event.beat + event.duration));
@@ -41,16 +43,16 @@ export function StudioPage({ songs, initialSong, accordion, onSave, onPractice }
   const updateEvent = (patch: Partial<SongEvent>) => {
     setHistory((items) => [...items.slice(-19), song]);
     setSong({ ...song, events: song.events.map((event, index) => index === activeIndex ? { ...event, ...patch } : event), status: 'needs-review' });
-    setSaved(false);
+    setSaveState('saving');
   };
   const undo = () => {
     const previous = history.at(-1); if (!previous) return;
-    setSong(previous); setHistory((items) => items.slice(0, -1)); setSaved(false);
+    setSong(previous); setHistory((items) => items.slice(0, -1)); setSaveState('saving');
   };
 
   return (
     <main className="studio-page">
-      <header className="studio-header"><div><span className="eyebrow"><Sparkles /> Éditeur de tablature</span><h1>Studio</h1></div><label className="song-select"><Music2 /><span><small>MORCEAU OUVERT</small><select value={song.id} onChange={(event) => { const next = editableSongs.find((item) => item.id === event.target.value); if (next) { setSong(next); setActiveIndex(0); } }}>{editableSongs.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></span><ChevronDown /></label><div className="studio-actions"><button type="button" className="icon-button" onClick={undo} disabled={!history.length} title="Annuler"><Undo2 /></button><button type="button" className="icon-button" disabled title="Rétablir"><Redo2 /></button><span className="save-state">{saved ? <><Cloud /> Sauvegardé localement</> : <><Save /> Sauvegarde…</>}</span><button type="button" className="primary-button" onClick={() => onPractice(song)}><Play fill="currentColor" /> Tester</button></div></header>
+      <header className="studio-header"><div><span className="eyebrow"><Sparkles /> Éditeur de tablature</span><h1>Studio</h1></div><label className="song-select"><Music2 /><span><small>MORCEAU OUVERT</small><select value={song.id} onChange={(event) => { const next = editableSongs.find((item) => item.id === event.target.value); if (next) { setSong(next); setActiveIndex(0); } }}>{editableSongs.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></span><ChevronDown /></label><div className="studio-actions"><button type="button" className="icon-button" onClick={undo} disabled={!history.length} title="Annuler"><Undo2 /></button><button type="button" className="icon-button" disabled title="Rétablir"><Redo2 /></button><span className={`save-state ${saveState === 'error' ? 'is-error' : ''}`}>{saveState === 'saved' ? <><Cloud /> Sauvegardé dans ton compte</> : saveState === 'error' ? <><AlertTriangle /> Non synchronisé · réessaie en modifiant une note</> : <><Save /> Sauvegarde…</>}</span><button type="button" className="primary-button" onClick={() => onPractice(song)}><Play fill="currentColor" /> Tester</button></div></header>
 
       {(song.transcriptionMethod === 'verified-library' || song.transcriptionMethod === 'gemini-preview' || song.transcriptionMethod === 'multimodal-research') && (
         <section className={`transcription-source-note ${song.transcriptionMethod === 'verified-library' ? 'is-verified' : song.transcriptionMethod === 'multimodal-research' ? 'is-researched' : 'is-preview'}`}>

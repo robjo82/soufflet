@@ -37,6 +37,16 @@ function preferenceStorageKey(userId: string) {
   return `soufflet.preferences.${userId}`;
 }
 
+function songStorageKey(userId: string) {
+  return `soufflet.songs.${userId}`;
+}
+
+function mergeSongs(...groups: Song[][]) {
+  const merged = new Map<string, Song>();
+  for (const group of groups) for (const song of group) merged.set(song.id, song);
+  return [...merged.values()];
+}
+
 function withPreviewState(preferences: UserPreferences) {
   if (isAndroidOnboardingPreview()) return { ...preferences, onboardingDone: false, tutorialDone: false };
   return isAndroidPreview() ? { ...preferences, onboardingDone: true, tutorialDone: true } : preferences;
@@ -58,7 +68,7 @@ export function App() {
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [preferencesSyncError, setPreferencesSyncError] = useState('');
   const [preferencesReloadToken, setPreferencesReloadToken] = useState(0);
-  const [songs, setSongs] = useState<Song[]>(() => getStored<Song[]>('soufflet.songs', []).filter((song) => !song.builtIn));
+  const [songs, setSongs] = useState<Song[]>([]);
   const [practiceSong, setPracticeSong] = useState<Song | null>(null);
   const [studioSong, setStudioSong] = useState<Song | undefined>();
   const [showImport, setShowImport] = useState(false);
@@ -74,17 +84,34 @@ export function App() {
     return () => controller.abort();
   }, []);
 
-  useEffect(() => { localStorage.setItem('soufflet.songs', JSON.stringify(songs.filter((song) => !song.builtIn))); }, [songs]);
+  useEffect(() => {
+    if (user) localStorage.setItem(songStorageKey(user.id), JSON.stringify(songs.filter((song) => !song.builtIn)));
+  }, [songs, user]);
 
   useEffect(() => {
     if (!user) { setPreferencesReady(false); setPreferencesSyncError(''); return; }
     setPreferencesReady(false);
     setPreferencesSyncError('');
     const controller = new AbortController();
+    const accountSongs = getStored<Song[]>(songStorageKey(user.id), []).filter((song) => !song.builtIn);
+    const legacyOwner = localStorage.getItem('soufflet.songs.legacyOwner');
+    const legacySongs = !legacyOwner || legacyOwner === user.id
+      ? getStored<Song[]>('soufflet.songs', []).filter((song) => !song.builtIn)
+      : [];
+    if (legacySongs.length && !legacyOwner) localStorage.setItem('soufflet.songs.legacyOwner', user.id);
+    const localSongs = mergeSongs(accountSongs, legacySongs);
     fetch('/api/library', { signal: controller.signal }).then(async (response) => {
       if (!response.ok) return;
       const payload = await response.json() as { songs: Song[] };
-      setSongs((current) => [...payload.songs, ...current.filter((song) => !song.builtIn)]);
+      setSongs(mergeSongs(payload.songs, localSongs));
+      const serverIds = new Set(payload.songs.map((song) => song.id));
+      const unsynced = localSongs.filter((song) => !serverIds.has(song.id));
+      if (unsynced.length) {
+        const results = await Promise.allSettled(unsynced.map((song) => fetch('/api/library', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(song), signal: controller.signal,
+        }).then((result) => { if (!result.ok) throw new Error('Synchronisation impossible.'); })));
+        if (legacySongs.length && results.every((result) => result.status === 'fulfilled')) localStorage.removeItem('soufflet.songs');
+      }
     }).catch(() => undefined);
     fetch('/api/accordions', { signal: controller.signal }).then(async (response) => {
       if (!response.ok) return;
@@ -161,9 +188,16 @@ export function App() {
   const selectedAccordion = useMemo(() => accordions.find((item) => item.id === preferences.accordionId) ?? accordions[0], [accordions, preferences.accordionId]);
   const firstLessonSong = useMemo(() => selectedAccordion ? adaptSongToAccordion(DEMO_SONG, selectedAccordion) : DEMO_SONG, [selectedAccordion]);
 
-  const saveSong = useCallback((next: Song) => {
+  const saveSong = useCallback(async (next: Song) => {
     setSongs((items) => items.some((item) => item.id === next.id) ? items.map((item) => item.id === next.id ? next : item) : [next, ...items]);
-  }, []);
+    if (!user || next.builtIn) return;
+    const response = await fetch('/api/library', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next),
+    });
+    const payload = await response.json() as { song?: Song; error?: string };
+    if (!response.ok || !payload.song) throw new Error(payload.error ?? 'Le morceau reste disponible sur cet appareil, mais la synchronisation a échoué.');
+    setSongs((items) => items.map((item) => item.id === payload.song!.id ? payload.song! : item));
+  }, [user]);
 
   const startPractice = useCallback((song: Song) => {
     if (selectedAccordion) {
@@ -191,7 +225,7 @@ export function App() {
 
   const logout = useCallback(() => {
     void fetch('/api/auth/logout', { method: 'POST' });
-    setUser(null); setPracticeSong(null); setPracticeStats(null); setPreferences(defaultPreferences); setPreferencesReady(false); setPreferencesSyncError('');
+    setUser(null); setPracticeSong(null); setPracticeStats(null); setSongs([]); setPreferences(defaultPreferences); setPreferencesReady(false); setPreferencesSyncError('');
   }, []);
 
   const accountDeleted = useCallback(() => {
@@ -266,7 +300,7 @@ export function App() {
         return payload.accordion;
       }} />}
       {page === 'account' && <AccountPage user={user} accordions={accordions} selectedAccordionId={preferences.accordionId} onUserUpdated={setUser} onOpenSettings={() => navigate('settings')} onLogout={logout} onAccountDeleted={accountDeleted} />}
-      {showImport && <ImportModal accordion={selectedAccordion} apiKey={apiKey} onClose={() => setShowImport(false)} onImported={(song) => { saveSong(song); if (song.events.length) { setStudioSong(song); navigate('studio'); } }} />}
+      {showImport && <ImportModal accordion={selectedAccordion} apiKey={apiKey} onClose={() => setShowImport(false)} onImported={async (song) => { await saveSong(song); if (song.events.length) { setStudioSong(song); navigate('studio'); } }} />}
     </AppShell>
   );
 }
