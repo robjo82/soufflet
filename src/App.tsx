@@ -21,6 +21,7 @@ import { GuitarPracticePlayer } from './components/GuitarPracticePlayer';
 import { GuitarHomePage } from './components/GuitarHomePage';
 import { GuitarLearnPage } from './components/GuitarLearnPage';
 import { GuitarTunerPage } from './components/GuitarTunerPage';
+import { GuitarFirstTutorial, PianoFirstTutorial } from './components/InstrumentFirstTutorial';
 import { adaptSongToAccordion, DEMO_SONG, FALLBACK_ACCORDIONS, SKILLS } from './data';
 import { isAndroidOnboardingPreview, isAndroidPreview, setNativePracticeMode } from './nativeApp';
 import { reconcileLibrarySongs } from './librarySync';
@@ -323,12 +324,23 @@ export function App() {
   if (!selectedAccordion) return null;
 
   if (!preferences.onboardingDone) {
-    return <Onboarding accordions={accordions} initialAccordionId={preferences.accordionId} initialNotation={preferences.notation} onSkip={(accordionId, notation) => savePreferences({ ...preferences, accordionId, notation, onboardingDone: true, tutorialDone: false })} onComplete={(accordionId, notation) => {
-      savePreferences({ ...preferences, accordionId, notation, onboardingDone: true, tutorialDone: false });
-    }} />;
+    return <Onboarding
+      accordions={accordions}
+      pianos={pianos}
+      guitars={guitars}
+      initialSelection={{ instrumentType: preferences.instrumentType, accordionId: preferences.accordionId, pianoId: preferences.pianoId, guitarId: preferences.guitarId, notation: preferences.notation }}
+      onSkip={(selection) => savePreferences({ ...preferences, ...selection, onboardingDone: true, tutorialDone: false })}
+      onComplete={(selection) => savePreferences({ ...preferences, ...selection, onboardingDone: true, tutorialDone: false })}
+    />;
   }
 
   if (!preferences.tutorialDone) {
+    if (preferences.instrumentType === 'piano' && selectedPiano) return <PianoFirstTutorial piano={selectedPiano} notation={preferences.notation === 'english' ? 'english' : 'french'} onComplete={() => {
+      savePreferences({ ...preferences, tutorialDone: true }); setPage('home'); window.scrollTo({ top: 0 });
+    }} />;
+    if (preferences.instrumentType === 'guitar' && selectedGuitar) return <GuitarFirstTutorial guitar={selectedGuitar} onComplete={() => {
+      savePreferences({ ...preferences, tutorialDone: true }); setPage('home'); window.scrollTo({ top: 0 });
+    }} />;
     return <FirstLessonTutorial accountId={user.id} accordion={selectedAccordion} notation={preferences.notation} song={firstLessonSong} onNotationChange={(notation) => savePreferences({ ...preferences, notation })} onComplete={() => {
       savePreferences({ ...preferences, tutorialDone: true });
       setPracticeSong(null);
@@ -352,7 +364,7 @@ export function App() {
       {page === 'home' && (preferences.instrumentType === 'piano' && selectedPiano ? <PianoHomePage piano={selectedPiano} song={songs.find((song) => song.status === 'ready' && song.arrangements?.piano)} stats={practiceStats} displayName={user.displayName} onPractice={startPractice} onNavigate={navigate} /> : preferences.instrumentType === 'guitar' && selectedGuitar ? <GuitarHomePage guitar={selectedGuitar} song={songs.find((song) => song.status === 'ready' && song.arrangements?.guitar)} stats={practiceStats} displayName={user.displayName} onPractice={startPractice} onNavigate={navigate} /> : <HomePage accordion={selectedAccordion} song={songs.find((song) => song.status === 'ready') ?? DEMO_SONG} stats={practiceStats} onPractice={startPractice} onNavigateLearn={() => navigate('learn')} displayName={user.displayName} />)}
       {page === 'learn' && (preferences.instrumentType === 'piano' ? <PianoLearnPage songs={songs} onPractice={startPractice} /> : preferences.instrumentType === 'guitar' ? <GuitarLearnPage songs={songs} onPractice={startPractice} /> : <LearnPage skills={SKILLS} song={DEMO_SONG} onPractice={startPractice} onStartButtonGame={() => navigate('game')} />)}
       {page === 'library' && <LibraryPage songs={songs} userId={user.id} instrumentType={preferences.instrumentType} onImport={() => setShowImport(true)} onRefresh={refreshLibrary} onPractice={startPractice} onEdit={(song) => { setStudioSong(song); navigate('studio'); }} onRename={renameSong} onDelete={deleteSong} />}
-      {page === 'studio' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} onSave={saveSong} onPractice={startPractice} />}
+      {page === 'studio' && <StudioPage songs={songs} initialSong={studioSong} accordion={selectedAccordion} instrumentType={preferences.instrumentType} piano={selectedPiano} onSave={saveSong} onPractice={startPractice} />}
       {page === 'tuner' && (preferences.instrumentType === 'piano' && selectedPiano ? <PianoInputPage piano={selectedPiano} onBack={() => navigate('home')} /> : preferences.instrumentType === 'guitar' && selectedGuitar ? <GuitarTunerPage guitar={selectedGuitar} onBack={() => navigate('home')} /> : <TunerPage accordion={selectedAccordion} notation={preferences.notation} onBack={() => navigate('home')} onAccordionChange={(updated) => { setAccordions((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); savePreferences({ ...preferences, accordionId: updated.id }); }} />)}
       {page === 'settings' && <SettingsPage accordions={accordions} pianos={pianos} guitars={guitars} instrumentType={preferences.instrumentType} selectedId={preferences.accordionId} selectedPianoId={preferences.pianoId} selectedGuitarId={preferences.guitarId} notation={preferences.notation} countIn={preferences.countIn} apiKey={apiKey} onSave={(instrumentType, accordionId, pianoId, guitarId, notation, countIn, nextKey) => {
         savePreferences({ ...preferences, instrumentType, accordionId, pianoId, guitarId, notation, countIn });
@@ -366,8 +378,8 @@ export function App() {
         savePreferences({ ...preferences, accordionId: payload.accordion.id });
         return payload.accordion;
       }} />}
-      {page === 'account' && <AccountPage user={user} accordions={accordions} selectedAccordionId={preferences.accordionId} pianos={pianos} selectedPianoId={preferences.pianoId} guitars={guitars} selectedGuitarId={preferences.guitarId} onUserUpdated={setUser} onOpenSettings={() => navigate('settings')} onLogout={logout} onAccountDeleted={accountDeleted} />}
-      {showImport && <ImportModal accordion={selectedAccordion} apiKey={apiKey} onClose={() => setShowImport(false)} onImported={async (song) => { await saveSong(song); if (song.events.length) { setStudioSong(song); navigate('studio'); } }} />}
+      {page === 'account' && <AccountPage user={user} accordions={accordions} selectedAccordionId={preferences.accordionId} pianos={pianos} selectedPianoId={preferences.pianoId} guitars={guitars} selectedGuitarId={preferences.guitarId} instrumentType={preferences.instrumentType} onUserUpdated={setUser} onOpenSettings={() => navigate('settings')} onLogout={logout} onAccountDeleted={accountDeleted} />}
+      {showImport && <ImportModal accordion={selectedAccordion} instrumentType={preferences.instrumentType} apiKey={apiKey} onClose={() => setShowImport(false)} onImported={async (song) => { await saveSong(song); if (song.events.length) { setStudioSong(song); navigate('studio'); } }} />}
     </AppShell>
   );
 }

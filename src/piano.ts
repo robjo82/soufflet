@@ -9,6 +9,28 @@ export function pianoRange(size: PianoKeyboardSize) {
   return Array.from({ length: size }, (_, index) => start + index);
 }
 
+export interface PianoKeyGeometry {
+  midi: number;
+  black: boolean;
+  left: number;
+  width: number;
+}
+
+export function pianoKeyGeometry(midis: number[]): PianoKeyGeometry[] {
+  const blackPitchClasses = new Set([1, 3, 6, 8, 10]);
+  const whiteMidis = midis.filter((midi) => !blackPitchClasses.has(((midi % 12) + 12) % 12));
+  const whiteWidth = 100 / Math.max(1, whiteMidis.length);
+  return midis.map((midi) => {
+    const black = blackPitchClasses.has(((midi % 12) + 12) % 12);
+    if (!black) {
+      return { midi, black, left: whiteMidis.indexOf(midi) * whiteWidth, width: whiteWidth };
+    }
+    const whitesBefore = whiteMidis.filter((whiteMidi) => whiteMidi < midi).length;
+    const width = whiteWidth * .62;
+    return { midi, black, left: whitesBefore * whiteWidth - width / 2, width };
+  });
+}
+
 export function pianoNoteLabel(midi: number, notation: 'french' | 'english' = 'french') {
   const names = notation === 'french' ? PIANO_FRENCH_NAMES : PIANO_NOTE_NAMES;
   return `${names[((midi % 12) + 12) % 12]}${Math.floor(midi / 12) - 1}`;
@@ -25,4 +47,3 @@ export function eventsForHand(arrangement: InstrumentArrangement, hand: 'right' 
 export function matchesPianoEvent(event: InstrumentArrangementEvent, midi: number) {
   return event.midis.includes(midi);
 }
-

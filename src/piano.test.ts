@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventsForHand, matchesPianoEvent, pianoNoteLabel, pianoRange } from './piano';
+import { eventsForHand, matchesPianoEvent, pianoKeyGeometry, pianoNoteLabel, pianoRange } from './piano';
 
 describe('piano learning helpers', () => {
   it('builds standard keyboard ranges', () => {
@@ -19,5 +19,14 @@ describe('piano learning helpers', () => {
     expect(pianoNoteLabel(60, 'french')).toBe('Do4');
     expect(eventsForHand(arrangement, 'right').map((event) => event.id)).toEqual(['r']);
     expect(matchesPianoEvent(arrangement.events[1], 52)).toBe(true);
+  });
+
+  it('aligns falling notes with their piano keys', () => {
+    const geometry = pianoKeyGeometry([60, 61, 62, 63, 64]);
+    expect(geometry.find((key) => key.midi === 60)).toMatchObject({ black: false, left: 0 });
+    expect(geometry.find((key) => key.midi === 61)).toMatchObject({ black: true });
+    expect(geometry.find((key) => key.midi === 62)?.left).toBeCloseTo(100 / 3);
+    expect(geometry.find((key) => key.midi === 61)!.left).toBeGreaterThan(20);
+    expect(geometry.find((key) => key.midi === 61)!.left).toBeLessThan(34);
   });
 });

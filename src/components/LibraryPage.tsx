@@ -123,7 +123,7 @@ export function LibraryPage({ songs, userId, instrumentType, onImport, onRefresh
       {actionError && <div className="library-action-error" role="alert"><AlertTriangle />{actionError}<button type="button" aria-label="Fermer le message" onClick={() => setActionError('')}><X /></button></div>}
 
       {view === 'cards' ? <section className="song-grid">
-        <button type="button" className="add-song-card" onClick={onImport}><span><Sparkles /></span><strong>Transformer un nouveau morceau</strong><p>Audio, vidéo, partition, tablature ou lien</p><em>Importer <Import /></em></button>
+        <button type="button" className="add-song-card" onClick={onImport}><span><Sparkles /></span><strong>Transformer un nouveau morceau</strong><p>{instrumentType === 'accordion' ? 'Audio, vidéo, partition, tablature ou lien' : 'Audio, vidéo, partition ou lien'}</p><em>Importer <Import /></em></button>
         {filteredSongs.map((song, index) => (
           <article className="song-card" key={song.id} title={song.provenance}>
             <div className={`song-cover cover-${index % 4}`}><span>{iconFor(song)}</span><button type="button" aria-label={isPlayable(song) ? `Jouer ${song.title}` : `Ouvrir ${song.title}`} onClick={() => isPlayable(song) ? onPractice(song) : onEdit(song)}><Play fill="currentColor" /></button><small>{song.duration ? `${Math.floor(song.duration / 60)}:${String(song.duration % 60).padStart(2, '0')}` : 'Référence'}</small></div>
