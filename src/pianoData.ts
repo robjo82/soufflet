@@ -139,10 +139,13 @@ const BREL_FINGERS: Record<number, PianoFinger> = {
   58: 1, 59: 1, 60: 1, 61: 1, 62: 2, 63: 2, 64: 3, 65: 4,
   66: 4, 67: 5, 69: 2, 70: 3, 71: 4, 72: 1, 74: 2,
 };
+const G_MAJOR_FINGERS: Record<number, PianoFinger> = {
+  60: 1, 62: 2, 64: 3, 66: 4, 67: 1, 69: 2, 71: 3, 72: 4, 74: 5,
+};
 
-const withRightHandFingerings = (notes: PianoNote[], profile: 'c-position' | 'my-way' | 'brel' = 'c-position') => notes.map((note) => ({
+const withRightHandFingerings = (notes: PianoNote[], profile: 'c-position' | 'my-way' | 'brel' | 'g-major' = 'c-position') => notes.map((note) => ({
   ...note,
-  finger: profile === 'my-way' ? MY_WAY_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : profile === 'brel' ? BREL_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : C_POSITION_FINGERS[note.midi % 12],
+  finger: profile === 'my-way' ? MY_WAY_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : profile === 'brel' ? BREL_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : profile === 'g-major' ? G_MAJOR_FINGERS[note.midi] ?? C_POSITION_FINGERS[note.midi % 12] : C_POSITION_FINGERS[note.midi % 12],
 }));
 
 const shiftNotes = (notes: PianoNote[], beats: number) => notes.map((note) => ({ ...note, beat: note.beat + beats }));
@@ -509,6 +512,86 @@ const AU_CLAIR_TWO_HANDS = [
   ]),
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
+// Transcription of the supplied 6/8 score. One timeline beat is one dotted
+// quarter note, so thirds represent eighth notes and BPM 100 matches ♩. = 100.
+// The final pickup into the printed repeat is omitted to give the app a closed ending.
+const LE_31_AOUT_EIGHTH = 1 / 3;
+const LE_31_AOUT_QUARTER = 2 / 3;
+const LE_31_AOUT_MELODY = timedNotes([
+  [62, 0, LE_31_AOUT_EIGHTH], [62, LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [62, LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 1, LE_31_AOUT_QUARTER], [71, 2, LE_31_AOUT_EIGHTH], [71, 2 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [71, 2 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 3, LE_31_AOUT_QUARTER], [71, 4, LE_31_AOUT_EIGHTH], [71, 4 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [71, 4 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [71, 5, LE_31_AOUT_QUARTER], [69, 5 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH], [71, 6, LE_31_AOUT_QUARTER], [69, 6 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [69, 7, LE_31_AOUT_QUARTER], [62, 8, LE_31_AOUT_EIGHTH], [62, 8 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [62, 8 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 9, LE_31_AOUT_QUARTER], [71, 10, LE_31_AOUT_EIGHTH], [71, 10 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [71, 10 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 11, LE_31_AOUT_QUARTER], [71, 12, LE_31_AOUT_EIGHTH], [71, 12 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [71, 12 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [71, 13, LE_31_AOUT_QUARTER], [69, 13 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH], [71, 14, LE_31_AOUT_QUARTER], [69, 14 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 15, LE_31_AOUT_QUARTER], [66, 16, LE_31_AOUT_EIGHTH], [67, 16 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [69, 16 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [72, 17, 1], [67, 18, LE_31_AOUT_EIGHTH], [67, 18 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [66, 18 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [64, 19, 1], [62, 20, LE_31_AOUT_QUARTER], [62, 20 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 21, LE_31_AOUT_EIGHTH], [67, 21 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [67, 21 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH], [67, 22, LE_31_AOUT_EIGHTH], [66, 22 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [67, 22 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [69, 23, 1], [67, 24, LE_31_AOUT_EIGHTH], [69, 24 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [71, 24 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [72, 25, 1], [69, 26, LE_31_AOUT_EIGHTH], [67, 26 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [69, 26 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 27, LE_31_AOUT_QUARTER], [62, 28, LE_31_AOUT_EIGHTH], [64, 28 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [66, 28 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 29, LE_31_AOUT_QUARTER], [71, 30, LE_31_AOUT_EIGHTH], [71, 30 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [71, 30 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 31, LE_31_AOUT_QUARTER], [71, 32, LE_31_AOUT_EIGHTH], [71, 32 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [71, 32 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [71, 33, LE_31_AOUT_QUARTER], [69, 33 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH], [71, 34, LE_31_AOUT_QUARTER], [69, 34 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 35, LE_31_AOUT_QUARTER], [66, 36, LE_31_AOUT_EIGHTH], [67, 36 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [69, 36 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [72, 37, LE_31_AOUT_QUARTER], [67, 37 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH], [66, 38, LE_31_AOUT_QUARTER], [64, 38 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [62, 39, 1], [60, 40, LE_31_AOUT_QUARTER], [60, 40 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 41, LE_31_AOUT_EIGHTH], [67, 41 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [67, 41 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH], [67, 42, LE_31_AOUT_EIGHTH], [66, 42 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [67, 42 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [69, 43, LE_31_AOUT_QUARTER], [67, 44, LE_31_AOUT_EIGHTH], [69, 44 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [71, 44 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [71, 45, 1], [67, 46, LE_31_AOUT_EIGHTH], [66, 46 + LE_31_AOUT_EIGHTH, LE_31_AOUT_EIGHTH], [67, 46 + LE_31_AOUT_QUARTER, LE_31_AOUT_EIGHTH],
+  [67, 47, 1],
+]);
+
+const LE_31_AOUT_LYRIC_LINES: PianoLyricLineInput[] = [
+  { beat: 0, text: 'Le trente et un du mois d’Août', section: 'Couplet' },
+  { beat: 4, text: 'Le trente et un du mois d’Août', section: 'Couplet · bis' },
+  { beat: 8, text: 'On vit venir sous l’vent à nous', section: 'Couplet' },
+  { beat: 12, text: 'On vit venir sous l’vent à nous', section: 'Couplet · bis' },
+  { beat: 16, text: 'Une frégate d’Angleterre qui fendait la mer et les flots', section: 'Couplet' },
+  { beat: 24, text: 'C’était pour attaquer Bordeaux', section: 'Couplet' },
+  { beat: 28, text: 'Buvons un coup, buvons en deux', section: 'Refrain' },
+  { beat: 32, text: 'À la santé des amoureux', section: 'Refrain' },
+  { beat: 36, text: 'À la santé du roi de France, et', section: 'Refrain' },
+  { beat: 41, text: 'Merde pour le roi d’Angleterre qui nous a déclaré la guerre !', section: 'Refrain' },
+];
+const LE_31_AOUT_LYRICS = synchronizeLyricsToMelody(LE_31_AOUT_LYRIC_LINES, LE_31_AOUT_MELODY, 2, 1);
+
+type Le31AoutChordName = 'g-major' | 'd-major' | 'g-over-b' | 'g-over-d' | 'c-major' | 'e-minor' | 'a-minor' | 'd-seven' | 'g-over-a';
+const LE_31_AOUT_CHORDS: Record<Le31AoutChordName, Omit<PianoHarmonyStep, 'beat'>> = {
+  'g-major': { name: 'Sol majeur', root: 43, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'd-major': { name: 'Ré majeur', root: 38, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'g-over-b': { name: 'Sol / Si', root: 47, intervals: [0, 3, 8], fingers: [5, 3, 1] },
+  'g-over-d': { name: 'Sol / Ré', root: 38, intervals: [0, 5, 9], fingers: [5, 3, 1] },
+  'c-major': { name: 'Do majeur', root: 36, intervals: [0, 4, 7], fingers: [5, 3, 1] },
+  'e-minor': { name: 'Mi mineur', root: 40, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  'a-minor': { name: 'La mineur', root: 45, intervals: [0, 3, 7], fingers: [5, 3, 1] },
+  'd-seven': { name: 'Ré 7', root: 38, intervals: [0, 4, 7, 10], fingers: [5, 3, 2, 1] },
+  'g-over-a': { name: 'Sol / La', root: 45, intervals: [0, 10, 14, 17], fingers: [5, 3, 2, 1] },
+};
+const LE_31_AOUT_CHORD_SEQUENCE: Array<[number, Le31AoutChordName]> = [
+  [1, 'g-major'], [3, 'g-major'], [5, 'g-major'], [7, 'd-major'], [9, 'g-major'], [11, 'g-major'], [13, 'g-major'], [15, 'd-major'],
+  [17, 'g-over-b'], [18, 'g-over-d'], [19, 'c-major'], [20, 'g-over-b'], [21, 'e-minor'], [22, 'a-minor'], [23, 'd-major'],
+  [25, 'g-major'], [26, 'd-major'], [27, 'g-major'], [28, 'd-major'], [29, 'g-major'], [31, 'g-major'], [33, 'g-major'],
+  [35, 'd-major'], [36, 'd-seven'], [37, 'g-over-b'], [38, 'd-major'], [39, 'c-major'], [40, 'g-over-b'], [41, 'g-major'],
+  [42, 'g-over-a'], [43, 'd-major'], [45, 'g-over-d'], [46, 'd-major'], [47, 'g-major'],
+];
+const LE_31_AOUT_HARMONY: PianoHarmonyStep[] = LE_31_AOUT_CHORD_SEQUENCE.map(([beat, chord]) => ({ beat, ...LE_31_AOUT_CHORDS[chord] }));
+const LE_31_AOUT_LEFT_HAND = LE_31_AOUT_HARMONY.flatMap(({ beat, root, intervals, fingers }, index) => {
+  const nextBeat = LE_31_AOUT_HARMONY[index + 1]?.beat ?? 48;
+  if (nextBeat - beat <= 1) return intervals.map((interval, noteIndex) => ({ midi: root + interval, beat, duration: 1, hand: 'left' as const, finger: fingers[noteIndex] }));
+  return [
+    { midi: root, beat, duration: 1, hand: 'left' as const, finger: 5 as const },
+    ...intervals.map((interval, noteIndex) => ({ midi: root + interval, beat: beat + 1, duration: LE_31_AOUT_QUARTER, hand: 'left' as const, finger: fingers[noteIndex] })),
+  ];
+});
+const LE_31_AOUT_TWO_HANDS = [
+  ...withRightHandFingerings(LE_31_AOUT_MELODY, 'g-major').map((note) => ({ ...note, hand: 'right' as const })),
+  ...LE_31_AOUT_LEFT_HAND,
+].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
+
 // Traditional Brise-pied collected from accordionist François Vidalenc in the
 // Aubrac/Carladez area. The source score gives an eight-measure C-major tune;
 // the playable form below repeats it once, as is customary for the dance.
@@ -552,6 +635,7 @@ export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'au-clair-de-la-lune-chords', songTitle: 'Au clair de la lune', artist: 'Traditionnel français', progression: harmonyToChordProgression(AU_CLAIR_HARMONY) },
   { id: 'experience-chords', songTitle: 'Experience', artist: 'Ludovico Einaudi', progression: EXPERIENCE_CHORD_PROGRESSION },
   { id: 'brise-pied-aveyronnais-chords', songTitle: 'Le Brise-pied aveyronnais', artist: 'Traditionnel aveyronnais', progression: harmonyToChordProgression(BRISE_PIED_HARMONY) },
+  { id: 'le-31-du-mois-aout-chords', songTitle: 'Le 31 du mois d’Août', artist: 'Traditionnel marin', progression: harmonyToChordProgression(LE_31_AOUT_HARMONY) },
   { id: 'mia-sebastians-theme-chords', songTitle: "Mia & Sebastian's Theme", artist: 'Justin Hurwitz', progression: MIA_SEBASTIAN_CHORD_PROGRESSION },
 ];
 
@@ -568,6 +652,7 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'experience-complete-61', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · 61 touches', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_61_KEY_NOTES },
   { id: 'experience-complete', title: 'Experience', kind: 'song', artist: 'Ludovico Einaudi', arrangement: 'Version complète · Tessiture originale', level: 'Modéré', bpm: 92, hand: 'both', beatsPerMeasure: 4, notes: EXPERIENCE_FULL_NOTES },
   { id: 'brise-pied-aveyronnais-advanced', title: 'Le Brise-pied aveyronnais', kind: 'song', artist: 'Traditionnel aveyronnais', arrangement: 'Version complète · Mélodie et accompagnement', level: 'Modéré', bpm: 104, hand: 'both', beatsPerMeasure: 4, notes: BRISE_PIED_TWO_HANDS },
+  { id: 'le-31-du-mois-aout-complete', title: 'Le 31 du mois d’Août', kind: 'song', artist: 'Traditionnel marin', arrangement: 'Version complète · 6/8, mélodie et accompagnement', level: 'Modéré', bpm: 100, hand: 'both', beatsPerMeasure: 2, measureStartBeat: 1, notes: LE_31_AOUT_TWO_HANDS, lyrics: LE_31_AOUT_LYRICS },
   { id: 'mia-sebastians-theme-complete-61', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · 61 touches', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_61_KEY_NOTES },
   { id: 'mia-sebastians-theme-complete', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · Tessiture originale (88 touches)', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_FULL_NOTES },
 ];

@@ -5,7 +5,7 @@ describe('piano V1', () => {
   it('keeps Promenade du matin as an exercise and removes the placeholder pieces', () => {
     expect(PIANO_TECHNIQUE_EXERCISES.map((item) => item.title)).toEqual(['Promenade du matin']);
     expect(PIANO_EXERCISES.some((item) => ['Trois petits pas', 'Cinq lumières', 'Dialogue des deux mains'].includes(item.title))).toBe(false);
-    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(9);
+    expect(PIANO_EXERCISES.filter((item) => item.hand === 'both')).toHaveLength(10);
     expect(PIANO_EXERCISES.filter((item) => item.kind === 'song').every((item) => !item.id.includes('beginner') && !item.id.includes('simplified') && !item.arrangement?.includes('simplifiée'))).toBe(true);
     expect(PIANO_EXERCISES.filter((item) => item.hand !== 'both').every((item) => new Set(item.notes.map((note) => note.beat)).size === item.notes.length)).toBe(true);
   });
@@ -55,6 +55,30 @@ describe('piano V1', () => {
     expect(pianoNotesForMode(advanced, 'practice', 'left')).toHaveLength(140);
     expect(pianoNotesForMode(advanced, 'maestro', 'right')).toHaveLength(246);
   });
+  it('transcribes the supplied Le 31 du mois d’Août score in 6/8 for a 61-key piano', () => {
+    const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Le 31 du mois d’Août');
+    expect(arrangements).toHaveLength(1);
+    const complete = arrangements[0];
+    expect(complete).toMatchObject({ artist: 'Traditionnel marin', level: 'Modéré', hand: 'both', bpm: 100, beatsPerMeasure: 2, measureStartBeat: 1 });
+    expect(complete.notes).toHaveLength(215);
+    const melody = pianoNotesForHand(complete.notes, 'right');
+    expect(melody).toHaveLength(98);
+    expect(pianoNotesForHand(complete.notes, 'left')).toHaveLength(117);
+    expect(pianoExerciseEndBeat(complete.notes)).toBe(48);
+    expect(pianoExerciseMeasureCount(complete)).toBe(24);
+    expect([Math.min(...complete.notes.map((note) => note.midi)), Math.max(...complete.notes.map((note) => note.midi))]).toEqual([36, 72]);
+    expect(complete.notes.every((note) => pianoRange(61).includes(note.midi))).toBe(true);
+    expect(melody.slice(0, 8).map((note) => [note.midi, note.beat, note.duration, note.finger])).toEqual([
+      [62, 0, 1 / 3, 2], [62, 1 / 3, 1 / 3, 2], [62, 2 / 3, 1 / 3, 2], [67, 1, 2 / 3, 1],
+      [71, 2, 1 / 3, 3], [71, 2 + 1 / 3, 1 / 3, 3], [71, 2 + 2 / 3, 1 / 3, 3], [67, 3, 2 / 3, 1],
+    ]);
+    expect(melody.filter((note) => note.midi === 72).map((note) => note.beat)).toEqual([17, 25, 37]);
+    expect(complete.lyrics).toHaveLength(10);
+    expect(complete.lyrics?.at(0)).toMatchObject({ beat: 0, text: 'Le trente et un du mois d’Août', section: 'Couplet' });
+    expect(complete.lyrics?.find((line) => line.beat === 28)).toMatchObject({ text: 'Buvons un coup, buvons en deux', section: 'Refrain' });
+    expect(pianoHandChoicesForMode(complete, 'practice')).toEqual(['left', 'right']);
+    expect(pianoHandChoicesForMode(complete, 'maestro')).toEqual(['both']);
+  });
   it('offers only the complete supplied Ne me quitte pas form', () => {
     const arrangements = PIANO_EXERCISES.filter((item) => item.title === 'Ne me quitte pas');
     expect(arrangements).toHaveLength(1);
@@ -94,8 +118,8 @@ describe('piano V1', () => {
   });
   it('synchronizes every sung melody note with words and its exact measure', () => {
     const songsWithLyrics = PIANO_EXERCISES.filter((exercise) => exercise.lyrics?.length);
-    expect(songsWithLyrics.map((exercise) => exercise.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune']);
-    const expectedCueCounts: Record<string, number> = { 'My Way': 200, 'Se Canta': 25, 'Ne me quitte pas': 385, 'Au clair de la lune': 176 };
+    expect(songsWithLyrics.map((exercise) => exercise.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Le 31 du mois d’Août']);
+    const expectedCueCounts: Record<string, number> = { 'My Way': 200, 'Se Canta': 25, 'Ne me quitte pas': 385, 'Au clair de la lune': 176, 'Le 31 du mois d’Août': 98 };
     for (const exercise of songsWithLyrics) {
       const melody = pianoNotesForHand(exercise.notes, 'right');
       const noteCues = exercise.lyrics!.flatMap((line) => line.noteCues);
@@ -156,13 +180,14 @@ describe('piano V1', () => {
     expect(new Set(complete.notes.map((note) => note.duration))).toEqual(new Set([.25, 1 / 3, .5, .75, .85, .9, 1, 2, 3]));
   });
   it('groups arrangements by song before the level choice', () => {
-    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Experience', 'Le Brise-pied aveyronnais', "Mia & Sebastian's Theme"]);
+    expect(PIANO_SONGS.map((song) => song.title)).toEqual(['My Way', 'Se Canta', 'Ne me quitte pas', 'Au clair de la lune', 'Experience', 'Le Brise-pied aveyronnais', 'Le 31 du mois d’Août', "Mia & Sebastian's Theme"]);
     expect(PIANO_SONGS.find((song) => song.title === 'My Way')?.levels.map((level) => level.id)).toEqual(['my-way-advanced']);
     expect(PIANO_SONGS.find((song) => song.title === 'Se Canta')?.levels).toHaveLength(1);
     expect(PIANO_SONGS.find((song) => song.title === 'Ne me quitte pas')?.levels).toHaveLength(1);
     expect(PIANO_SONGS.find((song) => song.title === 'Au clair de la lune')?.levels).toHaveLength(1);
     expect(PIANO_SONGS.find((song) => song.title === 'Experience')?.levels).toHaveLength(2);
     expect(PIANO_SONGS.find((song) => song.title === 'Le Brise-pied aveyronnais')?.levels).toHaveLength(1);
+    expect(PIANO_SONGS.find((song) => song.title === 'Le 31 du mois d’Août')?.levels).toHaveLength(1);
     expect(PIANO_SONGS.find((song) => song.title === "Mia & Sebastian's Theme")?.levels.map((level) => level.id)).toEqual(['mia-sebastians-theme-complete-61', 'mia-sebastians-theme-complete']);
     expect(groupPianoExercises([PIANO_EXERCISES[0], { ...PIANO_EXERCISES[0], id: 'same-title-other-artist', artist: 'Autre artiste' }])).toHaveLength(2);
   });
@@ -173,8 +198,9 @@ describe('piano V1', () => {
     const auClair = pianoChordExerciseForSong('Au clair de la lune', 'Traditionnel français')!;
     const experience = pianoChordExerciseForSong('Experience', 'Ludovico Einaudi')!;
     const brisePied = pianoChordExerciseForSong('Le Brise-pied aveyronnais', 'Traditionnel aveyronnais')!;
+    const le31Aout = pianoChordExerciseForSong('Le 31 du mois d’Août', 'Traditionnel marin')!;
     const miaSebastian = pianoChordExerciseForSong("Mia & Sebastian's Theme", 'Justin Hurwitz')!;
-    expect(PIANO_CHORD_EXERCISES).toHaveLength(7);
+    expect(PIANO_CHORD_EXERCISES).toHaveLength(8);
     expect(myWay.progression).toHaveLength(54);
     expect(new Set(myWay.progression.map((step) => step.name))).toHaveLength(12);
     expect(myWay.progression.at(-1)).toMatchObject({ beat: 213, name: 'Fa majeur' });
@@ -196,6 +222,10 @@ describe('piano V1', () => {
     expect(brisePied.progression).toHaveLength(16);
     expect(brisePied.progression.at(-1)).toMatchObject({ beat: 60, name: 'Do majeur' });
     expect(new Set(brisePied.progression.map((step) => step.name))).toEqual(new Set(['Do majeur', 'Fa majeur', 'Sol 7']));
+    expect(le31Aout.progression).toHaveLength(34);
+    expect(le31Aout.progression.at(0)).toMatchObject({ beat: 1, name: 'Sol majeur' });
+    expect(le31Aout.progression.at(-1)).toMatchObject({ beat: 47, name: 'Sol majeur' });
+    expect(new Set(le31Aout.progression.map((step) => step.name))).toEqual(new Set(['Sol majeur', 'Ré majeur', 'Sol / Si', 'Sol / Ré', 'Do majeur', 'Mi mineur', 'La mineur', 'Ré 7', 'Sol / La']));
     expect(miaSebastian.progression).toHaveLength(100);
     expect(miaSebastian.progression.at(0)).toMatchObject({ beat: 0, name: 'Mi majeur' });
     expect(miaSebastian.progression.at(-1)).toMatchObject({ beat: 297, name: 'Ré♭ majeur' });
@@ -335,9 +365,11 @@ describe('piano V1', () => {
   it('places measure lines on the musical grid, including pickup offsets', () => {
     expect(pianoMeasureBeats(13, 4)).toEqual([0, 4, 8, 12]);
     expect(pianoMeasureBeats(14, 3, 1)).toEqual([1, 4, 7, 10, 13]);
+    expect(pianoMeasureBeats(8, 2, 1)).toEqual([1, 3, 5, 7]);
     expect(pianoMeasureBeats(14, 0)).toEqual([]);
     expect(PIANO_EXERCISES.filter((item) => item.title === 'My Way').every((item) => item.beatsPerMeasure === 4 && item.measureStartBeat === 1)).toBe(true);
     expect(PIANO_EXERCISES.filter((item) => ['Se Canta', 'Ne me quitte pas'].includes(item.title)).every((item) => item.beatsPerMeasure === 3)).toBe(true);
+    expect(PIANO_EXERCISES.find((item) => item.title === 'Le 31 du mois d’Août')).toMatchObject({ beatsPerMeasure: 2, measureStartBeat: 1 });
   });
   it('converts varied rhythmic values to exact audio durations', () => {
     const promenade = PIANO_TECHNIQUE_EXERCISES[0];
