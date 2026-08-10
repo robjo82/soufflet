@@ -1,4 +1,5 @@
 import type { PianoKeyboardSize } from './types';
+import { AMSTERDAM_61_KEY_NOTES, AMSTERDAM_CHORD_PROGRESSION, AMSTERDAM_VOCAL_NOTES } from './amsterdamData';
 import { EXPERIENCE_61_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_FULL_NOTES } from './experienceData';
 import { MIA_SEBASTIAN_61_KEY_NOTES, MIA_SEBASTIAN_CHORD_PROGRESSION, MIA_SEBASTIAN_FULL_NOTES } from './miaSebastianData';
 
@@ -592,6 +593,40 @@ const LE_31_AOUT_TWO_HANDS = [
   ...LE_31_AOUT_LEFT_HAND,
 ].sort((left, right) => left.beat - right.beat || left.midi - right.midi);
 
+const AMSTERDAM_VERSES: string[][] = [
+  ['Dans le port d’Amsterdam', 'Y a des marins qui chantent', 'Les rêves qui les hantent', 'Au large d’Amsterdam'],
+];
+AMSTERDAM_VERSES[0].push('Dans le port d’Amsterdam', 'Y a des marins qui dorment', 'Comme des oriflammes', 'Le long des berges mornes');
+AMSTERDAM_VERSES[0].push('Dans le port d’Amsterdam', 'Y a des marins qui meurent', 'Pleins de bière et de drames', 'Aux premières lueurs');
+AMSTERDAM_VERSES[0].push('Mais dans le port d’Amsterdam', 'Y a des marins qui naissent', 'Dans la chaleur épaisse', 'Des langueurs océanes');
+AMSTERDAM_VERSES.push(['Dans le port d’Amsterdam', 'Y a des marins qui mangent', 'Sur des nappes trop blanches', 'Des poissons ruisselants']);
+AMSTERDAM_VERSES[1].push('Ils vous montrent des dents', 'À croquer la fortune', 'À décroisser la lune', 'À bouffer des haubans');
+AMSTERDAM_VERSES[1].push('Et ça sent la morue', 'Jusqu’dans le cœur des frites');
+AMSTERDAM_VERSES[1].push('Que leurs grosses mains invitent', 'À revenir en plus');
+AMSTERDAM_VERSES[1].push('Puis se lèvent en riant', 'Dans un bruit de tempête');
+AMSTERDAM_VERSES[1].push('Referment leur braguette', 'Et sortent en rotant');
+AMSTERDAM_VERSES.push(['Dans le port d’Amsterdam', 'Y a des marins qui dansent', 'En se frottant la panse', 'Sur la panse des femmes']);
+AMSTERDAM_VERSES[2].push('Et ils tournent et ils dansent', 'Comm’ des soleils crachés', 'Dans le son déchiré', 'D’un accordéon rance');
+AMSTERDAM_VERSES[2].push('Ils se tordent le cou', 'Pour mieux s’entendre rire', 'Jusqu’à c’que tout à coup', 'L’accordéon expire');
+AMSTERDAM_VERSES[2].push('Alors le geste grave', 'Alors le regard fier', 'Ils ramènent leur batave', 'Jusqu’en pleine lumière');
+AMSTERDAM_VERSES.push(['Dans le port d’Amsterdam', 'Y a des marins qui boivent', 'Et qui boivent et reboivent', 'Et qui reboivent encor']);
+AMSTERDAM_VERSES[3].push('Ils boivent à la santé', 'Des putains d’Amsterdam', 'De Hambourg ou d’ailleurs', 'Enfin ils boivent aux dames');
+AMSTERDAM_VERSES[3].push('Qui leur donnent leur joli corps', 'Qui leur donnent leur vertu');
+AMSTERDAM_VERSES[3].push('Pour une pièce en or', 'Et quand ils ont bien bu');
+AMSTERDAM_VERSES[3].push('Se plantent le nez au ciel', 'Se mouchent dans les étoiles');
+AMSTERDAM_VERSES[3].push('Et ils pissent comm’ je pleure', 'Sur les femmes infidèles');
+
+const AMSTERDAM_VERSE_STARTS = [11, 107, 203, 299];
+const AMSTERDAM_LYRIC_LINES: PianoLyricLineInput[] = [
+  ...AMSTERDAM_VERSES.flatMap((verse, verseIndex) => verse.map((text, lineIndex) => ({
+    beat: AMSTERDAM_VERSE_STARTS[verseIndex] + lineIndex * 6,
+    text,
+    section: `Couplet ${verseIndex + 1}`,
+  }))),
+  { beat: 395, text: 'Dans le port d’Amsterdam', section: 'Finale' },
+];
+const AMSTERDAM_LYRICS = synchronizeLyricsToMelody(AMSTERDAM_LYRIC_LINES, AMSTERDAM_VOCAL_NOTES, 6, 6);
+
 // Traditional Brise-pied collected from accordionist François Vidalenc in the
 // Aubrac/Carladez area. The source score gives an eight-measure C-major tune;
 // the playable form below repeats it once, as is customary for the dance.
@@ -637,6 +672,7 @@ export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'brise-pied-aveyronnais-chords', songTitle: 'Le Brise-pied aveyronnais', artist: 'Traditionnel aveyronnais', progression: harmonyToChordProgression(BRISE_PIED_HARMONY) },
   { id: 'le-31-du-mois-aout-chords', songTitle: 'Le 31 du mois d’Août', artist: 'Traditionnel marin', progression: harmonyToChordProgression(LE_31_AOUT_HARMONY) },
   { id: 'mia-sebastians-theme-chords', songTitle: "Mia & Sebastian's Theme", artist: 'Justin Hurwitz', progression: MIA_SEBASTIAN_CHORD_PROGRESSION },
+  { id: 'amsterdam-chords', songTitle: 'Amsterdam', artist: 'Jacques Brel', progression: AMSTERDAM_CHORD_PROGRESSION },
 ];
 
 export function pianoChordExerciseForSong(title: string, artist?: string) {
@@ -655,6 +691,7 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'le-31-du-mois-aout-complete', title: 'Le 31 du mois d’Août', kind: 'song', artist: 'Traditionnel marin', arrangement: 'Version complète · 6/8, mélodie et accompagnement', level: 'Modéré', bpm: 100, hand: 'both', beatsPerMeasure: 2, measureStartBeat: 1, notes: LE_31_AOUT_TWO_HANDS, lyrics: LE_31_AOUT_LYRICS },
   { id: 'mia-sebastians-theme-complete-61', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · 61 touches', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_61_KEY_NOTES },
   { id: 'mia-sebastians-theme-complete', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · Tessiture originale (88 touches)', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_FULL_NOTES },
+  { id: 'amsterdam-complete-61', title: 'Amsterdam', kind: 'song', artist: 'Jacques Brel', arrangement: 'Adaptation complète · Mélodie et arpèges · 61 touches', level: 'Modéré', bpm: 140, hand: 'both', beatsPerMeasure: 6, measureStartBeat: 6, notes: AMSTERDAM_61_KEY_NOTES, lyrics: AMSTERDAM_LYRICS },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -710,7 +747,7 @@ export function pianoShowsFingerings(mode: PianoPlayMode) {
   return mode === 'practice';
 }
 
-const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas', "Mia & Sebastian's Theme"]);
+const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas', "Mia & Sebastian's Theme", 'Amsterdam']);
 const PRACTICE_SECTION_IDS: PianoPracticeSection['id'][] = ['part-1', 'part-2', 'part-3'];
 const PRACTICE_SECTION_TITLES = ['Partie 1 · Début', 'Partie 2 · Milieu', 'Partie 3 · Fin'];
 
