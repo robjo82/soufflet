@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowRight, Bot, Check, FileAudio, FileMusic, FileText, Link2, LoaderCircle, MessageCircle, Music2, Send, Sparkles, Upload, UserRound, X, Youtube } from 'lucide-react';
-import type { AccordionConfig, Song, TranscriptionResult } from '../types';
+import type { AccordionConfig, InstrumentType, Song, TranscriptionResult } from '../types';
 
 type ImportKind = 'discover' | 'file' | 'youtube' | 'spotify' | 'tablature';
 
@@ -13,13 +13,14 @@ interface DiscoveryMessage {
 
 interface ImportModalProps {
   accordion: AccordionConfig;
+  instrumentType: InstrumentType;
   apiKey: string;
   onClose: () => void;
   onImported: (song: Song) => Promise<void>;
 }
 
-const STEPS = ['Identifier la version', 'Chercher partitions et tablatures', 'Analyser toute la vidéo', 'Construire les deux mains', 'Contrôler la couverture'];
-const DISCOVERY_SUGGESTIONS = ['Complète la main gauche', 'Simplifie pour débutant', 'Vérifie le rythme et les reprises'];
+const STEPS = ['Identifier la version', 'Chercher des sources musicales', 'Analyser toute la vidéo', 'Construire mélodie et accompagnement', 'Contrôler la couverture'];
+const DISCOVERY_SUGGESTIONS = ['Complète l’accompagnement', 'Simplifie pour débutant', 'Vérifie le rythme et les reprises'];
 
 function youtubeId(url: string) {
   return url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([\w-]{11})/)?.[1];
@@ -85,7 +86,7 @@ function mapTranscription(result: TranscriptionResult, accordion: AccordionConfi
   };
 }
 
-export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportModalProps) {
+export function ImportModal({ accordion, instrumentType, apiKey, onClose, onImported }: ImportModalProps) {
   const [kind, setKind] = useState<ImportKind>('discover');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
@@ -99,10 +100,21 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
   const [discoveryMessages, setDiscoveryMessages] = useState<DiscoveryMessage[]>([{
     id: 'discovery-welcome',
     role: 'assistant',
-    content: 'Donne-moi simplement le titre du morceau. Tu peux préciser l’interprète, la région, la version ou ton objectif, par exemple : « La Valse à Ollu, complète, avec une main gauche simple ».',
+    content: instrumentType === 'accordion'
+      ? 'Donne-moi simplement le titre du morceau. Tu peux préciser l’interprète, la région, la version ou ton objectif, par exemple : « La Valse à Ollu, complète, avec une main gauche simple ».'
+      : instrumentType === 'piano'
+        ? 'Donne-moi simplement le titre du morceau. Tu peux préciser l’interprète, la version ou ton objectif, par exemple : « Au clair de la lune, arrangement piano très facile, avec les deux mains ».'
+        : 'Donne-moi simplement le titre du morceau. Tu peux préciser l’interprète, la version ou ton objectif, par exemple : « Au clair de la lune, arrangement guitare très facile ».',
   }]);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
+  const importTabs = ([
+    ['discover', MessageCircle, 'Trouver avec l’IA'],
+    ['file', FileAudio, 'Audio ou partition'],
+    ['youtube', Youtube, 'YouTube'],
+    ['spotify', Music2, 'Spotify'],
+    ...(instrumentType === 'accordion' ? [['tablature', FileText, 'Tablature texte'] as const] : []),
+  ] as const);
 
   useEffect(() => {
     if (kind === 'discover' && chatRef.current) chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
@@ -213,9 +225,7 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
         ) : (
           <>
             <div className="import-tabs">
-              {([
-                ['discover', MessageCircle, 'Trouver avec l’IA'], ['file', FileAudio, 'Audio ou partition'], ['youtube', Youtube, 'YouTube'], ['spotify', Music2, 'Spotify'], ['tablature', FileText, 'Tablature texte'],
-              ] as const).map(([id, Icon, label]) => <button type="button" key={id} className={kind === id ? 'is-active' : ''} onClick={() => { setKind(id); setError(''); }}><Icon />{label}</button>)}
+              {importTabs.map(([id, Icon, label]) => <button type="button" key={id} className={kind === id ? 'is-active' : ''} onClick={() => { setKind(id); setError(''); }}><Icon />{label}</button>)}
             </div>
 
             <div className="import-body">
@@ -225,7 +235,7 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
                   {discoveryPending && <div className="discovery-message is-assistant is-thinking"><span><LoaderCircle /></span><p><strong>Je cherche et je compare les éditions…</strong><small>PDF, tablatures, ABC, MusicXML et sources de référence</small></p></div>}
                   {discoveryResult && !discoveryPending && <article className="discovery-result-card">
                     <div><span className="eyebrow">Brouillon actuel</span><h3>{discoveryResult.title}</h3><p>{discoveryResult.artist} · {discoveryResult.bpm} BPM · {discoveryResult.key}</p></div>
-                    <div className="discovery-result-metrics"><span><strong>{discoveryResult.events.length}</strong><small>notes</small></span><span><strong>{discoveryResult.accompaniment?.length ?? 0}</strong><small>gestes main gauche</small></span><span><strong>{Math.round(discoveryResult.confidence * 100)} %</strong><small>confiance</small></span></div>
+                    <div className="discovery-result-metrics"><span><strong>{discoveryResult.events.length}</strong><small>notes</small></span><span><strong>{discoveryResult.accompaniment?.length ?? 0}</strong><small>éléments d’accompagnement</small></span><span><strong>{Math.round(discoveryResult.confidence * 100)} %</strong><small>confiance</small></span></div>
                     <div className="discovery-result-sources">{discoveryResult.sources?.slice(0, 4).map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer"><FileText /><span><b>{source.title}</b><small>{source.kind.toUpperCase()} · {Math.round(source.reliability * 100)} %</small></span></a>)}</div>
                   </article>}
                 </div>
@@ -234,7 +244,7 @@ export function ImportModal({ accordion, apiKey, onClose, onImported }: ImportMo
                 <p className="discovery-caution"><AlertCircle /> L’IA ne valide jamais seule une partition : les passages incertains restent signalés dans le studio.</p>
               </div>}
               {kind === 'file' && <div className={`drop-zone ${file ? 'has-file' : ''}`} onClick={() => inputRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setFile(event.dataTransfer.files[0] ?? null); }}><input ref={inputRef} type="file" accept="audio/*,video/*,.pdf,.png,.jpg,.jpeg,.musicxml,.mxl,.mid,.midi" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><span>{file ? <FileMusic /> : <Upload />}</span><strong>{file ? file.name : 'Dépose ton fichier ici'}</strong><p>{file ? `${(file.size / 1024 / 1024).toFixed(1)} Mo · prêt pour l’analyse` : 'Audio, vidéo, PDF, photo, MusicXML ou MIDI · 25 Mo maximum'}</p><button type="button" className="secondary-button">{file ? 'Choisir un autre fichier' : 'Parcourir mes fichiers'}</button></div>}
-              {kind === 'youtube' && <div className="link-import"><Youtube /><h3>Vidéo YouTube publique</h3><p>Soufflet analyse toute la vidéo, recherche des sources musicales, puis confronte mélodie et main gauche à ce qui est réellement joué. Chaque estimation reste signalée.</p><label><span>Adresse de la vidéo</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=…" /></div></label>{url && !youtubeId(url) && <small className="field-error">Cette adresse ne ressemble pas à une vidéo YouTube.</small>}</div>}
+              {kind === 'youtube' && <div className="link-import"><Youtube /><h3>Vidéo YouTube publique</h3><p>Soufflet analyse toute la vidéo, recherche des sources musicales, puis confronte mélodie et accompagnement à ce qui est réellement joué. Chaque estimation reste signalée.</p><label><span>Adresse de la vidéo</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=…" /></div></label>{url && !youtubeId(url) && <small className="field-error">Cette adresse ne ressemble pas à une vidéo YouTube.</small>}</div>}
               {kind === 'spotify' && <div className="link-import spotify-import"><Music2 /><h3>Lien Spotify</h3><p>Spotify interdit l’analyse et la synchronisation de ses enregistrements par des apps tierces. Le lien sera ajouté comme référence ; importe ensuite un fichier audio que tu as le droit d’utiliser.</p><label><span>Adresse Spotify</span><div><Link2 /><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://open.spotify.com/track/…" /></div></label><div className="legal-note"><AlertCircle /> Aucun audio Spotify n’est téléchargé, copié ou envoyé à une IA.</div></div>}
               {kind === 'tablature' && <div className="text-import"><FileText /><h3>Coller une tablature</h3><p>Formats simples acceptés : <code>4P 4T 5P</code>, noms de notes, ou texte libre. L’éditeur permettra de tout corriger.</p><textarea value={tabText} onChange={(event) => setTabText(event.target.value)} placeholder={'Titre: Ma mélodie\nTempo: 90\n\n4P 4T 5P 5T | 6P — 5T 4P'} rows={8} /></div>}
               {state === 'error' && <div className="error-banner"><AlertCircle /><span><strong>Import interrompu</strong>{error}</span></div>}

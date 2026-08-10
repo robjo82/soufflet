@@ -4,6 +4,7 @@ import { eventsForHand, matchesPianoEvent, pianoArrangementFor, pianoNoteLabel, 
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
 import type { InstrumentArrangementEvent, PianoConfig, PracticeSessionInput, PrimaryPracticeMode, Song } from '../types';
+import { PianoFallingStage } from './PianoKeyboard';
 
 interface PianoPracticePlayerProps {
   song: Song;
@@ -196,21 +197,9 @@ export function PianoPracticePlayer({ song, piano, countIn, onSessionUpdate, onC
       </aside>
       <div className="piano-stage">
         <div className="piano-next"><span>{mode === 'wait' ? 'À toi de jouer' : playing ? 'En cours' : 'Prêt'}</span><strong>{expected.length ? [...new Set(expected)].map((midi) => pianoNoteLabel(midi, piano.notation)).join(' + ') : waitIndex >= groups.length ? 'Terminé !' : '—'}</strong><small>{activeGroup?.items.map((event) => event.fingers?.length ? `doigt ${event.fingers.join('-')}` : '').filter(Boolean).join(' · ')}</small></div>
-        <div className="piano-roll" aria-label="Notes à venir">{events.filter((event) => event.beat >= beat - 1 && event.beat <= beat + 8).map((event) => <div key={event.id} className={`piano-roll-note is-${event.hand}`} style={{ left: `${Math.max(0, (event.beat - beat + 1) / 9 * 100)}%`, width: `${Math.max(2.5, event.duration / 9 * 100)}%` }}><span>{event.label}</span><small>{event.fingers?.join('-')}</small></div>)}<i className="piano-playhead" /></div>
-        <PianoKeyboard midis={keyboardMidis} expected={expected} active={hitMidis} notation={piano.notation} onHit={hitMidi} />
+        <PianoFallingStage midis={keyboardMidis} events={events} beat={beat} expected={expected} active={hitMidis} notation={piano.notation} onHit={hitMidi} />
       </div>
     </section>
     <footer className="piano-transport"><button type="button" onClick={reset}><RotateCcw /> Recommencer <kbd>R</kbd></button><button type="button" className="primary-button" onClick={() => void togglePlayback()}>{playing ? <Pause /> : <Play fill="currentColor" />}{playing ? 'Pause' : mode === 'wait' ? 'Commencer à jouer' : 'Commencer'} <kbd>Espace</kbd></button><span><SlidersHorizontal /> {piano.name}</span>{countdown !== null && <div className="piano-countdown">{countdown}</div>}</footer>
   </main>;
-}
-
-function PianoKeyboard({ midis, expected, active, notation, onHit }: { midis: number[]; expected: number[]; active: Set<number>; notation: 'french' | 'english'; onHit: (midi: number) => void }) {
-  const whiteMidis = midis.filter((midi) => ![1, 3, 6, 8, 10].includes(midi % 12));
-  return <div className="piano-keyboard-scroll"><div className="piano-keyboard" style={{ width: `${Math.max(760, whiteMidis.length * 38)}px` }}>
-    {whiteMidis.map((midi) => <button type="button" key={midi} className={`piano-key white ${expected.includes(midi) ? 'is-expected' : ''} ${active.has(midi) ? 'is-active' : ''}`} onPointerDown={() => onHit(midi)}><span>{midi % 12 === 0 ? pianoNoteLabel(midi, notation) : ''}</span></button>)}
-    {midis.filter((midi) => [1, 3, 6, 8, 10].includes(midi % 12)).map((midi) => {
-      const whitesBefore = whiteMidis.filter((white) => white < midi).length;
-      return <button type="button" key={midi} className={`piano-key black ${expected.includes(midi) ? 'is-expected' : ''} ${active.has(midi) ? 'is-active' : ''}`} style={{ left: `calc(${whitesBefore} * (100% / ${whiteMidis.length}) - 11px)` }} aria-label={pianoNoteLabel(midi, notation)} onPointerDown={() => onHit(midi)} />;
-    })}
-  </div></div>;
 }

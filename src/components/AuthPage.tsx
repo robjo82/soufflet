@@ -36,7 +36,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     <main className="auth-page">
       <section className="auth-story">
         <span className="brand-lockup"><span className="brand-mark"><i /><i /><i /></span><strong>soufflet</strong></span>
-        <div><span className="eyebrow">Ton professeur d’accordéon</span><h1>Commence par une note.<br /><em>On construit la suite ensemble.</em></h1><p>Une progression calme, un retour précis du microphone et un accordéon qui ressemble au tien.</p></div>
+        <div><span className="eyebrow">Ton professeur de musique</span><h1>Commence par une note.<br /><em>On construit la suite ensemble.</em></h1><p>Un parcours adapté à ton accordéon, ton piano ou ta guitare, avec une progression claire et une écoute précise.</p></div>
         <ul><li><Music2 /><span><strong>Un premier morceau en quelques minutes</strong>Sans connaître le solfège.</span></li><li><Mic2 /><span><strong>La machine t’écoute vraiment</strong>Elle indique la note entendue et comment corriger.</span></li><li><ShieldCheck /><span><strong>Ta progression reste privée</strong>Mot de passe chiffré et microphone analysé dans le navigateur.</span></li></ul>
       </section>
       <section className="auth-panel">
@@ -44,7 +44,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
           <span className="auth-icon"><UserRound /></span>
           <span className="eyebrow">{mode === 'register' ? 'Première visite' : 'Bon retour'}</span>
           <h2>{mode === 'register' ? 'Crée ton espace' : 'Reprends ta progression'}</h2>
-          <p>{mode === 'register' ? 'Trois informations, puis nous configurons ton instrument ensemble.' : 'Connecte-toi pour retrouver ta bibliothèque et ton accordéon.'}</p>
+          <p>{mode === 'register' ? 'Trois informations, puis nous configurons ton premier instrument ensemble.' : 'Connecte-toi pour retrouver ta bibliothèque, tes instruments et ta progression.'}</p>
           <form onSubmit={(event) => void submit(event)}>
             {mode === 'register' && <label>Comment doit-on t’appeler ?<input autoFocus value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={2} maxLength={60} required placeholder="Robin" autoComplete="name" /></label>}
             <label>Adresse e-mail<input autoFocus={mode === 'login'} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="toi@exemple.fr" autoComplete="email" /></label>
