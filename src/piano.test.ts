@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventsForHand, matchesPianoEvent, pianoKeyGeometry, pianoNoteLabel, pianoRange } from './piano';
+import { eventsForHand, matchesPianoEvent, pianoKeyGeometry, pianoLyricCueAtBeat, pianoNoteLabel, pianoRange, pianoVisibleRange } from './piano';
 
 describe('piano learning helpers', () => {
   it('builds standard keyboard ranges', () => {
@@ -28,5 +28,25 @@ describe('piano learning helpers', () => {
     expect(geometry.find((key) => key.midi === 62)?.left).toBeCloseTo(100 / 3);
     expect(geometry.find((key) => key.midi === 61)!.left).toBeGreaterThan(20);
     expect(geometry.find((key) => key.midi === 61)!.left).toBeLessThan(34);
+  });
+
+  it('keeps the useful register readable without showing unused octaves', () => {
+    const visible = pianoVisibleRange(pianoRange(88), [
+      { id: 'c', beat: 0, duration: 1, midis: [60], hand: 'right' },
+      { id: 'g', beat: 1, duration: 1, midis: [67], hand: 'right' },
+    ]);
+    expect(visible).toHaveLength(25);
+    expect(visible).toContain(60);
+    expect(visible).toContain(67);
+  });
+
+  it('synchronizes the lyric line and its highlighted word', () => {
+    const cue = pianoLyricCueAtBeat([
+      { beat: 0, text: 'Au clair de la lune', section: 'Couplet' },
+      { beat: 4, text: 'Mon ami Pierrot', section: 'Couplet' },
+    ], 2, 8);
+    expect(cue.current?.text).toBe('Au clair de la lune');
+    expect(cue.next?.text).toBe('Mon ami Pierrot');
+    expect(cue.words[cue.activeWord]).toBe('de');
   });
 });

@@ -317,6 +317,12 @@ describe('built-in melody editions', () => {
     expect(song.events).toHaveLength(44);
     expect(song.events.at(22)).toMatchObject({ midi: 74, duration: .5 });
     expect(song.events.at(-1)).toMatchObject({ midi: 72, duration: 2 });
+    expect(song.lyrics).toEqual([
+      { beat: 0, text: 'Au clair de la lune', section: 'Couplet 1' },
+      { beat: 8, text: 'Mon ami Pierrot', section: 'Couplet 1' },
+      { beat: 16, text: 'Prête-moi ta plume', section: 'Couplet 1' },
+      { beat: 24, text: 'Pour écrire un mot', section: 'Couplet 1' },
+    ]);
   });
 
   it('keeps Frère Jacques lively by using eighth notes for the matins phrase', () => {

@@ -42,6 +42,7 @@ export interface SeedSong {
   builtIn: true;
   license: string;
   provenance: string;
+  lyrics?: Array<{ beat: number; text: string; section?: string }>;
 }
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -107,7 +108,7 @@ function traditional(
   bpm: number,
   key: string,
   notes: SeedStep[],
-  options: Partial<Pick<SeedSong, 'artist' | 'timeSignature' | 'difficulty' | 'license' | 'provenance'>> = {},
+  options: Partial<Pick<SeedSong, 'artist' | 'timeSignature' | 'difficulty' | 'license' | 'provenance' | 'lyrics'>> = {},
 ): SeedSong {
   const events = eventsFromMidi(notes);
   const totalBeats = events.at(-1) ? events.at(-1)!.beat + events.at(-1)!.duration : 0;
@@ -129,6 +130,7 @@ function traditional(
     builtIn: true,
     license: options.license ?? 'Domaine public',
     provenance: options.provenance ?? 'Mélodie traditionnelle, édition pédagogique Soufflet.',
+    ...(options.lyrics?.length ? { lyrics: options.lyrics } : {}),
   };
 }
 
@@ -164,6 +166,12 @@ function auClairDeLaLune(): SeedSong {
     {
       timeSignature: [2, 4],
       provenance: 'Premier couplet complet, rythme contrôlé depuis la transcription ABC d’Eric Forgeot (Q = 80), transposé une octave pour le clavier diatonique.',
+      lyrics: [
+        { beat: 0, text: 'Au clair de la lune', section: 'Couplet 1' },
+        { beat: 8, text: 'Mon ami Pierrot', section: 'Couplet 1' },
+        { beat: 16, text: 'Prête-moi ta plume', section: 'Couplet 1' },
+        { beat: 24, text: 'Pour écrire un mot', section: 'Couplet 1' },
+      ],
     },
   );
 }
@@ -184,6 +192,16 @@ function frereJacques(): SeedSong {
     {
       timeSignature: [2, 4],
       provenance: 'Mélodie traditionnelle complète ; croches de « Sonnez les matines » et tempo de comptine contrôlés sur partition.',
+      lyrics: [
+        { beat: 0, text: 'Frère Jacques', section: 'Couplet' },
+        { beat: 4, text: 'Frère Jacques', section: 'Couplet' },
+        { beat: 8, text: 'Dormez-vous ?', section: 'Couplet' },
+        { beat: 12, text: 'Dormez-vous ?', section: 'Couplet' },
+        { beat: 16, text: 'Sonnez les matines', section: 'Couplet' },
+        { beat: 20, text: 'Sonnez les matines', section: 'Couplet' },
+        { beat: 24, text: 'Ding, deng, dong', section: 'Couplet' },
+        { beat: 28, text: 'Ding, deng, dong', section: 'Couplet' },
+      ],
     },
   );
 }
@@ -211,6 +229,16 @@ function seCanta(): SeedSong {
       timeSignature: [3, 4],
       difficulty: 2,
       provenance: 'Mélodie en dix mesures contrôlée sur le conducteur MusicXML en notes réelles de Hautbois & Cie, transposée en Do majeur.',
+      lyrics: [
+        { beat: 2, text: 'Se canta, que cante', section: 'Couplet' },
+        { beat: 6, text: 'Canta pas per ieu', section: 'Couplet' },
+        { beat: 9, text: 'Canta per ma mia', section: 'Couplet' },
+        { beat: 12, text: 'Qu’es al luènh de ieu', section: 'Couplet' },
+        { beat: 15, text: 'Aquelas montanhas', section: 'Refrain' },
+        { beat: 18, text: 'Que tan nautas son', section: 'Refrain' },
+        { beat: 21, text: 'M’empachan de veire', section: 'Refrain' },
+        { beat: 24, text: 'Mas amors ont son', section: 'Refrain' },
+      ],
     },
   );
 }
@@ -386,7 +414,16 @@ export const SONG_SEEDS: SeedSong[] = [
   leTrenteEtUnDuMoisDAout(),
   auClairDeLaLune(),
   frereJacques(),
-  traditional('ah-vous-dirai-je-maman', 'Ah ! vous dirai-je, maman', 88, 'Do majeur', [C4, C4, G4, G4, A4, A4, [G4, 2], F4, F4, E4, E4, D4, D4, [C4, 2], G4, G4, F4, F4, E4, E4, [D4, 2], G4, G4, F4, F4, E4, E4, [D4, 2], C4, C4, G4, G4, A4, A4, [G4, 2], F4, F4, E4, E4, D4, D4, [C4, 2]]),
+  traditional('ah-vous-dirai-je-maman', 'Ah ! vous dirai-je, maman', 88, 'Do majeur', [C4, C4, G4, G4, A4, A4, [G4, 2], F4, F4, E4, E4, D4, D4, [C4, 2], G4, G4, F4, F4, E4, E4, [D4, 2], G4, G4, F4, F4, E4, E4, [D4, 2], C4, C4, G4, G4, A4, A4, [G4, 2], F4, F4, E4, E4, D4, D4, [C4, 2]], {
+    lyrics: [
+      { beat: 0, text: 'Ah ! vous dirai-je, maman', section: 'Couplet' },
+      { beat: 8, text: 'Ce qui cause mon tourment', section: 'Couplet' },
+      { beat: 16, text: 'Papa veut que je raisonne', section: 'Couplet' },
+      { beat: 24, text: 'Comme une grande personne', section: 'Couplet' },
+      { beat: 32, text: 'Moi je dis que les bonbons', section: 'Couplet' },
+      { beat: 40, text: 'Valent mieux que la raison', section: 'Couplet' },
+    ],
+  }),
   traditional('ode-a-la-joie', 'Ode à la joie', 96, 'Do majeur', [E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, [E4, 1.5], [D4, .5], [D4, 2], E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, [D4, 1.5], [C4, .5], [C4, 2]], { artist: 'Ludwig van Beethoven', provenance: 'Thème du quatrième mouvement de la Symphonie n° 9, édition pédagogique.' }),
   traditional('mary-had-a-little-lamb', 'Mary Had a Little Lamb', 88, 'Do majeur', [E4, D4, C4, D4, E4, E4, [E4, 2], D4, D4, [D4, 2], E4, G4, [G4, 2], E4, D4, C4, D4, E4, E4, E4, E4, D4, D4, E4, D4, [C4, 3]]),
   traditional('alouette', 'Alouette, gentille alouette', 104, 'Do majeur', [G4, A4, B4, B4, A4, G4, A4, B4, G4, E4, G4, G4, A4, B4, B4, A4, G4, A4, B4, G4, E4, [G4, 2]], { timeSignature: [2, 4] }),
