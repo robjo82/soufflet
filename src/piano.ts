@@ -1,4 +1,4 @@
-import type { InstrumentArrangement, InstrumentArrangementEvent, PianoKeyboardSize } from './types';
+import type { InstrumentArrangement, InstrumentArrangementEvent, LyricLine, PianoKeyboardSize } from './types';
 
 export const PIANO_NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 export const PIANO_FRENCH_NAMES = ['Do', 'Do♯', 'Ré', 'Ré♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
@@ -29,6 +29,40 @@ export function pianoKeyGeometry(midis: number[]): PianoKeyGeometry[] {
     const width = whiteWidth * .62;
     return { midi, black, left: whitesBefore * whiteWidth - width / 2, width };
   });
+}
+
+export function pianoVisibleRange(allMidis: number[], events: InstrumentArrangementEvent[], minimumKeys = 25) {
+  if (!allMidis.length || !events.length) return allMidis;
+  const playedMidis = events.flatMap((event) => event.midis).filter((midi) => allMidis.includes(midi));
+  if (!playedMidis.length) return allMidis;
+  let start = Math.max(0, allMidis.indexOf(Math.min(...playedMidis)) - 5);
+  let end = Math.min(allMidis.length, allMidis.indexOf(Math.max(...playedMidis)) + 6);
+  while (end - start < Math.min(minimumKeys, allMidis.length)) {
+    if (start > 0) start -= 1;
+    if (end - start >= minimumKeys) break;
+    if (end < allMidis.length) end += 1;
+    if (start === 0 && end === allMidis.length) break;
+  }
+  return allMidis.slice(start, end);
+}
+
+export function pianoLyricCueAtBeat(lyrics: LyricLine[], beat: number, totalBeats: number) {
+  const ordered = [...lyrics].sort((left, right) => left.beat - right.beat);
+  let currentIndex = -1;
+  for (let index = 0; index < ordered.length && ordered[index].beat <= beat; index += 1) currentIndex = index;
+  const current = currentIndex >= 0 ? ordered[currentIndex] : undefined;
+  const next = ordered[currentIndex + 1];
+  if (!current) return { current, next, words: [] as string[], activeWord: -1, progress: 0 };
+  const words = current.text.match(/\S+/g) ?? [];
+  const endBeat = next?.beat ?? totalBeats;
+  const progress = Math.max(0, Math.min(1, (beat - current.beat) / Math.max(.25, endBeat - current.beat)));
+  return {
+    current,
+    next,
+    words,
+    activeWord: words.length ? Math.min(words.length - 1, Math.floor(progress * words.length)) : -1,
+    progress,
+  };
 }
 
 export function pianoNoteLabel(midi: number, notation: 'french' | 'english' = 'french') {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { pianoKeyGeometry, pianoNoteLabel } from '../piano';
 import type { InstrumentArrangementEvent } from '../types';
 
@@ -14,7 +14,7 @@ interface PianoKeyboardProps {
 export function PianoKeyboard({ midis, expected = [], active = new Set(), notation, onHit, bare = false }: PianoKeyboardProps) {
   const geometry = useMemo(() => pianoKeyGeometry(midis), [midis]);
   const whiteCount = geometry.filter((key) => !key.black).length;
-  const keyboard = <div className="piano-keyboard" style={{ width: `${Math.max(760, whiteCount * 42)}px` }}>
+  const keyboard = <div className="piano-keyboard" style={{ width: `max(100%, ${Math.max(620, whiteCount * 28)}px)` }}>
     {geometry.map((key) => <button
       type="button"
       key={key.midi}
@@ -33,14 +33,15 @@ interface PianoFallingStageProps extends Omit<PianoKeyboardProps, 'bare'> {
   beat: number;
   lookAhead?: number;
   className?: string;
+  overlay?: ReactNode;
 }
 
-export function PianoFallingStage({ midis, expected = [], active = new Set(), notation, onHit, events, beat, lookAhead = 8, className = '' }: PianoFallingStageProps) {
+export function PianoFallingStage({ midis, expected = [], active = new Set(), notation, onHit, events, beat, lookAhead = 8, className = '', overlay }: PianoFallingStageProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const geometry = useMemo(() => pianoKeyGeometry(midis), [midis]);
   const geometryByMidi = useMemo(() => new Map(geometry.map((key) => [key.midi, key])), [geometry]);
   const whiteCount = geometry.filter((key) => !key.black).length;
-  const width = Math.max(760, whiteCount * 42);
+  const width = Math.max(620, whiteCount * 28);
   const targetMidi = expected[0];
 
   useEffect(() => {
@@ -52,8 +53,9 @@ export function PianoFallingStage({ midis, expected = [], active = new Set(), no
   }, [targetMidi]);
 
   const visibleEvents = events.filter((event) => event.beat + event.duration >= beat - .35 && event.beat <= beat + lookAhead);
-  return <div className={`piano-falling-scroll ${className}`} ref={scrollRef}>
-    <div className="piano-falling-visual" style={{ width: `${width}px` }}>
+  return <div className={`piano-falling-stage ${className}`}>
+    <div className="piano-falling-scroll" ref={scrollRef}>
+      <div className="piano-falling-visual" style={{ width: `max(100%, ${width}px)` }}>
       <div className="piano-falling-roll" aria-label="Notes de piano à venir">
         <div className="piano-roll-lanes">{geometry.filter((key) => !key.black).map((key) => <i key={key.midi} style={{ left: `${key.left}%`, width: `${key.width}%` }} />)}</div>
         {visibleEvents.flatMap((event) => event.midis.map((midi, midiIndex) => {
@@ -70,6 +72,8 @@ export function PianoFallingStage({ midis, expected = [], active = new Set(), no
         <div className="piano-hit-line"><span>Joue ici</span></div>
       </div>
       <PianoKeyboard midis={midis} expected={expected} active={active} notation={notation} onHit={onHit} bare />
+      </div>
     </div>
+    {overlay}
   </div>;
 }
