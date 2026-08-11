@@ -37,6 +37,16 @@ describe('bellows strategy planner', () => {
     expect(planned.events.every((event) => event.mappingSource === 'authorial')).toBe(true);
   });
 
+  it('keeps Le 31 du mois d’août in a playable authored Club I path', () => {
+    const source = SONG_SEEDS.find((song) => song.id === 'le-31-du-mois-daout')!;
+    const planned = adaptSongToAccordion(source, club, 'balanced');
+
+    expect(planned.events.every((event) => event.mappingSource === 'authorial')).toBe(true);
+    expect(planned.events.every((event) => event.buttonId.startsWith('c1-'))).toBe(true);
+    expect(planned.bellowsPlan?.rowChanges).toBeLessThan(20);
+    expect(planned.bellowsPlan?.needsReview).toBe(false);
+  });
+
   it('places silent air-valve actions at phrase boundaries before saturation', () => {
     const button = club.buttons.find((item) => item.id === 'c1-out-5')!;
     const song: Song = {

@@ -309,29 +309,56 @@ function laJumentDeMichao(): SeedSong {
 }
 
 function leTrenteEtUnDuMoisDAout(): SeedSong {
-  // Édition transposée de Sol vers Do pour rester immédiatement jouable sur les
-  // accordéons Do/Fa et Sol/Do. La levée de trois croches est conservée : le
-  // premier temps fort arrive donc au début de la deuxième mesure affichée.
-  const melody: SeedStep[] = [
-    [null, 1.5], [G4, .5], [G4, .5], [G4, .5],
+  // Édition transposée de Sol vers Do une quarte plus haut depuis la ligne chantée,
+  // et non depuis la voix supérieure de l'accompagnement. Le chemin Club I
+  // alterne ensuite des phrases entières par rangée pour préserver le soufflet.
+  const cycle: SeedStep[] = [
+    [G4, .5], [G4, .5], [G4, .5],
     [C5, 1.5], [E5, .5], [E5, .5], [E5, .5],
     [C5, 1.5], [E5, .5], [E5, .5], [E5, .5],
-    [E5, 1.5], [C5, .5], [E5, 1], [C5, .5],
+    [E5, 1], [C5, .5], [E5, 1], [C5, .5],
     [D5, 1.5], [G4, .5], [G4, .5], [G4, .5],
     [C5, 1.5], [E5, .5], [E5, .5], [E5, .5],
     [C5, 1.5], [E5, .5], [E5, .5], [E5, .5],
-    [E5, 1.5], [C5, .5], [E5, 1], [C5, .5],
+    [E5, 1], [C5, .5], [E5, 1], [C5, .5],
     [D5, 1.5], [D5, .5], [E5, .5], [F5, .5],
-    [G5, 1], [C5, .5], [C5, .5], [C5, 1], [B4, .5],
-    [F5, 1.5], [E5, 1], [G4, .5],
+    [G5, 1], [C5, .5], [C5, 1], [B4, .5],
+    [A4, 1.5], [G4, 1], [G4, .5],
     [C5, .75], [B4, .25], [C5, .5], [D5, .5], [C5, .5], [D5, .5],
     [E5, 1.5], [D5, .5], [E5, .5], [F5, .5],
     [E5, 1.5], [D5, .5], [C5, .5], [D5, .5],
     [C5, 1.5],
   ];
-  const events = eventsFromMidi([...melody, ...melody]);
+  const tab = (buttonId: string, direction: 'push' | 'pull', finger: number) => ({ buttonId, direction, finger });
+  // Chemin validé pour le Club I : les changements de rangée sont placés aux
+  // limites des phrases afin d'équilibrer l'air sans papillonnage entre touches.
+  const clubITablature: Array<Pick<SeedEvent, 'buttonId' | 'direction' | 'finger'>> = [
+    tab('c1-in-3', 'pull', 2), tab('c1-in-3', 'pull', 2), tab('c1-in-3', 'pull', 2),
+    tab('c1-in-5', 'pull', 3), tab('c1-in-6', 'pull', 4), tab('c1-in-6', 'pull', 4), tab('c1-in-6', 'pull', 4),
+    tab('c1-in-5', 'push', 3), tab('c1-in-6', 'pull', 4), tab('c1-in-6', 'pull', 4), tab('c1-in-6', 'pull', 4),
+    tab('c1-in-6', 'pull', 4), tab('c1-in-5', 'pull', 3), tab('c1-in-6', 'pull', 4), tab('c1-in-5', 'pull', 3),
+    tab('c1-out-7', 'pull', 4),
+
+    tab('c1-out-5', 'push', 2), tab('c1-out-5', 'push', 2), tab('c1-out-5', 'push', 2),
+    tab('c1-out-6', 'push', 3), tab('c1-out-7', 'push', 4), tab('c1-out-7', 'push', 4), tab('c1-out-7', 'push', 4),
+    tab('c1-out-6', 'push', 3), tab('c1-out-7', 'push', 4), tab('c1-out-7', 'push', 4), tab('c1-out-7', 'push', 4),
+    tab('c1-out-7', 'push', 4), tab('c1-out-6', 'push', 3), tab('c1-out-7', 'push', 4), tab('c1-out-6', 'push', 3),
+    tab('c1-out-7', 'pull', 4),
+
+    tab('c1-out-7', 'pull', 4), tab('c1-in-6', 'pull', 4), tab('c1-in-6', 'push', 4), tab('c1-in-7', 'pull', 5),
+    tab('c1-in-5', 'pull', 3), tab('c1-in-5', 'pull', 3), tab('c1-out-6', 'pull', 3), tab('c1-out-5', 'pull', 2),
+    tab('c1-out-5', 'push', 2), tab('c1-out-5', 'push', 2), tab('c1-out-6', 'push', 3), tab('c1-out-6', 'pull', 3),
+    tab('c1-out-6', 'push', 3), tab('c1-out-7', 'pull', 4), tab('c1-out-6', 'push', 3), tab('c1-out-7', 'pull', 4),
+    tab('c1-out-7', 'push', 4), tab('c1-out-7', 'pull', 4), tab('c1-in-6', 'pull', 4), tab('c1-out-8', 'pull', 5),
+    tab('c1-out-7', 'push', 4), tab('c1-out-7', 'pull', 4), tab('c1-in-5', 'pull', 3), tab('c1-out-7', 'pull', 4),
+    tab('c1-out-6', 'push', 3),
+  ];
+  const events = eventsFromMidi([[null, 1.5], ...cycle, ...cycle]).map((event, index) => ({
+    ...event,
+    ...clubITablature[index % clubITablature.length],
+  }));
   const harmonicCycle = [48, 48, 48, 43, 48, 48, 48, 43, 48, 41, 48, 43, 48, 48];
-  const accompaniment = [0, 45].flatMap((cycleBeat) => harmonicCycle.flatMap((rootMidi, measureIndex) => {
+  const accompaniment = [0, 42].flatMap((cycleBeat) => harmonicCycle.flatMap((rootMidi, measureIndex) => {
     const beat = cycleBeat + 3 + measureIndex * 3;
     return [
       { role: 'bass' as const, offset: 0 },
@@ -369,7 +396,7 @@ function leTrenteEtUnDuMoisDAout(): SeedSong {
     confidence: 1,
     builtIn: true,
     license: 'Domaine public — chant traditionnel du début du XIXe siècle',
-    provenance: 'Mélodie, rythme 6/8 et harmonie contrôlés sur la partition LilyPond publique de Wikipédia, puis confrontés à l’édition MusicXML Weckerlin/Gallica de Project Gutenberg. Forme pédagogique complète : un couplet et son refrain, chantés sur la même mélodie.',
+    provenance: 'Ligne chantée et rythme 6/8 contrôlés note par note sur la partition LilyPond publique de Wikipédia, l’édition Weckerlin/Gallica de Project Gutenberg et la tablature diatonique de Jean-Marc Siche. Transposition de Sol vers Do une quarte plus haut, dans le registre utile du Club I, et chemin croisé équilibré par phrases ; un couplet et son refrain utilisent la même mélodie.',
   };
 }
 
