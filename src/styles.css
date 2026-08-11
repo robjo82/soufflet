@@ -2804,7 +2804,7 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
 .piano-session-hud > div:last-child span { padding: 5px 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; color: #aab1c2; background: rgba(0,0,0,.14); font-size: 9px; font-weight: 750; }
 .piano-performance-window .piano-falling-stage { height: 100%; min-width: 0; min-height: 0; position: relative; overflow: hidden; border-radius: 12px; }
 .piano-performance-window .piano-falling-scroll { height: 100%; min-height: 0; border-radius: inherit; background: #090b11; scrollbar-color: #58627a #111520; }
-.piano-performance-window .piano-falling-visual { height: 100%; min-height: 0; grid-template-rows: minmax(180px,1fr) clamp(130px,22vh,205px); }
+.piano-performance-window .piano-falling-visual { height: 100%; min-height: 0; grid-template-rows: minmax(180px,1fr) clamp(138px,20vh,190px); }
 .piano-performance-window .piano-falling-roll { border-color: rgba(255,255,255,.11); border-radius: 12px 12px 0 0; background: linear-gradient(180deg,#1a2031 0,#10141f 74%,#171b27 100%); }
 .piano-performance-window .piano-roll-lanes i { border-left-color: rgba(255,255,255,.045); border-right-color: rgba(0,0,0,.18); }
 .piano-performance-window .piano-falling-note { border-color: rgba(204,214,255,.48); border-radius: 5px; background: linear-gradient(135deg,#526dc8,#718cff); box-shadow: 0 7px 18px rgba(65,89,184,.32); }

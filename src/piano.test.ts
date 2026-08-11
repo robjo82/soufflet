@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventsForHand, matchesPianoEvent, pianoKeyGeometry, pianoLyricCueAtBeat, pianoNoteLabel, pianoRange, pianoVisibleRange } from './piano';
+import { eventsForHand, matchesPianoEvent, pianoKeyGeometry, pianoLyricCueAtBeat, pianoNoteLabel, pianoRange, pianoTimelineFocusMidi, pianoVisibleRange } from './piano';
 
 describe('piano learning helpers', () => {
   it('builds standard keyboard ranges', () => {
@@ -38,6 +38,20 @@ describe('piano learning helpers', () => {
     expect(visible).toHaveLength(25);
     expect(visible).toContain(60);
     expect(visible).toContain(67);
+  });
+
+  it('moves the piano camera from the timeline without waiting for input', () => {
+    const events = [
+      { id: 'first', beat: 0, duration: 1, midis: [48], hand: 'left' as const },
+      { id: 'chord-low', beat: 2, duration: 1, midis: [60, 64, 67], hand: 'right' as const },
+      { id: 'chord-high', beat: 2, duration: 1, midis: [72], hand: 'right' as const },
+      { id: 'last', beat: 4, duration: 1, midis: [84], hand: 'right' as const },
+    ];
+
+    expect(pianoTimelineFocusMidi(events, -.5)).toBe(48);
+    expect(pianoTimelineFocusMidi(events, 1.2)).toBe(64);
+    expect(pianoTimelineFocusMidi(events, 4.2)).toBe(84);
+    expect(pianoTimelineFocusMidi(events, 6)).toBeUndefined();
   });
 
   it('synchronizes the lyric line and its highlighted word', () => {

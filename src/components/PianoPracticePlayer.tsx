@@ -1,6 +1,6 @@
 import { Captions, Check, Hand, Keyboard, Maximize2, Mic2, Minimize2, Pause, Piano, Play, RotateCcw, SlidersHorizontal, Usb, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { eventsForHand, matchesPianoEvent, pianoArrangementFor, pianoLyricCueAtBeat, pianoNoteLabel, pianoRange, pianoVisibleRange } from '../piano';
+import { eventsForHand, matchesPianoEvent, pianoArrangementFor, pianoLyricCueAtBeat, pianoNoteLabel, pianoRange } from '../piano';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
 import type { InstrumentArrangementEvent, PianoConfig, PracticeSessionInput, PrimaryPracticeMode, Song } from '../types';
@@ -59,8 +59,9 @@ export function PianoPracticePlayer({ song, piano, countIn, onSessionUpdate, onC
   const groups = useMemo(() => eventGroups(events), [events]);
   const totalBeats = useMemo(() => Math.max(1, ...events.map((event) => event.beat + event.duration)), [events]);
   const activeGroup = groups[waitIndex];
-  const allKeyboardMidis = useMemo(() => pianoRange(piano.keyboardSize), [piano.keyboardSize]);
-  const keyboardMidis = useMemo(() => pianoVisibleRange(allKeyboardMidis, events), [allKeyboardMidis, events]);
+  // Keep the configured instrument proportions. Cropping to the notes used by
+  // a song made a 61-key piano look like a magnified 25-key keyboard.
+  const keyboardMidis = useMemo(() => pianoRange(piano.keyboardSize), [piano.keyboardSize]);
   const lyricCue = useMemo(() => pianoLyricCueAtBeat(showLyrics ? song.lyrics ?? [] : [], beat, totalBeats), [beat, showLyrics, song.lyrics, totalBeats]);
 
   const toggleFullscreen = useCallback(async () => {

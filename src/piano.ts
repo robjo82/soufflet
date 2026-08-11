@@ -46,6 +46,31 @@ export function pianoVisibleRange(allMidis: number[], events: InstrumentArrangem
   return allMidis.slice(start, end);
 }
 
+/**
+ * Chooses the keyboard area that the score camera should follow from the
+ * timeline alone. This deliberately does not depend on a detected or clicked
+ * note: demo and guided playback must keep moving even when the learner is
+ * only watching.
+ */
+export function pianoTimelineFocusMidi(events: InstrumentArrangementEvent[], beat: number) {
+  const playable = events.filter((event) => event.midis.length > 0);
+  if (!playable.length) return undefined;
+
+  const current = playable.filter((event) => event.beat <= beat + .05 && event.beat + event.duration >= beat - .05);
+  let focusEvents = current;
+  if (!focusEvents.length) {
+    const nextBeat = playable.reduce<number | undefined>((next, event) => {
+      if (event.beat < beat - .05) return next;
+      return next === undefined || event.beat < next ? event.beat : next;
+    }, undefined);
+    if (nextBeat === undefined) return undefined;
+    focusEvents = playable.filter((event) => Math.abs(event.beat - nextBeat) < .001);
+  }
+
+  const midis = [...new Set(focusEvents.flatMap((event) => event.midis))].sort((left, right) => left - right);
+  return midis[Math.floor((midis.length - 1) / 2)];
+}
+
 export function pianoLyricCueAtBeat(lyrics: LyricLine[], beat: number, totalBeats: number) {
   const ordered = [...lyrics].sort((left, right) => left.beat - right.beat);
   let currentIndex = -1;
