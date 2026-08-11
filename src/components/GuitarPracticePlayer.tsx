@@ -1,6 +1,6 @@
-import { ArrowLeft, Guitar, Mic2, Pause, Play, RotateCcw, Volume2 } from 'lucide-react';
+import { ArrowLeft, Captions, Guitar, Mic2, Pause, Play, RotateCcw, Volume2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { adaptGuitarEvent, guitarEventsForPart, guitarNoteLabel } from '../guitar';
+import { adaptGuitarEvent, GUITAR_TIMELINE_HISTORY_BEATS, GUITAR_TIMELINE_LOOKAHEAD_BEATS, guitarEventsForPart, guitarLyricCueAtBeat, guitarNoteLabel, guitarTimelineLayout } from '../guitar';
 import { analyzeLeftHandFrames, chordLabelPitchClass } from '../leftHandAnalysis';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
@@ -24,6 +24,7 @@ export function GuitarPracticePlayer({ song, guitar, countIn, onSessionUpdate, o
   const [playing, setPlaying] = useState(false);
   const [beat, setBeat] = useState(0);
   const [tempo, setTempo] = useState(80);
+  const [showLyrics, setShowLyrics] = useState(Boolean(song.lyrics?.length));
   const [waitIndex, setWaitIndex] = useState(0);
   const [remainingIds, setRemainingIds] = useState<string[]>([]);
   const [correct, setCorrect] = useState(0);
@@ -42,6 +43,9 @@ export function GuitarPracticePlayer({ song, guitar, countIn, onSessionUpdate, o
   const groups = useMemo(() => groupEvents(events), [events]);
   const activeGroup = groups[waitIndex];
   const totalBeats = Math.max(1, ...events.map((event) => event.beat + event.duration));
+  const lyricCue = useMemo(() => guitarLyricCueAtBeat(showLyrics ? song.lyrics ?? [] : [], beat, totalBeats), [beat, showLyrics, song.lyrics, totalBeats]);
+  const timelineEvents = useMemo(() => guitarTimelineLayout(events, beat), [beat, events]);
+  const upcomingGroups = useMemo(() => groups.filter((group) => group.beat >= beat - .05).slice(0, 4), [beat, groups]);
 
   const reset = useCallback(() => {
     setPlaying(false); setBeat(0); setWaitIndex(0); setRemainingIds([]); setCorrect(0); setWrong(0); setActiveMidis([]);
@@ -134,8 +138,42 @@ export function GuitarPracticePlayer({ song, guitar, countIn, onSessionUpdate, o
   const currentEvents = mode === 'wait' ? activeGroup?.items ?? [] : events.filter((event) => event.beat <= beat + .3 && event.beat + event.duration >= beat);
   const currentPositions = currentEvents.flatMap((event) => adaptGuitarEvent(event, guitar).positions ?? []);
   const progress = mode === 'wait' ? waitIndex / Math.max(1, groups.length) : beat / totalBeats;
-  return <main className="guitar-player"><header><button type="button" className="icon-button" onClick={close}><ArrowLeft /></button><div><span className="eyebrow">Guitare · {MODES[mode]}</span><h1>{song.title}</h1><p>{song.artist} · {song.bpm} BPM</p></div><div className="guitar-player-score"><strong>{correct}</strong> juste{correct > 1 ? 's' : ''}<small>{wrong} à reprendre</small></div></header><div className="guitar-player-progress"><i style={{ width: `${Math.min(100, progress * 100)}%` }} /></div>
-    <section className="guitar-player-layout"><aside><label>Mode<select value={mode} onChange={(event) => setMode(event.target.value as PrimaryPracticeMode)}>{Object.entries(MODES).map(([id,label]) => <option key={id} value={id}>{label}</option>)}</select></label><div><span>Contenu</span>{(['melody','accompaniment','both'] as const).map((value) => <button type="button" key={value} className={part === value ? 'is-active' : ''} onClick={() => setPart(value)}>{value === 'melody' ? 'Mélodie' : value === 'accompaniment' ? 'Accords' : 'Mélodie + accords'}</button>)}</div><label>Tempo <strong>{tempo}%</strong><input type="range" min="40" max="120" value={tempo} onChange={(event) => setTempo(Number(event.target.value))} /></label><button type="button" className={detector.status === 'listening' ? 'is-active' : ''} onClick={() => detector.status === 'listening' ? detector.stop() : void detector.start()}><Mic2 />{detector.status === 'listening' ? 'Micro actif' : 'Écouter la guitare'}</button><p>Le micro reconnaît les notes et estime les accords. Étouffe les cordes inutiles pour une lecture plus fiable.</p></aside><div className="guitar-stage"><div className="guitar-current"><span>{mode === 'wait' ? 'À toi de jouer' : playing ? 'En cours' : 'Prêt'}</span><strong>{currentEvents.map((event) => event.label).filter(Boolean).join(' + ') || '—'}</strong><small>{currentPositions.map((position) => `corde ${position.string} · case ${position.fret}`).join(' · ')}</small>{currentEvents.some((event) => event.part === 'accompaniment') && <button type="button" onClick={() => { const chord = currentEvents.find((event) => event.part === 'accompaniment'); if (!chord) return; chord.midis.forEach((midi,index) => window.setTimeout(() => playGuitarMidi(midi), index * 25)); hitChord(chord.label ?? 'C'); }}><Volume2 /> Jouer l’accord</button>}</div><div className="guitar-timeline">{events.filter((event) => event.beat >= beat - 1 && event.beat <= beat + 8).map((event) => <i key={event.id} className={`is-${event.part}`} style={{ left: `${Math.max(0,(event.beat - beat + 1) / 9 * 100)}%`, width: `${Math.max(2,event.duration / 9 * 100)}%` }}><span>{event.label}</span></i>)}<b /></div><GuitarFretboard guitar={guitar} positions={currentPositions} activeMidis={activeMidis} onHit={hitMidi} /></div></section><footer className="guitar-transport"><button type="button" onClick={reset}><RotateCcw /> Recommencer</button><button type="button" className="primary-button" onClick={() => void toggle()}>{playing ? <Pause /> : <Play fill="currentColor" />}{playing ? 'Pause' : mode === 'wait' ? 'Commencer à jouer' : 'Commencer'}</button><span><Guitar /> {guitar.name}</span></footer></main>;
+  return <main className="guitar-player">
+    <header>
+      <button type="button" className="icon-button" onClick={close}><ArrowLeft /></button>
+      <div><span className="eyebrow">Guitare · {MODES[mode]}</span><h1>{song.title}</h1><p>{song.artist} · {Math.round(song.bpm * tempo / 100)} BPM</p></div>
+      <div className="guitar-player-score"><strong>{correct}</strong> juste{correct > 1 ? 's' : ''}<small>{wrong} à reprendre</small></div>
+    </header>
+    <div className="guitar-player-progress"><i style={{ width: `${Math.min(100, progress * 100)}%` }} /></div>
+    <section className="guitar-player-layout">
+      <aside>
+        <label>Mode<select value={mode} onChange={(event) => setMode(event.target.value as PrimaryPracticeMode)}>{Object.entries(MODES).map(([id,label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+        <div><span>Contenu</span>{(['melody','accompaniment','both'] as const).map((value) => <button type="button" key={value} className={part === value ? 'is-active' : ''} onClick={() => setPart(value)}>{value === 'melody' ? 'Mélodie' : value === 'accompaniment' ? 'Accords' : 'Mélodie + accords'}</button>)}</div>
+        {song.lyrics?.length ? <button type="button" className={showLyrics ? 'is-active' : ''} onClick={() => setShowLyrics((value) => !value)} aria-pressed={showLyrics}><Captions />{showLyrics ? 'Paroles affichées' : 'Afficher les paroles'}</button> : null}
+        <label>Tempo <strong>{tempo}%</strong><input type="range" min="40" max="120" value={tempo} onChange={(event) => setTempo(Number(event.target.value))} /></label>
+        <button type="button" className={detector.status === 'listening' ? 'is-active' : ''} onClick={() => detector.status === 'listening' ? detector.stop() : void detector.start()}><Mic2 />{detector.status === 'listening' ? 'Micro actif' : 'Écouter la guitare'}</button>
+        <p>Le micro reconnaît les notes et estime les accords. Étouffe les cordes inutiles pour une lecture plus fiable.</p>
+      </aside>
+      <div className={`guitar-stage ${showLyrics && (lyricCue.current || lyricCue.next) ? 'has-lyrics' : ''}`}>
+        <div className="guitar-current">
+          <div><span>{mode === 'wait' ? 'À toi de jouer' : playing ? 'En cours' : 'Prêt'}</span><strong>{currentEvents.map((event) => event.label).filter(Boolean).join(' + ') || '—'}</strong><small>{currentPositions.map((position) => `corde ${position.string} · case ${position.fret}`).join(' · ')}</small></div>
+          <div className="guitar-upcoming" aria-label="Gestes à venir">{upcomingGroups.map((group, index) => <div key={group.beat} className={index === 0 ? 'is-next' : ''}><small>{index === 0 ? 'Maintenant' : `Dans ${Math.max(1, Math.ceil(group.beat - beat))} t.`}</small><strong>{group.items.map((event) => event.label).filter(Boolean).join(' + ') || '—'}</strong></div>)}</div>
+          {currentEvents.some((event) => event.part === 'accompaniment') && <button type="button" onClick={() => { const chord = currentEvents.find((event) => event.part === 'accompaniment'); if (!chord) return; chord.midis.forEach((midi,index) => window.setTimeout(() => playGuitarMidi(midi), index * 25)); hitChord(chord.label ?? 'C'); }}><Volume2 /> Jouer l’accord</button>}
+        </div>
+        {showLyrics && (lyricCue.current || lyricCue.next) ? <div className="guitar-lyrics" role="status" aria-live="polite" aria-atomic="true">
+          <small><Captions /> {(lyricCue.current ?? lyricCue.next)?.section ?? 'Paroles'}</small>
+          {lyricCue.current ? <strong aria-label={lyricCue.current.text}>{lyricCue.words.map((word, index) => <span key={`${word}-${index}`} className={index < lyricCue.activeWord ? 'is-past' : index === lyricCue.activeWord ? 'is-active' : ''}>{word}</span>)}</strong> : <strong><span className="is-active">Prépare-toi…</span></strong>}
+          {lyricCue.next && <p><b>ENSUITE</b>{lyricCue.next.text}</p>}
+        </div> : null}
+        <div className="guitar-timeline" style={{ '--guitar-playhead': `${GUITAR_TIMELINE_HISTORY_BEATS / (GUITAR_TIMELINE_HISTORY_BEATS + GUITAR_TIMELINE_LOOKAHEAD_BEATS) * 100}%` } as React.CSSProperties}>
+          <span className="guitar-timeline-label is-melody">Mélodie</span><span className="guitar-timeline-label is-accompaniment">Accords</span>
+          {timelineEvents.map(({ event, left, width }) => <i key={event.id} className={`is-${event.part}`} style={{ left: `${left}%`, width: `${width}%` }}><span>{event.label}</span></i>)}<b />
+        </div>
+        <GuitarFretboard guitar={guitar} positions={currentPositions} activeMidis={activeMidis} onHit={hitMidi} />
+      </div>
+    </section>
+    <footer className="guitar-transport"><button type="button" onClick={reset}><RotateCcw /> Recommencer</button><button type="button" className="primary-button" onClick={() => void toggle()}>{playing ? <Pause /> : <Play fill="currentColor" />}{playing ? 'Pause' : mode === 'wait' ? 'Commencer à jouer' : 'Commencer'}</button><span><Guitar /> {guitar.name}</span></footer>
+  </main>;
 }
 
 function GuitarFretboard({ guitar, positions, activeMidis, onHit }: { guitar: GuitarConfig; positions: Array<{ string: number; fret: number; finger?: number }>; activeMidis: number[]; onHit: (midi: number) => void }) {
