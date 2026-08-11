@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { pianoKeyGeometry, pianoNoteLabel } from '../piano';
+import { pianoKeyGeometry, pianoNoteLabel, pianoTimelineFocusMidi } from '../piano';
 import type { InstrumentArrangementEvent } from '../types';
 
 interface PianoKeyboardProps {
@@ -14,7 +14,7 @@ interface PianoKeyboardProps {
 export function PianoKeyboard({ midis, expected = [], active = new Set(), notation, onHit, bare = false }: PianoKeyboardProps) {
   const geometry = useMemo(() => pianoKeyGeometry(midis), [midis]);
   const whiteCount = geometry.filter((key) => !key.black).length;
-  const keyboard = <div className="piano-keyboard" style={{ width: `max(100%, ${Math.max(620, whiteCount * 28)}px)` }}>
+  const keyboard = <div className="piano-keyboard" style={{ width: `max(100%, ${Math.max(720, whiteCount * 20)}px)` }}>
     {geometry.map((key) => <button
       type="button"
       key={key.midi}
@@ -41,16 +41,24 @@ export function PianoFallingStage({ midis, expected = [], active = new Set(), no
   const geometry = useMemo(() => pianoKeyGeometry(midis), [midis]);
   const geometryByMidi = useMemo(() => new Map(geometry.map((key) => [key.midi, key])), [geometry]);
   const whiteCount = geometry.filter((key) => !key.black).length;
-  const width = Math.max(620, whiteCount * 28);
-  const targetMidi = expected[0];
+  const width = Math.max(720, whiteCount * 20);
+  const focusMidi = pianoTimelineFocusMidi(events, beat) ?? expected[0];
 
   useEffect(() => {
-    if (targetMidi === undefined || !scrollRef.current) return;
-    const key = scrollRef.current.querySelector<HTMLElement>(`[data-midi="${targetMidi}"]`);
-    if (!key) return;
-    const desired = key.offsetLeft + key.offsetWidth / 2 - scrollRef.current.clientWidth / 2;
-    scrollRef.current.scrollTo({ left: Math.max(0, desired), behavior: 'smooth' });
-  }, [targetMidi]);
+    if (focusMidi === undefined || !scrollRef.current) return;
+    const scroll = scrollRef.current;
+    const follow = () => {
+      const key = scroll.querySelector<HTMLElement>(`[data-midi="${focusMidi}"]`);
+      if (!key) return;
+      const desired = key.offsetLeft + key.offsetWidth / 2 - scroll.clientWidth / 2;
+      scroll.scrollTo({ left: Math.max(0, desired), behavior: 'smooth' });
+    };
+    follow();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(follow);
+    observer.observe(scroll);
+    return () => observer.disconnect();
+  }, [focusMidi]);
 
   const visibleEvents = events.filter((event) => event.beat + event.duration >= beat - .35 && event.beat <= beat + lookAhead);
   return <div className={`piano-falling-stage ${className}`}>
