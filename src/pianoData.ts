@@ -1,5 +1,6 @@
 import type { PianoKeyboardSize } from './types';
 import { AMSTERDAM_61_KEY_NOTES, AMSTERDAM_CHORD_PROGRESSION, AMSTERDAM_VOCAL_NOTES } from './amsterdamData';
+import { COMPTINE_CHORD_PROGRESSION, COMPTINE_CONCERT_61_KEY_NOTES, COMPTINE_CONCERT_TEMPO_CHANGES, COMPTINE_ORIGINAL_61_KEY_NOTES } from './comptineData';
 import { EXPERIENCE_61_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_FULL_NOTES } from './experienceData';
 import { MIA_SEBASTIAN_61_KEY_NOTES, MIA_SEBASTIAN_CHORD_PROGRESSION, MIA_SEBASTIAN_FULL_NOTES } from './miaSebastianData';
 
@@ -14,8 +15,15 @@ export interface PianoExercise {
   hand: 'right' | 'both';
   beatsPerMeasure: number;
   measureStartBeat?: number;
+  tempoChanges?: PianoTempoChange[];
   notes: Array<{ midi: number; beat: number; duration: number; hand?: 'right' | 'left'; finger?: PianoFinger }>;
   lyrics?: PianoLyricLine[];
+}
+
+export interface PianoTempoChange {
+  beat: number;
+  bpm: number;
+  label?: string;
 }
 
 export interface PianoLyricLine {
@@ -673,6 +681,7 @@ export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'le-31-du-mois-aout-chords', songTitle: 'Le 31 du mois d’Août', artist: 'Traditionnel marin', progression: harmonyToChordProgression(LE_31_AOUT_HARMONY) },
   { id: 'mia-sebastians-theme-chords', songTitle: "Mia & Sebastian's Theme", artist: 'Justin Hurwitz', progression: MIA_SEBASTIAN_CHORD_PROGRESSION },
   { id: 'amsterdam-chords', songTitle: 'Amsterdam', artist: 'Jacques Brel', progression: AMSTERDAM_CHORD_PROGRESSION },
+  { id: 'comptine-autre-ete-chords', songTitle: 'Comptine d’un autre été', artist: 'Yann Tiersen', progression: COMPTINE_CHORD_PROGRESSION },
 ];
 
 export function pianoChordExerciseForSong(title: string, artist?: string) {
@@ -692,6 +701,8 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'mia-sebastians-theme-complete-61', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · 61 touches', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_61_KEY_NOTES },
   { id: 'mia-sebastians-theme-complete', title: "Mia & Sebastian's Theme", kind: 'song', artist: 'Justin Hurwitz', arrangement: 'Adaptation complète · Tessiture originale (88 touches)', level: 'Modéré', bpm: 88, hand: 'both', beatsPerMeasure: 3, notes: MIA_SEBASTIAN_FULL_NOTES },
   { id: 'amsterdam-complete-61', title: 'Amsterdam', kind: 'song', artist: 'Jacques Brel', arrangement: 'Adaptation complète · Mélodie et arpèges · 61 touches', level: 'Modéré', bpm: 140, hand: 'both', beatsPerMeasure: 6, measureStartBeat: 6, notes: AMSTERDAM_61_KEY_NOTES, lyrics: AMSTERDAM_LYRICS },
+  { id: 'comptine-autre-ete-original-61', title: 'Comptine d’un autre été', kind: 'song', artist: 'Yann Tiersen', arrangement: 'Version L’après-midi · 45 mesures avec reprises · 61 touches', level: 'Simple', bpm: 95, hand: 'both', beatsPerMeasure: 4, notes: COMPTINE_ORIGINAL_61_KEY_NOTES },
+  { id: 'comptine-autre-ete-kyle-landry-61', title: 'Comptine d’un autre été', kind: 'song', artist: 'Yann Tiersen', arrangement: 'Arrangement concert 2021 · Kyle Landry · 61 touches', level: 'Modéré', bpm: 90, hand: 'both', beatsPerMeasure: 4, tempoChanges: COMPTINE_CONCERT_TEMPO_CHANGES, notes: COMPTINE_CONCERT_61_KEY_NOTES },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -747,7 +758,7 @@ export function pianoShowsFingerings(mode: PianoPlayMode) {
   return mode === 'practice';
 }
 
-const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas', "Mia & Sebastian's Theme", 'Amsterdam']);
+const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas', "Mia & Sebastian's Theme", 'Amsterdam', 'Comptine d’un autre été']);
 const PRACTICE_SECTION_IDS: PianoPracticeSection['id'][] = ['part-1', 'part-2', 'part-3'];
 const PRACTICE_SECTION_TITLES = ['Partie 1 · Début', 'Partie 2 · Milieu', 'Partie 3 · Fin'];
 
@@ -848,6 +859,52 @@ export function hasPianoNoteReachedHitLine(offsetPx: number, tolerancePx = 1) {
 
 export function pianoNoteDurationSeconds(durationBeats: number, beatMs: number) {
   return Math.max(.08, durationBeats * beatMs / 1000);
+}
+
+export function pianoTempoAtBeat(baseBpm: number, tempoChanges: PianoTempoChange[] = [], beat = 0) {
+  return [...tempoChanges]
+    .filter((change) => change.beat <= beat)
+    .sort((left, right) => left.beat - right.beat)
+    .at(-1)?.bpm ?? baseBpm;
+}
+
+export function pianoBeatToMs(beat: number, baseBpm: number, tempoPercent = 100, tempoChanges: PianoTempoChange[] = []) {
+  const millisecondsPerBeat = (bpm: number) => 60000 / (bpm * tempoPercent / 100);
+  if (beat <= 0) return beat * millisecondsPerBeat(baseBpm);
+  let elapsedMs = 0;
+  let cursorBeat = 0;
+  let currentBpm = baseBpm;
+  for (const change of [...tempoChanges].sort((left, right) => left.beat - right.beat)) {
+    if (change.beat <= 0) { currentBpm = change.bpm; continue; }
+    if (change.beat >= beat) break;
+    elapsedMs += (change.beat - cursorBeat) * millisecondsPerBeat(currentBpm);
+    cursorBeat = change.beat;
+    currentBpm = change.bpm;
+  }
+  return elapsedMs + (beat - cursorBeat) * millisecondsPerBeat(currentBpm);
+}
+
+export function pianoMsToBeat(elapsedMs: number, baseBpm: number, tempoPercent = 100, tempoChanges: PianoTempoChange[] = []) {
+  const beatsPerMillisecond = (bpm: number) => bpm * tempoPercent / 100 / 60000;
+  if (elapsedMs <= 0) return elapsedMs * beatsPerMillisecond(baseBpm);
+  let remainingMs = elapsedMs;
+  let cursorBeat = 0;
+  let currentBpm = baseBpm;
+  for (const change of [...tempoChanges].sort((left, right) => left.beat - right.beat)) {
+    if (change.beat <= 0) { currentBpm = change.bpm; continue; }
+    const segmentMs = (change.beat - cursorBeat) / beatsPerMillisecond(currentBpm);
+    if (remainingMs <= segmentMs) return cursorBeat + remainingMs * beatsPerMillisecond(currentBpm);
+    remainingMs -= segmentMs;
+    cursorBeat = change.beat;
+    currentBpm = change.bpm;
+  }
+  return cursorBeat + remainingMs * beatsPerMillisecond(currentBpm);
+}
+
+export function pianoNotePlaybackTimingWithTempo(note: Pick<PianoExercise['notes'][number], 'beat' | 'duration'>, baseBpm: number, tempoPercent = 100, tempoChanges: PianoTempoChange[] = []) {
+  const startMs = pianoBeatToMs(note.beat, baseBpm, tempoPercent, tempoChanges);
+  const endMs = pianoBeatToMs(note.beat + note.duration, baseBpm, tempoPercent, tempoChanges);
+  return { startMs, durationSeconds: Math.max(.08, (endMs - startMs) / 1000) };
 }
 
 export function pianoNotePlaybackTiming(note: Pick<PianoExercise['notes'][number], 'beat' | 'duration'>, beatMs: number) {
