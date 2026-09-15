@@ -1,5 +1,6 @@
 import type { PianoKeyboardSize } from './types';
 import { AMSTERDAM_61_KEY_NOTES, AMSTERDAM_CHORD_PROGRESSION, AMSTERDAM_VOCAL_NOTES } from './amsterdamData';
+import { BAD_GUY_CHORD_PROGRESSION, BAD_GUY_NOTES } from './badGuyData';
 import { COMPTINE_CHORD_PROGRESSION, COMPTINE_CONCERT_61_KEY_NOTES, COMPTINE_CONCERT_TEMPO_CHANGES, COMPTINE_ORIGINAL_61_KEY_NOTES } from './comptineData';
 import { EXPERIENCE_61_KEY_NOTES, EXPERIENCE_CHORD_PROGRESSION, EXPERIENCE_FULL_NOTES } from './experienceData';
 import { MIA_SEBASTIAN_61_KEY_NOTES, MIA_SEBASTIAN_CHORD_PROGRESSION, MIA_SEBASTIAN_FULL_NOTES } from './miaSebastianData';
@@ -682,6 +683,7 @@ export const PIANO_CHORD_EXERCISES: PianoChordExercise[] = [
   { id: 'mia-sebastians-theme-chords', songTitle: "Mia & Sebastian's Theme", artist: 'Justin Hurwitz', progression: MIA_SEBASTIAN_CHORD_PROGRESSION },
   { id: 'amsterdam-chords', songTitle: 'Amsterdam', artist: 'Jacques Brel', progression: AMSTERDAM_CHORD_PROGRESSION },
   { id: 'comptine-autre-ete-chords', songTitle: 'Comptine d’un autre été', artist: 'Yann Tiersen', progression: COMPTINE_CHORD_PROGRESSION },
+  { id: 'bad-guy-chords', songTitle: 'bad guy', artist: 'Billie Eilish', progression: BAD_GUY_CHORD_PROGRESSION },
 ];
 
 export function pianoChordExerciseForSong(title: string, artist?: string) {
@@ -703,6 +705,7 @@ export const PIANO_EXERCISES: PianoExercise[] = [
   { id: 'amsterdam-complete-61', title: 'Amsterdam', kind: 'song', artist: 'Jacques Brel', arrangement: 'Adaptation complète · Mélodie et arpèges · 61 touches', level: 'Modéré', bpm: 140, hand: 'both', beatsPerMeasure: 6, measureStartBeat: 6, notes: AMSTERDAM_61_KEY_NOTES, lyrics: AMSTERDAM_LYRICS },
   { id: 'comptine-autre-ete-original-61', title: 'Comptine d’un autre été', kind: 'song', artist: 'Yann Tiersen', arrangement: 'Version L’après-midi · 45 mesures avec reprises · 61 touches', level: 'Simple', bpm: 95, hand: 'both', beatsPerMeasure: 4, notes: COMPTINE_ORIGINAL_61_KEY_NOTES },
   { id: 'comptine-autre-ete-kyle-landry-61', title: 'Comptine d’un autre été', kind: 'song', artist: 'Yann Tiersen', arrangement: 'Arrangement concert 2021 · Kyle Landry · 61 touches', level: 'Modéré', bpm: 90, hand: 'both', beatsPerMeasure: 4, tempoChanges: COMPTINE_CONCERT_TEMPO_CHANGES, notes: COMPTINE_CONCERT_61_KEY_NOTES },
+  { id: 'bad-guy-complete-61', title: 'bad guy', kind: 'song', artist: 'Billie Eilish', arrangement: 'Version complète · Partition fournie · 61 touches', level: 'Modéré', bpm: 130, hand: 'both', beatsPerMeasure: 4, notes: BAD_GUY_NOTES },
 ];
 
 export function groupPianoExercises(exercises: PianoExercise[]) {
@@ -758,7 +761,7 @@ export function pianoShowsFingerings(mode: PianoPlayMode) {
   return mode === 'practice';
 }
 
-const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas', "Mia & Sebastian's Theme", 'Amsterdam', 'Comptine d’un autre été']);
+const SECTIONED_PIANO_SONGS = new Set(['Experience', 'My Way', 'Ne me quitte pas', "Mia & Sebastian's Theme", 'Amsterdam', 'Comptine d’un autre été', 'bad guy']);
 const PRACTICE_SECTION_IDS: PianoPracticeSection['id'][] = ['part-1', 'part-2', 'part-3'];
 const PRACTICE_SECTION_TITLES = ['Partie 1 · Début', 'Partie 2 · Milieu', 'Partie 3 · Fin'];
 
