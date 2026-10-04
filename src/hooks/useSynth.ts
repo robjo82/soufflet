@@ -76,6 +76,8 @@ function warmSampleBank(context?: AudioContext) {
 export function useSynth() {
   const contextRef = useRef<AudioContext | null>(null);
   const activeRef = useRef<Set<AudioScheduledSourceNode>>(new Set());
+  const clicksRef = useRef<Set<OscillatorNode>>(new Set());
+  const generationRef = useRef(0);
 
   const getContext = useCallback(() => {
     const isNew = !contextRef.current;
@@ -122,15 +124,16 @@ export function useSynth() {
   const playMidi = useCallback((midi: number, duration = 0.3, volume = 0.11) => {
     const context = getContext();
     const sample = selectAccordionSample(midi);
+    const generation = generationRef.current;
     let resolved = false;
     const fallbackTimer = globalThis.setTimeout(() => {
-      if (resolved || context.state === 'closed') return;
+      if (resolved || context.state === 'closed' || generation !== generationRef.current) return;
       resolved = true;
       playFallbackMidi(context, midi, duration, volume);
     }, 120);
 
     void decodeSample(context, sample).then((buffer) => {
-      if (resolved || context.state === 'closed') return;
+      if (resolved || context.state === 'closed' || generation !== generationRef.current) return;
       resolved = true;
       globalThis.clearTimeout(fallbackTimer);
       const now = context.currentTime + .003;
@@ -160,7 +163,7 @@ export function useSynth() {
       source.stop(now + duration + .025);
       source.onended = () => activeRef.current.delete(source);
     }).catch(() => {
-      if (resolved || context.state === 'closed') return;
+      if (resolved || context.state === 'closed' || generation !== generationRef.current) return;
       resolved = true;
       globalThis.clearTimeout(fallbackTimer);
       playFallbackMidi(context, midi, duration, volume);
@@ -224,18 +227,33 @@ export function useSynth() {
     pick.buffer = noiseBuffer; pickGain.gain.value = volume * .32; pick.connect(pickGain).connect(body); pick.start(now);
   }, [getContext]);
 
-  const click = useCallback((accent = false) => {
+  const click = useCallback((accent = false, at = performance.now()) => {
     const context = getContext();
+    const startAt = context.currentTime + Math.max(0, (at - performance.now()) / 1000);
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.frequency.value = accent ? 1280 : 940;
     oscillator.type = 'sine';
-    gain.gain.setValueAtTime(accent ? 0.16 : 0.09, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.05);
+    gain.gain.setValueAtTime(accent ? 0.16 : 0.09, startAt);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.05);
     oscillator.connect(gain).connect(masterBus(context));
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.055);
+    clicksRef.current.add(oscillator);
+    oscillator.onended = () => { clicksRef.current.delete(oscillator); oscillator.disconnect(); gain.disconnect(); };
+    oscillator.start(startAt);
+    oscillator.stop(startAt + 0.055);
   }, [getContext]);
+
+  const prepareAudio = useCallback(() => { getContext(); }, [getContext]);
+  const stopClicks = useCallback(() => {
+    clicksRef.current.forEach((node) => { try { node.stop(); } catch { /* already stopped */ } });
+    clicksRef.current.clear();
+  }, []);
+  const stopAll = useCallback(() => {
+    generationRef.current += 1;
+    activeRef.current.forEach((node) => { try { node.stop(); } catch { /* already stopped */ } });
+    activeRef.current.clear();
+    stopClicks();
+  }, [stopClicks]);
 
   const playLeftHand = useCallback((midi: number, role: 'bass' | 'chord', chord = 'C', duration = .38) => {
     if (role === 'bass') {
@@ -247,13 +265,12 @@ export function useSynth() {
   }, [playMidi]);
 
   useEffect(() => {
-    const activeNodes = activeRef.current;
     warmSampleBank();
     return () => {
-      activeNodes.forEach((node) => node.stop());
+      stopAll();
       void contextRef.current?.close();
     };
-  }, []);
+  }, [stopAll]);
 
-  return { playMidi, playPianoMidi, playGuitarMidi, playLeftHand, click };
+  return { playMidi, playPianoMidi, playGuitarMidi, playLeftHand, click, prepareAudio, stopClicks, stopAll };
 }
