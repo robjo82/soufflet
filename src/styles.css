@@ -2784,7 +2784,7 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
 .piano-session-title small { color: #aeb5c7; font-size: 10px; font-weight: 800; letter-spacing: .035em; }
 .piano-session-title strong { max-width: 44vw; overflow: hidden; font: 800 clamp(18px,2.1vw,28px) 'Manrope'; text-overflow: ellipsis; white-space: nowrap; }
 .piano-session-actions { justify-self: end; display: flex; align-items: center; gap: 7px; }
-.piano-session-actions button { min-width: 42px; padding: 0 11px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 10px; font-weight: 800; }
+.piano-session-actions button { width: 44px; min-width: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 10px; font-weight: 800; }
 .piano-session-actions button svg { width: 17px; }
 .piano-session-actions button.is-active { color: #f4cc5b; border-color: rgba(244,204,91,.5); background: rgba(244,204,91,.1); }
 .piano-session-score { margin-right: 4px; display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 0 5px; color: #d7dae3; font-size: 10px; }
@@ -2861,9 +2861,10 @@ html.native-android .transport-bar { box-sizing: content-box; padding: 0 calc(23
 .piano-session-settings > p svg { width: 15px; flex: 0 0 auto; }
 
 .piano-performance-window .piano-transport { min-height: 58px; padding: 0; position: static; display: grid; grid-template-columns: minmax(125px,1fr) minmax(180px,1.4fr) auto minmax(125px,1fr); gap: 12px; border: 0; color: white; background: transparent; backdrop-filter: none; }
-.piano-performance-window .piano-transport button { min-height: 46px; padding: 0 14px; color: #e5e7ee; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.045); }
+.piano-performance-window .piano-transport button { width: 46px; min-height: 46px; padding: 0; justify-content: center; color: #e5e7ee; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.045); }
 .piano-performance-window .piano-transport button:hover { background: rgba(255,255,255,.08); }
-.piano-performance-window .piano-transport .piano-main-transport { min-width: 170px; justify-self: center; color: #171a23; border: 0; background: #f4cc5b; box-shadow: 0 9px 26px rgba(244,204,91,.18); }
+.piano-performance-window .piano-transport .piano-main-transport { width: 54px; min-width: 54px; justify-self: center; color: #171a23; border: 0; background: #f4cc5b; box-shadow: 0 9px 26px rgba(244,204,91,.18); }
+.piano-performance-window .piano-transport .piano-main-transport:hover { background: #f4cc5b; }
 .piano-performance-window .piano-transport > div { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; color: #9ba3b5; font-size: 9px; }
 .piano-performance-window .piano-transport progress { width: 100%; accent-color: #8da0ff; }
 .piano-device-state { justify-self: end; display: flex; align-items: center; gap: 7px; color: #9da5b7; font-size: 10px; }
