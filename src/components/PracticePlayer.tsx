@@ -9,7 +9,6 @@ import { FingeringGuide } from './FingeringGuide';
 import { ScoreStrip } from './ScoreStrip';
 import { usePitchDetector } from '../hooks/usePitchDetector';
 import { useSynth } from '../hooks/useSynth';
-import { useMetronome } from '../hooks/useMetronome';
 import type {
   AccordionConfig, AccompanimentEvent, BellowsStyle, Hand as HandFocus, LeftHandAcousticProfile, Notation,
   PracticeAssessmentBreakdown, PracticeDimensionResults, PracticeSessionInput, PracticeSettings, PrimaryPracticeMode,
@@ -130,7 +129,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   const activeSegmentStartedAtRef = useRef<number | null>(null);
   const accumulatedActiveMsRef = useRef(0);
   const sessionCompletedRef = useRef(false);
-  const { playMidi, playLeftHand, click, prepareAudio, stopClicks, stopAll } = useSynth();
+  const { playMidi, playLeftHand, click } = useSynth();
   const {
     reading: detectedReading, audioFrame, onset: detectedOnset, status: detectorStatus,
     start: startDetector, stop: stopDetector,
@@ -157,20 +156,6 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   const beatMs = 60000 / actualBpm;
   const countInSequence = useMemo(() => getCountInSequence(song.timeSignature[0]), [song.timeSignature]);
   const practiceWithMic = settings.mode !== 'demo';
-  const previousBeatMs = useRef(beatMs);
-  useEffect(() => {
-    if (playing && beatMs !== previousBeatMs.current) {
-      const now = performance.now();
-      startBeatRef.current += (now - startedAtRef.current) / previousBeatMs.current;
-      startedAtRef.current = now;
-    }
-    previousBeatMs.current = beatMs;
-  }, [beatMs, playing]);
-  const metronomeEndEvent = practiceEvents[settings.loop ? settings.loopEnd : practiceEvents.length - 1];
-  const metronomeTimeAtBeat = useCallback((beat: number) => beat < startBeatRef.current ? -Infinity : startedAtRef.current + (beat - startBeatRef.current) * beatMs, [beatMs]);
-  useMetronome({ enabled: playing && soundEnabled && settings.metronome && settings.mode !== 'wait', endBeat: metronomeEndEvent ? metronomeEndEvent.beat + metronomeEndEvent.duration : 0, beatsPerMeasure: song.timeSignature[0], timeAtBeat: metronomeTimeAtBeat, click, stopClicks });
-  const toggleMetronome = useCallback(() => { prepareAudio(); stopAll(); setSettings((value) => ({ ...value, metronome: !value.metronome })); }, [prepareAudio, stopAll]);
-
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, []);
 
@@ -331,14 +316,13 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   }, [clearCountIn, finishActiveSegment, persistSession, practiceEvents, resetDetectionTracking, resetResults, resetSessionTracking, song]);
 
   const stop = useCallback(() => {
-    stopAll();
     clearCountIn();
     finishActiveSegment();
     void persistSession(false);
     setPlaying(false);
     cancelAnimationFrame(rafRef.current);
     window.clearTimeout(waitAdvanceTimerRef.current);
-  }, [clearCountIn, finishActiveSegment, persistSession, stopAll]);
+  }, [clearCountIn, finishActiveSegment, persistSession]);
 
   const restart = useCallback(() => {
     stop();
@@ -421,7 +405,6 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
   }, [resetDetectionTracking, resetResults, resetSessionTracking, sourceSong.events.length, stop]);
 
   const startPlayback = useCallback((startIndex = activeIndex) => {
-    prepareAudio();
     clearCountIn();
     setActiveIndex(startIndex);
     setActiveAccompanimentIndex(accompanimentIndexAt(song, practiceEvents[startIndex]?.beat ?? 0));
@@ -436,7 +419,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     waitForReleaseRef.current = null;
     ignoreMicrophoneUntilRef.current = 0;
     setPlaying(true);
-  }, [activeIndex, clearCountIn, practiceEvents, prepareAudio, song]);
+  }, [activeIndex, clearCountIn, practiceEvents, song]);
 
   const begin = useCallback(async () => {
     if (playing || countInBeat !== null) { stop(); return; }
@@ -497,9 +480,10 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       const event = practiceEvents[nextIndex];
       if (event && lastPlayedRef.current !== nextIndex) {
         lastPlayedRef.current = nextIndex;
-        if (soundEnabled && !settings.metronome && settings.mode === 'demo' && settings.hand !== 'left') {
+        if (soundEnabled && settings.mode === 'demo' && settings.hand !== 'left') {
           playMidi(event.midi, event.duration * beatMs / 1000 * 0.92);
         }
+        if (soundEnabled && settings.metronome) click(event.beat % song.timeSignature[0] === 0);
       }
       const nextAccompanimentIndex = accompanimentIndexAt(song, beat);
       if (song.accompaniment?.length && lastAccompanimentIndexRef.current !== nextAccompanimentIndex) {
@@ -507,7 +491,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
         setActiveAccompanimentIndex(nextAccompanimentIndex);
       }
       const accompaniment = song.accompaniment?.[nextAccompanimentIndex];
-      if (soundEnabled && !settings.metronome && settings.mode === 'demo' && settings.hand !== 'right' && accompaniment && lastAccompanimentPlayedRef.current !== nextAccompanimentIndex) {
+      if (soundEnabled && settings.mode === 'demo' && settings.hand !== 'right' && accompaniment && lastAccompanimentPlayedRef.current !== nextAccompanimentIndex) {
         lastAccompanimentPlayedRef.current = nextAccompanimentIndex;
         playLeftHand(accompaniment.midi, accompaniment.role, accompaniment.chord, accompaniment.duration * beatMs / 1000);
       }
@@ -536,7 +520,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
     };
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [activeIndex, beatMs, finishActiveSegment, persistSession, playLeftHand, playMidi, playing, practiceEvents, settings.hand, settings.loop, settings.loopEnd, settings.loopStart, settings.metronome, settings.mode, song, soundEnabled]);
+  }, [activeIndex, beatMs, click, finishActiveSegment, persistSession, playLeftHand, playMidi, playing, practiceEvents, settings.hand, settings.loop, settings.loopEnd, settings.loopStart, settings.metronome, settings.mode, song, soundEnabled]);
 
   const recordCoordination = useCallback((hand: 'right' | 'left', beat: number, at: number) => {
     if (settings.hand !== 'both' || !accompanimentAttackAtBeat(song.accompaniment, beat)) return;
@@ -807,7 +791,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       if (event.code === 'Space') { event.preventDefault(); void begin(); }
       else if (key === 'r') restart();
       else if (key === 'l') setSettings((value) => ({ ...value, loop: !value.loop }));
-      else if (key === 'm') toggleMetronome();
+      else if (key === 'm') setSettings((value) => ({ ...value, metronome: !value.metronome }));
       else if (key === 's') setSoundEnabled((value) => !value);
       else if (key === 'p') setShowScore((value) => !value);
       else if (key === 'd') setShowFingering((value) => !value);
@@ -835,7 +819,7 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [activeIndex, begin, countInBeat, playing, practiceEvents.length, restart, selectIndex, selectMode, shortcutsVisible, tempoOpen, toggleFullscreen, toggleMetronome]);
+  }, [activeIndex, begin, countInBeat, playing, practiceEvents.length, restart, selectIndex, selectMode, shortcutsVisible, tempoOpen, toggleFullscreen]);
 
   const closePractice = useCallback(() => {
     finishActiveSegment();
@@ -1074,10 +1058,10 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
 
       <footer className="transport-bar">
         <div className="transport-side">
-          <button type="button" className="transport-tool" onClick={restart} aria-label="Recommencer" aria-keyshortcuts="R" title="Recommencer (R)"><Redo2 /></button>
+          <button type="button" className="transport-tool" onClick={restart}><Redo2 /> <span>Recommencer<kbd>R</kbd></span></button>
           <button type="button" className={`transport-tool ${settings.loop ? 'is-active' : ''}`} onClick={() => setSettings((value) => ({ ...value, loop: !value.loop }))}><Repeat2 /> <span>Boucle<kbd>L</kbd></span></button>
         </div>
-        <button type="button" className="primary-play" aria-label={playing || countInBeat !== null ? 'Pause' : 'Commencer'} aria-keyshortcuts="Space" title="Lecture / pause (Espace)" onClick={() => { setTempoOpen(false); void begin(); }}>{playing || countInBeat !== null ? <Pause /> : <Play fill="currentColor" />}</button>
+        <button type="button" className="primary-play" onClick={() => { setTempoOpen(false); void begin(); }}>{playing || countInBeat !== null ? <Pause /> : <Play fill="currentColor" />}<span>{countInBeat !== null ? `Départ dans ${countInBeat}` : playing ? 'Pause' : 'Commencer'}</span><kbd>Espace</kbd></button>
         <div className="transport-side align-right">
           <label className="tempo-control"><Gauge size={19} /><span>Tempo <strong>{settings.tempo} %</strong></span><input type="range" min="40" max="120" step="5" value={settings.tempo} onChange={(event) => setSettings((value) => ({ ...value, tempo: Number(event.target.value) }))} /></label>
           <button
@@ -1111,9 +1095,9 @@ export function PracticePlayer({ song: sourceSong, accordion, onClose, notation,
             aria-label={settings.metronome ? 'Désactiver le métronome' : 'Activer le métronome'}
             aria-pressed={settings.metronome}
             title={settings.metronome ? 'Désactiver le métronome' : 'Activer le métronome'}
-            onClick={toggleMetronome}
+            onClick={() => setSettings((value) => ({ ...value, metronome: !value.metronome }))}
           >
-            <TimerReset />
+            <TimerReset /><span>Métronome</span>
           </button>
           <button type="button" className={`icon-button ${soundEnabled ? '' : 'is-active'}`} onClick={() => setSoundEnabled(!soundEnabled)} title={soundEnabled ? 'Couper le son de l’application' : 'Activer le son'}><Volume2 /></button>
           <button type="button" className="icon-button" onClick={() => setModeOpen(true)} title="Réglages du mode"><Settings2 /></button>
